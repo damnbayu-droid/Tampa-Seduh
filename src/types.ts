@@ -1,0 +1,84 @@
+export interface MenuItem {
+  id: string;
+  name: string;
+  priceReg: number; // in thousand IDR, e.g., 15 for 15K
+  priceLarge?: number; // large size, optional for hot drinks
+  isHot: boolean;
+  isAvailable: boolean;
+  image: string;
+  description: string;
+}
+
+export interface CoffeePackage {
+  id: string;
+  name: string;
+  price: number; // in thousand IDR
+  items: string[];
+  description: string;
+  badge?: string;
+}
+
+export interface OrderItem {
+  menuId: string;
+  name: string;
+  quantity: number;
+  size: "R" | "L" | "Regular";
+  price: number;
+}
+
+export interface Order {
+  id: string;
+  customerName: string;
+  whatsapp: string;
+  email: string;
+  address: string;
+  items: OrderItem[];
+  total: number;
+  status: "pending" | "preparing" | "delivering" | "completed";
+  createdAt: string;
+}
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: "admin" | "customer";
+  ordersCount: number;
+  lastActive: string;
+}
+
+export interface AuditLog {
+  id: string;
+  action: string;
+  details: string;
+  timestamp: string;
+}
+
+export interface FinancialSummary {
+  period: "Harian" | "Mingguan" | "Bulanan" | "6 Bulan" | "1 Tahun" | "Semua";
+  labels: string[];
+  revenue: number[];
+  costs: number[];
+  netProfit: number;
+  transactionsCount: number;
+}
+
+export interface EmailLog {
+  id: string;
+  recipient: string;
+  subject: string;
+  status: "Delivered" | "Sent" | "Failed";
+  timestamp: string;
+  body: string;
+}
+
+export interface BlogNews {
+  id: string;
+  title: string;
+  slug: string;
+  content: string;
+  author: string;
+  date: string;
+  coverImage: string;
+  category: "Petani" | "Biji Kopi" | "Tips Seduh" | "Kabar Kedai";
+}

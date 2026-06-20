@@ -1,0 +1,49 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,700;0,900;1,700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-serif: "Playfair Display", Georgia, Cambria, serif;
+
+  /* Natural Tones Theme Colors Extracted From HTML */
+  --color-amber-50: #F9F7F2;      /* Off-white light background */
+  --color-amber-100: #F2EDE4;     /* Sand/cream card bg */
+  --color-amber-200: #DED6C9;     /* Deep sand card */
+  --color-amber-300: #C2B6A3;     /* Cream clay helper */
+  --color-amber-400: #A89582;     /* Warm beige accent text */
+  --color-amber-500: #8B5E3C;     /* Premium Oak brown */
+  --color-amber-600: #734F32;     /* Darker Oak */
+  --color-amber-700: #5C3D24;     /* Medium earth brown */
+  --color-amber-800: #4B3621;     /* Rich deep wood */
+  --color-amber-900: #3E2A17;     /* Espresso brown */
+  --color-amber-950: #2D1B0D;     /* Ultimate Dark Wood base */
+  --color-amber-955: #2D1B0D;     /* Ultimate Dark Wood custom */
+
+  /* Neutral overrides to warm up the grays into earth colors */
+  --color-zinc-50: #F9F7F2;
+  --color-zinc-100: #F2EDE4;
+  --color-zinc-200: #E8E2D9;
+  --color-zinc-300: #DED6C9;
+  --color-zinc-400: #A89582;
+  --color-zinc-555: #6B5A4E;
+  --color-zinc-500: #8C7865;
+  --color-zinc-600: #6B5A4E;
+  --color-zinc-650: #6B5A4E;
+  --color-zinc-700: #56473E;
+  --color-zinc-800: #42352F;
+  --color-zinc-900: #2D1B0D;
+  --color-zinc-950: #211308;
+
+  --color-stone-50: #F9F7F2;
+  --color-stone-100: #F2EDE4;
+  --color-stone-200: #E8E2D9;
+  --color-stone-300: #DED6C9;
+  --color-stone-400: #A89582;
+  --color-stone-500: #8C7865;
+  --color-stone-600: #6B5A4E;
+  --color-stone-700: #56473E;
+  --color-stone-800: #42352F;
+  --color-stone-900: #4A3728;    /* Natural warm text color */
+  --color-stone-950: #211308;
+}
+
