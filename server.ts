@@ -10,12 +10,14 @@ import { MenuItem, CoffeePackage, Order, AuditLog, User, BlogNews, EmailLog, Fin
 
 dotenv.config();
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || "",
-});
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const resendApiKey = process.env.RESEND_API_KEY || "";
 const resend = new Resend(resendApiKey);
+
+// Initialize Gemini Client
+const gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 const supabaseUrl = process.env.SUPABASE_URL || "https://dummy.supabase.co";
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "dummy_key";
@@ -108,46 +110,97 @@ async function syncFromSupabase() {
     ]);
 
     if (!menuRes.error && menuRes.data) {
-      menuItems = menuRes.data.map(m => ({
-        id: m.id, name: m.name, priceReg: m.price_reg, priceLarge: m.price_large,
-        isHot: m.is_hot, isAvailable: m.is_available, image: m.image, description: m.description
-      }));
+      if (menuRes.data.length > 0) {
+        menuItems = menuRes.data.map(m => ({
+          id: m.id, name: m.name, priceReg: m.price_reg, priceLarge: m.price_large,
+          isHot: m.is_hot, isAvailable: m.is_available, image: m.image, description: m.description
+        }));
+      } else {
+        // Seed database
+        console.log("Seeding menu_items...");
+        menuItems.forEach(m => writeSupabase("menu", "insert", {}, {
+          id: m.id, name: m.name, price_reg: m.priceReg, price_large: m.priceLarge,
+          is_hot: m.isHot, is_available: m.isAvailable, image: m.image, description: m.description
+        }));
+      }
     }
 
     if (!packRes.error && packRes.data) {
-      coffeePackages = packRes.data;
+      if (packRes.data.length > 0) {
+        coffeePackages = packRes.data;
+      } else {
+        console.log("Seeding packages...");
+        coffeePackages.forEach(p => writeSupabase("packages", "insert", {}, p));
+      }
     }
 
     if (!ordRes.error && ordRes.data) {
-      orders = ordRes.data.map(o => ({
-        id: o.id, customerName: o.customer_name, whatsapp: o.whatsapp, email: o.email,
-        address: o.address, items: o.items, total: o.total, status: o.status,
-        createdAt: o.created_at, deliveryMethod: o.delivery_method, subtotal: o.subtotal,
-        shippingCost: o.shipping_cost, shippingDiscount: o.shipping_discount, notes: o.notes,
-        paymentProofUrl: o.payment_proof_url
-      }));
+      if (ordRes.data.length > 0) {
+        orders = ordRes.data.map(o => ({
+          id: o.id, customerName: o.customer_name, whatsapp: o.whatsapp, email: o.email,
+          address: o.address, items: o.items, total: o.total, status: o.status,
+          createdAt: o.created_at, deliveryMethod: o.delivery_method, subtotal: o.subtotal,
+          shippingCost: o.shipping_cost, shippingDiscount: o.shipping_discount, notes: o.notes,
+          paymentProofUrl: o.payment_proof_url
+        }));
+      } else {
+        console.log("Seeding orders...");
+        orders.forEach(o => writeSupabase("orders", "insert", {}, {
+          id: o.id, customer_name: o.customerName, whatsapp: o.whatsapp, email: o.email,
+          address: o.address, items: o.items, total: o.total, status: o.status,
+          created_at: o.createdAt, delivery_method: o.deliveryMethod, subtotal: o.subtotal,
+          shipping_cost: o.shippingCost, shipping_discount: o.shippingDiscount, notes: o.notes,
+          payment_proof_url: o.paymentProofUrl
+        }));
+      }
     }
 
     if (!usrRes.error && usrRes.data) {
-      registeredUsers = usrRes.data.map(u => ({
-        id: u.id, name: u.name, email: u.email, password: u.password, role: u.role,
-        isMember: u.is_member, ordersCount: u.orders_count, lastActive: u.last_active
-      }));
+      if (usrRes.data.length > 0) {
+        registeredUsers = usrRes.data.map(u => ({
+          id: u.id, name: u.name, email: u.email, password: u.password, role: u.role,
+          isMember: u.is_member, ordersCount: u.orders_count, lastActive: u.last_active
+        }));
+      } else {
+        console.log("Seeding users...");
+        registeredUsers.forEach(u => writeSupabase("users", "insert", {}, {
+          id: u.id, name: u.name, email: u.email, role: u.role, is_member: u.isMember,
+          orders_count: u.ordersCount, last_active: u.lastActive
+        }));
+      }
     }
 
     if (!newsRes.error && newsRes.data) {
-      blogNews = newsRes.data.map(n => ({
-        id: n.id, title: n.title, slug: n.slug, content: n.content, author: n.author,
-        date: n.date, coverImage: n.cover_image, category: n.category
-      }));
+      if (newsRes.data.length > 0) {
+        blogNews = newsRes.data.map(n => ({
+          id: n.id, title: n.title, slug: n.slug, content: n.content, author: n.author,
+          date: n.date, coverImage: n.cover_image, category: n.category
+        }));
+      } else {
+        console.log("Seeding blog news...");
+        blogNews.forEach(n => writeSupabase("blog_news", "insert", {}, {
+          id: n.id, title: n.title, slug: n.slug, content: n.content, author: n.author,
+          date: n.date, cover_image: n.coverImage, category: n.category
+        }));
+      }
     }
 
     if (!emailRes.error && emailRes.data) {
-      emailLogs = emailRes.data;
+      if (emailRes.data.length > 0) {
+        emailLogs = emailRes.data;
+      } else {
+        console.log("Seeding email logs...");
+        emailLogs.forEach(e => writeSupabase("email_logs", "insert", {}, e));
+      }
     }
 
     if (!auditRes.error && auditRes.data) {
-      auditLogs = auditRes.data;
+      if (auditRes.data.length > 0) {
+        auditLogs = auditRes.data;
+      } else {
+        console.log("Seeding audit logs...");
+        auditLogs.forEach(l => writeSupabase("audit_logs", "insert", {}, l));
+      }
     }
 
     if (!aiRes.error && aiRes.data && aiRes.data.length > 0) {
@@ -541,7 +594,7 @@ Jawablah dengan bahasa Indonesia yang ramah, sopan, bersahabat, penuh gairah kop
   temperature: 0.7,
 };
 
-// API: AI Chat Handler using OpenAI Responses API
+// API: AI Chat Handler using Gemini API
 app.post("/api/chat", async (req, res) => {
   const { messages } = req.body;
   if (!messages || !Array.isArray(messages)) {
@@ -552,10 +605,10 @@ app.post("/api/chat", async (req, res) => {
   const lastMessage = messages[messages.length - 1]?.text || "Halo";
 
   try {
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
 
-    if (!apiKey || apiKey.trim() === "" || apiKey === "MY_OPENAI_API_KEY") {
-      console.warn("OPENAI_API_KEY environment variable is not configured. Simulating AI response.");
+    if (!apiKey || apiKey.trim() === "" || apiKey === "MY_GEMINI_API_KEY") {
+      console.warn("GEMINI_API_KEY environment variable is not configured. Simulating AI response.");
 
       const textResponse = simulateTampaSeduhAI(lastMessage);
       return res.json({
@@ -564,26 +617,33 @@ app.post("/api/chat", async (req, res) => {
       });
     }
 
-    // Call OpenAI Chat Completions API
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: aiSettings.systemPrompt },
-        ...messages.map((m: any) => ({
-          role: (m.role === "user" ? "user" : "assistant") as "user" | "assistant",
-          content: String(m.text)
-        }))
-      ],
-      temperature: aiSettings.temperature || 0.7,
+    // Call Gemini API
+    const model = gemini.getGenerativeModel({
+      model: "gemini-1.5-flash",
+      systemInstruction: aiSettings.systemPrompt,
     });
 
+    // Convert messages to Gemini format
+    const chat = model.startChat({
+      history: messages.slice(0, -1).map((m: any) => ({
+        role: m.role === "user" ? "user" : "model",
+        parts: [{ text: String(m.text) }],
+      })),
+      generationConfig: {
+        temperature: aiSettings.temperature || 0.7,
+      }
+    });
+
+    const result = await chat.sendMessage(lastMessage);
+    const responseText = result.response.text();
+
     res.json({
-      text: response.choices[0]?.message?.content || "Aduh, maaf jo, ada sedikit gangguan jaringan di kuala. Coba ketik ulang kembali?",
-      modelUsed: "gpt-4o-mini"
+      text: responseText || "Aduh, maaf jo, ada sedikit gangguan jaringan di kuala. Coba ketik ulang kembali?",
+      modelUsed: "gemini-1.5-flash"
     });
 
   } catch (error: any) {
-    console.error("OpenAI API Error details:", error);
+    console.error("Gemini API Error details:", error);
     res.json({
       text: "Maaf kawan, ada kesalahan koneksi dengan server AI, mar jangan khawatir! Silakan whatsapp langsung jo di 085696224448 atau coba lagi nanti.",
       error: error.message
