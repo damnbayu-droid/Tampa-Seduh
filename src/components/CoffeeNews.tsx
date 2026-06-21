@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { BookOpen, User, Calendar, Tag, ArrowRight, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { BlogNews } from "../types";
+import { supabase } from "../lib/supabase";
 
 import { getApiUrl } from "../lib/api";
 
@@ -11,15 +12,51 @@ export default function CoffeeNews() {
   const [loading, setLoading] = useState(true);
 
   const fetchNews = async () => {
+    let newsLoaded = false;
     try {
       const res = await fetch(getApiUrl("/api/news"));
       if (res.ok) {
-        const data = await res.ok ? await res.json() : [];
-        setBlogs(data);
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            setBlogs(data);
+            newsLoaded = true;
+          }
+        }
       }
     } catch (err) {
-      console.error("Gagal mengambil kopi news:", err);
-    } finally {
+      console.warn("Backend API tidak merespons untuk news, mencoba langsung ke Supabase...", err);
+    }
+
+    if (!newsLoaded) {
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        if (supabaseUrl) {
+          const { data, error } = await supabase
+            .from("blog_news")
+            .select("*")
+            .order("date", { ascending: false });
+          if (!error && data) {
+            const mappedBlogs = data.map((b: any) => ({
+              id: b.id,
+              title: b.title,
+              slug: b.slug,
+              content: b.content,
+              author: b.author,
+              date: b.date,
+              coverImage: b.cover_image,
+              category: b.category
+            }));
+            setBlogs(mappedBlogs);
+          }
+        }
+      } catch (sbErr) {
+        console.error("Gagal query langsung news ke Supabase:", sbErr);
+      } finally {
+        setLoading(false);
+      }
+    } else {
       setLoading(false);
     }
   };

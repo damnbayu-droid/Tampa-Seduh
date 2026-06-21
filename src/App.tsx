@@ -87,19 +87,87 @@ export default function App() {
 
   // Fetch shop state periodically to stay synced with Admin Dashboard operations!
   const loadShopData = async () => {
+    let mDataLoaded = false;
+    let pDataLoaded = false;
+
+    // 1. Coba fetch dari Backend API dahulu
     try {
       const mRes = await fetch(getApiUrl("/api/menu"));
       const pRes = await fetch(getApiUrl("/api/packages"));
+      
       if (mRes.ok) {
-        const mData = await safeParseJson(mRes);
-        if (!mData.error) setMenuItems(mData);
+        const contentType = mRes.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const mData = await mRes.json();
+          if (Array.isArray(mData)) {
+            setMenuItems(mData);
+            mDataLoaded = true;
+          }
+        }
       }
       if (pRes.ok) {
-        const pData = await safeParseJson(pRes);
-        if (!pData.error) setPackages(pData);
+        const contentType = pRes.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const pData = await pRes.json();
+          if (Array.isArray(pData)) {
+            setPackages(pData);
+            pDataLoaded = true;
+          }
+        }
       }
     } catch (err) {
-      console.error("Gagal mendapatkan daftar menu kedai:", err);
+      console.warn("Backend API tidak merespons, mencoba langsung ke Supabase...", err);
+    }
+
+    // 2. Jika gagal (misal di static Cloudflare Pages), lakukan query langsung ke Supabase client-side
+    if (!mDataLoaded || !pDataLoaded) {
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        if (supabaseUrl) {
+          // Fetch Menu Items
+          if (!mDataLoaded) {
+            const { data: menuData, error: menuErr } = await supabase.from("menu").select("*");
+            if (!menuErr && menuData) {
+              const mappedMenu: MenuItem[] = menuData.map((m: any) => ({
+                id: m.id,
+                name: m.name,
+                priceReg: m.price_reg,
+                priceLarge: m.price_large,
+                isHot: m.is_hot,
+                isAvailable: m.is_available,
+                image: m.image,
+                description: m.description
+              }));
+              setMenuItems(mappedMenu);
+              mDataLoaded = true;
+            } else if (menuErr) {
+              console.error("Gagal fetch menu dari Supabase:", menuErr);
+            }
+          }
+
+          // Fetch Packages
+          if (!pDataLoaded) {
+            const { data: packData, error: packErr } = await supabase.from("packages").select("*");
+            if (!packErr && packData) {
+              const mappedPacks: CoffeePackage[] = packData.map((p: any) => ({
+                id: p.id,
+                name: p.name,
+                price: p.price,
+                items: Array.isArray(p.items) ? p.items : JSON.parse(p.items || "[]"),
+                description: p.description,
+                badge: p.badge,
+                image: p.image
+              }));
+              setPackages(mappedPacks);
+              pDataLoaded = true;
+            } else if (packErr) {
+              console.error("Gagal fetch packages dari Supabase:", packErr);
+            }
+          }
+        }
+      } catch (sbErr) {
+        console.error("Gagal query langsung ke Supabase:", sbErr);
+      }
     }
   };
 

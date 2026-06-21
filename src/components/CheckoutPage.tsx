@@ -3,6 +3,7 @@ import { ArrowLeft, ShoppingBag, Send, CheckCircle2, Truck, Store, Upload, Credi
 import { motion, AnimatePresence } from "motion/react";
 import { CartItem, OrderItem, User } from "../types";
 import { getApiUrl, safeParseJson } from "../lib/api";
+import { supabase } from "../lib/supabase";
 
 interface CheckoutPageProps {
   cart: CartItem[];
@@ -94,6 +95,33 @@ export default function CheckoutPage({
     setIsUploading(true);
     setErrorMessage("");
 
+    const uploadDirectToSupabase = async (fileObj: File) => {
+      try {
+        if (!supabase || !supabase.storage) {
+          throw new Error("Penyimpanan cloud database Supabase tidak terhubung.");
+        }
+        const uniqueFileName = `${Date.now()}-${Math.floor(Math.random() * 10000)}-${fileObj.name.replace(/[^a-zA-Z0-9.]/g, "_")}`;
+        const { error: uploadErr } = await supabase.storage
+          .from("Bukti Bayar")
+          .upload(uniqueFileName, fileObj, {
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+        if (uploadErr) throw uploadErr;
+
+        const { data: publicUrlData } = supabase.storage
+          .from("Bukti Bayar")
+          .getPublicUrl(uniqueFileName);
+
+        setPaymentProofUrl(publicUrlData.publicUrl);
+      } catch (err: any) {
+        setErrorMessage(err.message || "Gagal mengunggah bukti bayar.");
+      } finally {
+        setIsUploading(false);
+      }
+    };
+
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = async () => {
@@ -112,10 +140,10 @@ export default function CheckoutPage({
           throw new Error(data.error || "Gagal mengunggah bukti bayar");
         }
         setPaymentProofUrl(data.publicUrl);
-      } catch (err: any) {
-        setErrorMessage(err.message || "Gagal upload file.");
-      } finally {
         setIsUploading(false);
+      } catch (err: any) {
+        console.warn("Gagal upload bukti bayar via API, mencoba langsung ke Supabase Storage...", err.message);
+        uploadDirectToSupabase(file);
       }
     };
   };
@@ -173,6 +201,9 @@ export default function CheckoutPage({
       isPackage: entry.isPackage
     }));
 
+    let orderSuccess = false;
+    let newOrderId = "ORD-" + Math.floor(1000 + Math.random() * 9000);
+
     try {
       const response = await fetch(getApiUrl("/api/orders"), {
         method: "POST",
@@ -192,21 +223,53 @@ export default function CheckoutPage({
       });
 
       const data = await safeParseJson(response);
-      if (!response.ok) {
-        throw new Error(data.error || "Gagal mengirim pesanan ke server");
+      if (response.ok) {
+        newOrderId = data.id;
+        orderSuccess = true;
+      } else {
+        throw new Error(data.error);
       }
-      setGeneratedId(data.id);
-      
-      // Forward to Formspree for email notification
-      await forwardToFormspree(data.id);
-      
+    } catch (err: any) {
+      console.warn("Backend API tidak merespons, mencoba menulis order langsung ke Supabase...", err.message);
+    }
+
+    if (!orderSuccess) {
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        if (supabaseUrl) {
+          const { error: sbErr } = await supabase.from("orders").insert({
+            id: newOrderId,
+            customer_name: name,
+            whatsapp: whatsapp,
+            email: email || "-",
+            address: deliveryMethod === "pickup" ? "Ambil di Kedai (Kotabunan)" : address,
+            items: orderItems,
+            total: subtotal + rawShippingCost,
+            status: "pending",
+            delivery_method: deliveryMethod,
+            subtotal: subtotal,
+            shipping_cost: rawShippingCost,
+            notes: notes,
+            payment_proof_url: paymentProofUrl
+          });
+          if (sbErr) throw sbErr;
+          orderSuccess = true;
+        } else {
+          throw new Error("Koneksi database offline / Supabase URL tidak diset.");
+        }
+      } catch (sbErr: any) {
+        setErrorMessage(sbErr.message || "Gagal mengirim pesanan langsung ke database.");
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
+    if (orderSuccess) {
+      setGeneratedId(newOrderId);
+      await forwardToFormspree(newOrderId);
       setIsSuccess(true);
       clearCart();
-      onSuccess(data.id);
-
-    } catch (err: any) {
-      setErrorMessage(err.message || "Koneksi bermasalah. Silakan periksa jaringan internet.");
-    } finally {
+      onSuccess(newOrderId);
       setIsSubmitting(false);
     }
   };
