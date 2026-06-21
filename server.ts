@@ -1231,6 +1231,11 @@ app.post("/api/orders", async (req, res) => {
     payment_proof_url: newOrder.paymentProofUrl
   });
 
+  // Run automatic verification in background if payment proof is provided
+  if (newOrder.paymentProofUrl) {
+    verifyPaymentAsync(newOrder.id).catch(err => console.error("Auto verification failed:", err));
+  }
+
   res.status(201).json(newOrder);
 });
 
@@ -1259,22 +1264,20 @@ app.put("/api/orders/:id/status", (req, res) => {
   }
 });
 
-// Endpoint Verifikasi Pembayaran dengan AI Gemini Vision
-app.post("/api/orders/:id/verify-payment", async (req, res) => {
-  const { id } = req.params;
+// Helper function to verify payment
+async function verifyPaymentAsync(id: string) {
   const idx = orders.findIndex(o => o.id === id);
-  if (idx === -1) return res.status(404).json({ error: "Order not found" });
+  if (idx === -1) return { error: "Order not found" };
 
   const order = orders[idx];
   if (!order.paymentProofUrl || order.paymentProofUrl.includes("REJECTED")) {
-    return res.status(400).json({ error: "Tidak ada bukti bayar untuk diverifikasi." });
+    return { error: "Tidak ada bukti bayar untuk diverifikasi." };
   }
 
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey || apiKey.trim() === "" || apiKey === "MY_GEMINI_API_KEY") {
-      // Simulasi
-      return res.json({ valid: true, reason: "[Simulasi] Bukti bayar terlihat sah." });
+      return { valid: true, reason: "[Simulasi] Bukti bayar terlihat sah." };
     }
 
     const response = await fetch(order.paymentProofUrl);
@@ -1307,7 +1310,6 @@ Balas HANYA dengan format JSON tanpa markdown:
     }
 
     if (!analysisResult.valid) {
-      // Tandai sebagai palsu
       order.notes = (order.notes ? order.notes + " | " : "") + "SISTEM AI: BUKTI BAYAR DITOLAK - " + analysisResult.reason;
       const oldUrl = order.paymentProofUrl;
       order.paymentProofUrl = "REJECTED_" + oldUrl;
@@ -1317,7 +1319,6 @@ Balas HANYA dengan format JSON tanpa markdown:
         payment_proof_url: order.paymentProofUrl 
       });
 
-      // Record audit log
       const newAuditLogObj = {
         id: "log-" + (auditLogs.length + 1),
         action: "Payment Verification Failed",
@@ -1327,8 +1328,6 @@ Balas HANYA dengan format JSON tanpa markdown:
       auditLogs.unshift(newAuditLogObj);
       writeSupabase('audit_logs', 'insert', {}, newAuditLogObj);
     } else {
-      // Valid! 
-      // Record audit log
       const newAuditLogObj = {
         id: "log-" + (auditLogs.length + 1),
         action: "Payment Verification Success",
@@ -1339,11 +1338,21 @@ Balas HANYA dengan format JSON tanpa markdown:
       writeSupabase('audit_logs', 'insert', {}, newAuditLogObj);
     }
 
-    res.json(analysisResult);
+    return analysisResult;
   } catch (err: any) {
     console.error("Gagal verifikasi payment dengan Gemini:", err.message);
-    res.status(500).json({ error: "Gagal memproses gambar dengan AI." });
+    return { error: "Gagal memproses gambar dengan AI." };
   }
+}
+
+// Endpoint Verifikasi Pembayaran dengan AI Gemini Vision (Manual Trigger)
+app.post("/api/orders/:id/verify-payment", async (req, res) => {
+  const result = await verifyPaymentAsync(req.params.id);
+  if (result.error) {
+    if (result.error === "Order not found") return res.status(404).json(result);
+    return res.status(400).json(result);
+  }
+  res.json(result);
 });
 
 // Endpoint untuk upload bukti bayar ke Supabase bucket "Bukti Bayar"
