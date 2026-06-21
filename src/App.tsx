@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, Suspense, lazy } from "react";
 import { 
   Coffee, ShoppingCart, Sparkles, MapPin, Phone, Mail, Clock, 
   HelpCircle, Star, ShieldAlert, ArrowDown, LogIn, Check, Plus, Minus, ChevronRight, X, Sun, Moon,
@@ -9,12 +9,14 @@ import { motion, AnimatePresence } from "motion/react";
 import { MenuItem, CoffeePackage, CartItem, User } from "./types";
 import { supabase } from "./lib/supabase";
 import { getApiUrl, safeParseJson } from "./lib/api";
-import OrderPopup from "./components/OrderPopup";
-import UserDashboard from "./components/UserDashboard";
-import AiChatWidget from "./components/AiChatWidget";
-import CoffeeNews from "./components/CoffeeNews";
-import AdminDashboard from "./components/AdminDashboard";
-import CheckoutPage from "./components/CheckoutPage";
+
+// Lazy Loaded Components for Fast Open Page
+const OrderPopup = lazy(() => import("./components/OrderPopup"));
+const UserDashboard = lazy(() => import("./components/UserDashboard"));
+const AiChatWidget = lazy(() => import("./components/AiChatWidget"));
+const CoffeeNews = lazy(() => import("./components/CoffeeNews"));
+const AdminDashboard = lazy(() => import("./components/AdminDashboard"));
+const CheckoutPage = lazy(() => import("./components/CheckoutPage"));
 
 export default function App() {
   // Navigation & admin panel toggles
@@ -264,9 +266,11 @@ export default function App() {
       if (data.user.role === "admin") {
         setIsAdminMode(true);
         setIsUserLoginOpen(false);
+        setShowUserDashboard(false);
       } else {
         setIsUserLoginOpen(false);
         loadUserOrders(data.user.email);
+        setShowUserDashboard(true);
       }
       setUserEmailInput("");
       setUserPasswordInput("");
@@ -351,8 +355,10 @@ export default function App() {
           setCurrentUser(data.user);
           if (data.user.role === "admin") {
             setIsAdminMode(true);
+            setShowUserDashboard(false);
           } else {
             loadUserOrders(data.user.email);
+            setShowUserDashboard(true);
           }
           setOrderNotification(`Selamat datang kawan ${data.user.name}! 🎉`);
           setTimeout(() => setOrderNotification(null), 5000);
@@ -469,48 +475,54 @@ export default function App() {
   // Render Admin Terminal instead if requested
   if (isAdminMode) {
     return (
-      <AdminDashboard 
-        onBackToStorefront={() => setIsAdminMode(false)} 
-        darkMode={darkMode}
-        setDarkMode={setDarkMode}
-      />
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white"><Loader2 className="w-8 h-8 animate-spin text-amber-500" /></div>}>
+        <AdminDashboard 
+          onBackToStorefront={() => setIsAdminMode(false)} 
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+        />
+      </Suspense>
     );
   }
 
   // Render User Dashboard if requested
   if (showUserDashboard && currentUser) {
     return (
-      <UserDashboard 
-        currentUser={currentUser}
-        onBack={() => setShowUserDashboard(false)}
-        orders={userOrders}
-        onSubscribe={handleSubscribeMember}
-        isSubscribing={isSubscribing}
-        onLogout={handleUserLogout}
-        onUpdateProfile={handleUpdateProfile}
-        darkMode={darkMode}
-        setDarkMode={setDarkMode}
-      />
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-amber-600" /></div>}>
+        <UserDashboard 
+          currentUser={currentUser}
+          onBack={() => setShowUserDashboard(false)}
+          orders={userOrders}
+          onSubscribe={handleSubscribeMember}
+          isSubscribing={isSubscribing}
+          onLogout={handleUserLogout}
+          onUpdateProfile={handleUpdateProfile}
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+        />
+      </Suspense>
     );
   }
 
   // Render Checkout Page if path matches '/checkout'
   if (currentPath === "/checkout") {
     return (
-      <CheckoutPage
-        cart={cart}
-        clearCart={clearCart}
-        currentUser={currentUser}
-        onBack={() => navigateTo("/")}
-        onSuccess={(id) => {
-          setOrderNotification(`Pesanan QRIS sukses terkirim dengan ID ${id}!`);
-          setTimeout(() => setOrderNotification(null), 5000);
-          navigateTo("/");
-        }}
-        darkMode={darkMode}
-        setDarkMode={setDarkMode}
-        navigateTo={navigateTo}
-      />
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-amber-600" /></div>}>
+        <CheckoutPage
+          cart={cart}
+          clearCart={clearCart}
+          currentUser={currentUser}
+          onBack={() => navigateTo("/")}
+          onSuccess={(id) => {
+            setOrderNotification(`Pesanan QRIS sukses terkirim dengan ID ${id}!`);
+            setTimeout(() => setOrderNotification(null), 5000);
+            navigateTo("/");
+          }}
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+          navigateTo={navigateTo}
+        />
+      </Suspense>
     );
   }
 
@@ -638,7 +650,9 @@ export default function App() {
               Daftar berita terbaru, kisah menarik, dan catatan seputar perkebunan serta budaya kopi di Kotabunan Bolaang Mongondow Timur.
             </p>
           </div>
-          <CoffeeNews />
+          <Suspense fallback={null}>
+            <CoffeeNews />
+          </Suspense>
         </div>
       ) : (
         <>
@@ -1404,7 +1418,9 @@ export default function App() {
 
 
       {/* 5. Coffee News Blog section on frontpage */}
-      <CoffeeNews />
+      <Suspense fallback={null}>
+        <CoffeeNews />
+      </Suspense>
 
       {/* 6. FAQ Section */}
       <section id="faq-section" className="py-20 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12 border-t border-amber-900/5">
@@ -1666,21 +1682,23 @@ export default function App() {
       </AnimatePresence>
 
       {/* Order Popup Modal */}
-      <OrderPopup
-        isOpen={isOrderPopupOpen}
-        onClose={() => setIsOrderPopupOpen(false)}
-        cart={cart}
-        clearCart={clearCart}
-        onSuccess={(id) => {
-          setOrderNotification(`Pesanan sukses terkirim dengan ID ${id}!`);
-          setTimeout(() => setOrderNotification(null), 5000);
-        }}
-        currentUser={currentUser}
-        menuItems={menuItems}
-        packages={packages}
-        addToCart={addToCart}
-        removeFromCart={removeFromCart}
-      />
+      <Suspense fallback={null}>
+        <OrderPopup
+          isOpen={isOrderPopupOpen}
+          onClose={() => setIsOrderPopupOpen(false)}
+          cart={cart}
+          clearCart={clearCart}
+          onSuccess={(id) => {
+            setOrderNotification(`Pesanan sukses terkirim dengan ID ${id}!`);
+            setTimeout(() => setOrderNotification(null), 5000);
+          }}
+          currentUser={currentUser}
+          menuItems={menuItems}
+          packages={packages}
+          addToCart={addToCart}
+          removeFromCart={removeFromCart}
+        />
+      </Suspense>
 
       {/* Floating Cart Button */}
       {cart.length > 0 && (
@@ -1702,7 +1720,9 @@ export default function App() {
       )}
 
       {/* Floating AI chat assistant */}
-      <AiChatWidget />
+      <Suspense fallback={null}>
+        <AiChatWidget />
+      </Suspense>
 
       {/* User Login Dialog Modal */}
       <AnimatePresence>

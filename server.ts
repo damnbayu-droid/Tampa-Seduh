@@ -4,6 +4,8 @@ import dotenv from "dotenv";
 import OpenAI from "openai";
 import { Resend } from "resend";
 import { createClient } from "@supabase/supabase-js";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import { MenuItem, CoffeePackage, Order, AuditLog, User, BlogNews, EmailLog, FinancialSummary } from "./src/types.js";
 
 dotenv.config();
@@ -46,6 +48,31 @@ ensureBuktiBayarBucket();
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+
+// Security Hardening: Helmet
+app.use(helmet({
+  crossOriginResourcePolicy: false, // Membiarkan resource (gambar) diakses lintas origin jika diperlukan
+}));
+
+// Security Hardening: Rate Limiting
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 menit
+  max: 200, // Limit 200 request per IP per 15 menit
+  message: { error: "Terlalu banyak permintaan kawan, silakan coba lagi nanti." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const authLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 jam
+  max: 30, // Limit 30 request login/register per IP per 1 jam untuk mencegah brute force
+  message: { error: "Terlalu banyak percobaan masuk, silakan istirahat ngopi dulu selama 1 jam kawan." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply general rate limiter to all API routes
+app.use("/api/", apiLimiter);
 
 // Helper: Sync with Supabase if tables exist
 async function syncFromSupabase() {
@@ -519,7 +546,7 @@ app.post("/api/chat", async (req, res) => {
 
     if (!apiKey || apiKey.trim() === "" || apiKey === "MY_OPENAI_API_KEY") {
       console.warn("OPENAI_API_KEY environment variable is not configured. Simulating AI response.");
-      
+
       const textResponse = simulateTampaSeduhAI(lastMessage);
       return res.json({
         text: textResponse,
@@ -557,7 +584,7 @@ app.post("/api/chat", async (req, res) => {
 // Mock Responder fallback for smooth out-of-the-box local developer sandbox testing
 function simulateTampaSeduhAI(input: string): string {
   const query = input.toLowerCase();
-  
+
   if (query.includes("alamat") || query.includes("lokasi") || query.includes("tempat") || query.includes("dimana")) {
     return "Tampa Seduh berlokasi di Jl. Tangkudeagan No. 2 Kotabunan Selatan, Boltim, Trans Sulawesi Lingkar Selatan. Kalau bingung cari jo jalan lingkar selatan, kedai kami persis di tepi jalan dengan wangi Liberica menyengat!";
   }
@@ -593,7 +620,7 @@ app.post("/api/menu", (req, res) => {
     id: "m" + (menuItems.length + 1)
   };
   menuItems.push(newItem);
-  
+
   // Record audit log
   auditLogs.unshift({
     id: "log-" + (auditLogs.length + 1),
@@ -628,7 +655,7 @@ app.put("/api/menu/:id", (req, res) => {
   const idx = menuItems.findIndex(m => m.id === id);
   if (idx !== -1) {
     menuItems[idx] = { ...menuItems[idx], ...req.body };
-    
+
     // Record audit log
     auditLogs.unshift({
       id: "log-" + (auditLogs.length + 1),
@@ -1053,7 +1080,7 @@ app.put("/api/users/:id/password", (req, res) => {
 });
 
 // Auth API
-app.post("/api/auth/login", (req, res) => {
+app.post("/api/auth/login", authLimiter, (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -1104,7 +1131,7 @@ app.post("/api/auth/login", (req, res) => {
 });
 
 
-app.post("/api/auth/register", (req, res) => {
+app.post("/api/auth/register", authLimiter, (req, res) => {
   try {
     const { name, email, password, whatsapp } = req.body;
     if (!name || !email || !password || !whatsapp) {
@@ -1191,9 +1218,9 @@ app.post("/api/users/update", (req, res) => {
   if (avatarUrl) registeredUsers[idx].avatarUrl = avatarUrl;
 
   // Persist to Supabase
-  writeSupabase("users", "update", { id }, { 
-    name, 
-    email, 
+  writeSupabase("users", "update", { id }, {
+    name,
+    email,
     whatsapp: whatsapp || null,
     address: address || null,
     avatar_url: avatarUrl || null
