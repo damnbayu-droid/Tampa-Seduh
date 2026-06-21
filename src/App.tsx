@@ -593,7 +593,7 @@ export default function App() {
             <span className="text-xs font-bold text-amber-800 dark:text-amber-400 uppercase tracking-widest bg-amber-900/5 dark:bg-amber-400/10 px-3 py-1 rounded-full font-sans">
               Update Terbaru & Informasi
             </span>
-            <h1 className="text-4xl sm:text-5xl font-serif font-black text-[#2D1B0D] dark:text-amber-100 italic tracking-tight mt-2">
+            <h1 className="text-4xl sm:text-5xl font-serif font-black text-[#2D1B0D] dark:text-amber-300 italic tracking-tight mt-2">
               Kopi News & Budaya
             </h1>
             <p className="text-sm text-zinc-650 dark:text-zinc-400 mt-2 font-sans">
@@ -993,7 +993,7 @@ export default function App() {
       <section id="packages-section" className="py-20 border-t border-amber-900/5 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center space-y-3 mb-12">
           <span className="text-xs font-bold text-amber-800 dark:text-amber-400 uppercase tracking-widest bg-amber-900/5 dark:bg-amber-400/10 px-3 py-1 rounded-full font-sans">Kombinasi Kopi Spesial Lebih Hemat</span>
-          <h2 className="text-3xl sm:text-4xl font-serif font-bold text-amber-955 dark:text-amber-100 italic tracking-tight">Paket Kopi Tampa Seduh</h2>
+          <h2 className="text-3xl sm:text-4xl font-serif font-bold text-amber-955 dark:text-amber-300 italic tracking-tight">Paket Kopi Tampa Seduh</h2>
           <p className="text-sm text-zinc-555 dark:text-zinc-400">Pilih paket kombinasi kopi dingin dan hangat tradisional untuk dinikmati rame-rame dengan harga lebih murah.</p>
         </div>
 
@@ -1264,7 +1264,7 @@ export default function App() {
       <section className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
         <div className="text-center max-w-3xl mx-auto space-y-3">
           <span className="text-xs font-bold text-amber-805 dark:text-amber-400 uppercase tracking-widest bg-amber-900/5 dark:bg-amber-400/10 px-3.5 py-1.5 rounded-full">Educational Bean Heritage - Bagian II</span>
-          <h2 className="text-3xl sm:text-4xl font-serif font-bold text-amber-955 dark:text-amber-50">Karakter & Profil Seduhan Liberica</h2>
+          <h2 className="text-3xl sm:text-4xl font-serif font-bold text-amber-955 dark:text-amber-300">Karakter & Profil Seduhan Liberica</h2>
           <p className="text-zinc-650 dark:text-zinc-400 text-sm">
             Meneliti detail anatomi rasa dari biji kopi yang kami olah dengan teliti dari ceri merah segar hingga cangkir seduh kawan.
           </p>
@@ -1370,7 +1370,7 @@ export default function App() {
       <section id="faq-section" className="py-20 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12 border-t border-amber-900/5">
         <div className="text-center space-y-3">
           <span className="text-xs font-bold text-amber-800 dark:text-amber-400 uppercase tracking-widest bg-amber-900/5 dark:bg-amber-400/10 px-3 py-1 rounded-full">Pertanyaan Sering Diutarakan</span>
-          <h2 className="text-3xl sm:text-4xl font-serif font-bold text-amber-955 dark:text-amber-100 italic tracking-tight">Tanya & Jawab Tampa Seduh</h2>
+          <h2 className="text-3xl sm:text-4xl font-serif font-bold text-amber-955 dark:text-amber-300 italic tracking-tight">Tanya & Jawab Tampa Seduh</h2>
           <p className="text-sm text-zinc-555 dark:text-zinc-400">Semua yang perlu kawan ketahui seputar rasa kopi, lokasi kedai, pemesanan online antar langsung, dan jam buka.</p>
         </div>
 
