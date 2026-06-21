@@ -587,8 +587,8 @@ app.post("/api/chat", async (req, res) => {
       messages: [
         { role: "system", content: aiSettings.systemPrompt },
         ...messages.map((m: any) => ({
-          role: m.role === "user" ? "user" : "assistant",
-          content: m.text
+          role: (m.role === "user" ? "user" : "assistant") as "user" | "assistant",
+          content: String(m.text)
         }))
       ],
       temperature: aiSettings.temperature || 0.7,
