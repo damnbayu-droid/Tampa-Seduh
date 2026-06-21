@@ -480,7 +480,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                     <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-sm flex flex-col justify-between">
                       <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-0.5">Ringkasan Omset</span>
                       <div className="mt-2 flex items-baseline gap-2">
-                        <span className="text-3xl font-serif font-black text-amber-950 dark:text-amber-50">Rp {orderList.filter(o => o.status === "completed").reduce((sum, o) => sum + o.total, 0) + 14400}.000</span>
+                        <span className="text-3xl font-serif font-black text-amber-950 dark:text-amber-50">Rp {orderList.filter(o => o.status === "completed").reduce((sum, o) => sum + o.total, 0)}.000</span>
                       </div>
                       <p className="text-[10px] text-zinc-450 mt-1">Total pendapatan dihitung otomatis</p>
                     </div>
