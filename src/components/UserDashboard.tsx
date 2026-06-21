@@ -28,7 +28,7 @@ export default function UserDashboard({
   onUpdateProfile,
   darkMode,
   setDarkMode
-}: UserDashboardProps) => {
+}: UserDashboardProps) {
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editForm, setEditForm] = useState({
