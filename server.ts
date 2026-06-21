@@ -895,7 +895,7 @@ app.post("/api/orders", async (req, res) => {
       `;
 
       await resend.emails.send({
-        from: 'Tampa Seduh <onboarding@resend.dev>',
+        from: 'Tampa Seduh <kopi@tampaseduh.com>',
         to: [email],
         subject: `Invoice Pesanan #${newOrder.id} - Tampa Seduh`,
         html: invoiceHtml
