@@ -16,14 +16,26 @@ export interface CoffeePackage {
   items: string[];
   description: string;
   badge?: string;
+  image?: string;
 }
 
 export interface OrderItem {
   menuId: string;
   name: string;
   quantity: number;
-  size: "R" | "L" | "Regular";
+  size: "R" | "L" | "Regular" | "Default";
   price: number;
+  isPackage?: boolean;
+}
+
+export interface CartItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  size: "R" | "L" | "Regular" | "Default";
+  isPackage: boolean;
+  image?: string;
 }
 
 export interface Order {
@@ -36,13 +48,21 @@ export interface Order {
   total: number;
   status: "pending" | "preparing" | "delivering" | "completed";
   createdAt: string;
+  deliveryMethod?: "delivery" | "pickup";
+  subtotal?: number;
+  shippingCost?: number;
+  shippingDiscount?: number;
+  notes?: string;
+  paymentProofUrl?: string;
 }
 
 export interface User {
   id: string;
   name: string;
   email: string;
+  password?: string;
   role: "admin" | "customer";
+  isMember?: boolean;
   ordersCount: number;
   lastActive: string;
 }

@@ -1,21 +1,25 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { 
   Coffee, ShoppingCart, Sparkles, MapPin, Phone, Mail, Clock, 
-  HelpCircle, Star, ShieldAlert, ArrowDown, LogIn, Check, Plus, Minus, ChevronRight, X, Sun, Moon 
+  HelpCircle, Star, ShieldAlert, ArrowDown, LogIn, Check, Plus, Minus, ChevronRight, X, Sun, Moon,
+  User as UserIcon, Lock, Sparkles as SparklesIcon, Gift, LogOut, CheckCircle, Store, Truck,
+  Eye, EyeOff, Loader2, Instagram, BookOpen
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { MenuItem, CoffeePackage } from "./types";
+import { MenuItem, CoffeePackage, CartItem, User } from "./types";
+import { supabase } from "./lib/supabase";
+import { getApiUrl, safeParseJson } from "./lib/api";
 import OrderPopup from "./components/OrderPopup";
+import UserDashboard from "./components/UserDashboard";
 import AiChatWidget from "./components/AiChatWidget";
 import CoffeeNews from "./components/CoffeeNews";
 import AdminDashboard from "./components/AdminDashboard";
+import CheckoutPage from "./components/CheckoutPage";
 
 export default function App() {
   // Navigation & admin panel toggles
   const [isAdminMode, setIsAdminMode] = useState(false);
-  const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
-  const [passwordInput, setPasswordInput] = useState("");
-  const [loginError, setLoginError] = useState("");
+
 
   // Dark/Light mode theme state
   const [darkMode, setDarkMode] = useState(false);
@@ -24,8 +28,44 @@ export default function App() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [packages, setPackages] = useState<CoffeePackage[]>([]);
   const [activeMenuTab, setActiveMenuTab] = useState<"all" | "cold" | "hot">("all");
-  const [cart, setCart] = useState<{ item: MenuItem; quantity: number; size: "R" | "L" }[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [isOrderPopupOpen, setIsOrderPopupOpen] = useState(false);
+
+  // User Authentication & Dashboard States
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isUserLoginOpen, setIsUserLoginOpen] = useState(false);
+  const [isUserRegisterOpen, setIsUserRegisterOpen] = useState(false);
+  const [showUserDashboard, setShowUserDashboard] = useState(false);
+  const [userOrders, setUserOrders] = useState<any[]>([]);
+  const [isSubscribing, setIsSubscribing] = useState(false);
+
+  // Path Router State
+  const [currentPath, setCurrentPath] = useState(window.location.pathname);
+  // Toggle password visibility peek
+  const [showPassword, setShowPassword] = useState(false);
+  // Google login loading state
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  useEffect(() => {
+    const handleLocationChange = () => {
+      setCurrentPath(window.location.pathname);
+    };
+    window.addEventListener("popstate", handleLocationChange);
+    return () => window.removeEventListener("popstate", handleLocationChange);
+  }, []);
+
+  const navigateTo = (path: string) => {
+    window.history.pushState({}, "", path);
+    setCurrentPath(path);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // User input forms
+  const [userEmailInput, setUserEmailInput] = useState("");
+  const [userPasswordInput, setUserPasswordInput] = useState("");
+  const [userNameInput, setUserNameInput] = useState("");
+  const [userWhatsappInput, setUserWhatsappInput] = useState("");
+  const [authError, setAuthError] = useState("");
 
   // Active Accordion Index of FAQ
   const [faqIndex, setFaqIndex] = useState<number | null>(null);
@@ -33,13 +73,31 @@ export default function App() {
   // Feedback notifications
   const [orderNotification, setOrderNotification] = useState<string | null>(null);
 
+  // Track page scroll position for transparent navbar effect
+  const [isScrolled, setIsScrolled] = useState(typeof window !== "undefined" ? window.scrollY > 20 : false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    handleScroll();
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   // Fetch shop state periodically to stay synced with Admin Dashboard operations!
   const loadShopData = async () => {
     try {
-      const mRes = await fetch("/api/menu");
-      const pRes = await fetch("/api/packages");
-      if (mRes.ok) setMenuItems(await mRes.json());
-      if (pRes.ok) setPackages(await pRes.json());
+      const mRes = await fetch(getApiUrl("/api/menu"));
+      const pRes = await fetch(getApiUrl("/api/packages"));
+      if (mRes.ok) {
+        const mData = await safeParseJson(mRes);
+        if (!mData.error) setMenuItems(mData);
+      }
+      if (pRes.ok) {
+        const pData = await safeParseJson(pRes);
+        if (!pData.error) setPackages(pData);
+      }
     } catch (err) {
       console.error("Gagal mendapatkan daftar menu kedai:", err);
     }
@@ -48,6 +106,12 @@ export default function App() {
   useEffect(() => {
     loadShopData();
   }, [isAdminMode]);
+
+  useEffect(() => {
+    if (currentUser) {
+      loadUserOrders(currentUser.email);
+    }
+  }, [currentUser, isOrderPopupOpen]);
 
   // Sync dark mode class
   useEffect(() => {
@@ -59,60 +123,241 @@ export default function App() {
     }
   }, [darkMode]);
 
-  // Simple cart actions
-  const addToCart = (item: MenuItem, size: "R" | "L") => {
+  // Cart actions supporting CartItem
+  const addToCart = (item: MenuItem | CoffeePackage, size: "R" | "L" | "Default", isPackage: boolean) => {
+    const unitPrice = isPackage 
+      ? (item as CoffeePackage).price 
+      : (size === "L" && (item as MenuItem).priceLarge ? (item as MenuItem).priceLarge! : (item as MenuItem).priceReg);
+
     setCart((prev) => {
-      const existing = prev.find((entry) => entry.item.id === item.id && entry.size === size);
+      const existing = prev.find((entry) => entry.id === item.id && entry.size === size);
       if (existing) {
         return prev.map((entry) => 
-          entry.item.id === item.id && entry.size === size 
+          entry.id === item.id && entry.size === size 
             ? { ...entry, quantity: entry.quantity + 1 } 
             : entry
         );
       }
-      return [...prev, { item, quantity: 1, size }];
+      return [...prev, {
+        id: item.id,
+        name: item.name,
+        price: unitPrice,
+        quantity: 1,
+        size,
+        isPackage,
+        image: isPackage ? undefined : (item as MenuItem).image
+      }];
     });
   };
 
-  const removeFromCart = (item: MenuItem, size: "R" | "L") => {
+  const removeFromCart = (itemId: string, size: "R" | "L" | "Default") => {
     setCart((prev) => {
-      const existing = prev.find((entry) => entry.item.id === item.id && entry.size === size);
+      const existing = prev.find((entry) => entry.id === itemId && entry.size === size);
       if (existing && existing.quantity > 1) {
         return prev.map((entry) => 
-          entry.item.id === item.id && entry.size === size 
+          entry.id === itemId && entry.size === size 
             ? { ...entry, quantity: entry.quantity - 1 } 
             : entry
         );
       }
-      return prev.filter((entry) => !(entry.item.id === item.id && entry.size === size));
+      return prev.filter((entry) => !(entry.id === itemId && entry.size === size));
     });
   };
 
   const clearCart = () => setCart([]);
 
-  const totalCartSum = cart.reduce((sum, entry) => {
-    const price = entry.size === "L" && entry.item.priceLarge ? entry.item.priceLarge : entry.item.priceReg;
-    return sum + (price * entry.quantity);
-  }, 0);
+  const totalCartSum = cart.reduce((sum, entry) => sum + (entry.price * entry.quantity), 0);
 
-  // Admin login handler
-  const handleAdminLogin = (e: React.FormEvent) => {
+  // User Auth functions
+  const handleUserLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (passwordInput === "admin" || passwordInput === "tampaseduh") {
-      setIsAdminMode(true);
-      setIsAdminLoginOpen(false);
-      setPasswordInput("");
-      setLoginError("");
-    } else {
-      setLoginError("Password salah! Silakan coba lagi kawan.");
+    setAuthError("");
+    try {
+      const response = await fetch(getApiUrl("/api/auth/login"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: userEmailInput, password: userPasswordInput })
+      });
+      const data = await safeParseJson(response);
+      if (!response.ok) {
+        throw new Error(data.error || "Gagal login kawan");
+      }
+      setCurrentUser(data.user);
+      if (data.user.role === "admin") {
+        setIsAdminMode(true);
+        setIsUserLoginOpen(false);
+      } else {
+        setIsUserLoginOpen(false);
+        loadUserOrders(data.user.email);
+      }
+      setUserEmailInput("");
+      setUserPasswordInput("");
+    } catch (err: any) {
+      setAuthError(err.message);
     }
   };
 
+  const handleUserRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError("");
+    try {
+      const response = await fetch(getApiUrl("/api/auth/register"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: userNameInput,
+          email: userEmailInput,
+          password: userPasswordInput,
+          whatsapp: userWhatsappInput
+        })
+      });
+      const data = await safeParseJson(response);
+      if (!response.ok) {
+        throw new Error(data.error || "Gagal mendaftar kawan");
+      }
+      setCurrentUser(data.user);
+      setIsUserRegisterOpen(false);
+      loadUserOrders(data.user.email);
+      setUserNameInput("");
+      setUserEmailInput("");
+      setUserPasswordInput("");
+      setUserWhatsappInput("");
+    } catch (err: any) {
+      setAuthError(err.message);
+    }
+  };
+
+  // ================================================================
+  // Google OAuth via Supabase — Real Implementation
+  // ================================================================
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    setAuthError("");
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent"
+          }
+        }
+      });
+      if (error) throw error;
+      // The page will redirect — no further action needed here
+    } catch (err: any) {
+      console.error("Google Sign-In error:", err.message);
+      setAuthError("Gagal memulai login Google. Periksa koneksi internet Anda kawan.");
+      setIsGoogleLoading(false);
+    }
+  };
+
+  // Handle /auth/callback — Supabase akan redirect ke sini setelah Google OAuth
+  const handleAuthCallback = useCallback(async () => {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error) {
+        console.error("Auth callback error:", error.message);
+        navigateTo("/");
+        return;
+      }
+      if (session?.user) {
+        const supaUser = session.user;
+        // Sync dengan backend Tampa Seduh
+        const res = await fetch(getApiUrl("/api/auth/google-sync"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: supaUser.email,
+            name: supaUser.user_metadata?.full_name || supaUser.user_metadata?.name || supaUser.email?.split("@")[0],
+            supabase_id: supaUser.id,
+            avatar_url: supaUser.user_metadata?.avatar_url
+          })
+        });
+        const data = await safeParseJson(res);
+        if (res.ok && data.user) {
+          setCurrentUser(data.user);
+          if (data.user.role === "admin") {
+            setIsAdminMode(true);
+          } else {
+            loadUserOrders(data.user.email);
+          }
+          setOrderNotification(`Selamat datang kawan ${data.user.name}! 🎉`);
+          setTimeout(() => setOrderNotification(null), 5000);
+        }
+      }
+    } catch (err: any) {
+      console.error("Callback sync error:", err.message);
+    } finally {
+      navigateTo("/");
+    }
+  }, []);
+
+  // Trigger callback handler when on /auth/callback path
+  useEffect(() => {
+    if (currentPath === "/auth/callback") {
+      handleAuthCallback();
+    }
+  }, [currentPath, handleAuthCallback]);
+
+  const handleSubscribeMember = async () => {
+    if (!currentUser) return;
+    setIsSubscribing(true);
+    try {
+      const response = await fetch(getApiUrl("/api/auth/subscribe"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: currentUser.email })
+      });
+      const data = await safeParseJson(response);
+      if (response.ok && data.user) {
+        setCurrentUser(data.user);
+        loadShopData();
+      }
+    } catch (err) {
+      console.error("Gagal aktivasi member:", err);
+    } finally {
+      setIsSubscribing(false);
+    }
+  };
+
+  const loadUserOrders = async (email: string) => {
+    try {
+      const res = await fetch(getApiUrl(`/api/orders?email=${encodeURIComponent(email)}`));
+      if (res.ok) {
+        const data = await safeParseJson(res);
+        if (!data.error) {
+          setUserOrders(data);
+        }
+      }
+    } catch (err) {
+      console.error("Gagal mengambil riwayat pesanan user:", err);
+    }
+  };
+
+  const handleUserLogout = () => {
+    setCurrentUser(null);
+    setShowUserDashboard(false);
+    setUserOrders([]);
+  };
+
+
   // Scroll helper
   const scrollToId = (id: string) => {
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
+    if (currentPath !== "/") {
+      navigateTo("/");
+      setTimeout(() => {
+        const element = document.getElementById(id);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth" });
+        }
+      }, 150);
+    } else {
+      const element = document.getElementById(id);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth" });
+      }
     }
   };
 
@@ -127,150 +372,225 @@ export default function App() {
     );
   }
 
+  // Render User Dashboard if requested
+  if (showUserDashboard && currentUser) {
+    return (
+      <UserDashboard 
+        currentUser={currentUser}
+        onBack={() => setShowUserDashboard(false)}
+        orders={userOrders}
+        onSubscribe={handleSubscribeMember}
+        isSubscribing={isSubscribing}
+        onLogout={handleUserLogout}
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+      />
+    );
+  }
+
+  // Render Checkout Page if path matches '/checkout'
+  if (currentPath === "/checkout") {
+    return (
+      <CheckoutPage
+        cart={cart}
+        clearCart={clearCart}
+        currentUser={currentUser}
+        onBack={() => navigateTo("/")}
+        onSuccess={(id) => {
+          setOrderNotification(`Pesanan QRIS sukses terkirim dengan ID ${id}!`);
+          setTimeout(() => setOrderNotification(null), 5000);
+          navigateTo("/");
+        }}
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+        navigateTo={navigateTo}
+      />
+    );
+  }
+
   return (
     <div className={`min-h-screen transition-colors duration-300 font-sans ${
-      darkMode ? "bg-zinc-950 text-stone-100" : "bg-[#F9F7F2] text-stone-900"
+      darkMode ? "dark bg-zinc-955 text-stone-100" : "bg-[#F9F7F2] text-stone-900"
     }`}>
       
       {/* 1. Brand Navigation Bar */}
-      <nav className={`sticky top-0 z-40 transition-all duration-200 border-b backdrop-blur-md ${
-        darkMode 
-          ? "bg-zinc-950/90 border-amber-900/10 text-stone-100" 
-          : "bg-[#F9F7F2]/90 border-zinc-200 text-zinc-900"
+      <nav className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
+        isScrolled 
+          ? (darkMode 
+              ? "bg-zinc-955/90 border-amber-900/10 text-stone-100 border-b backdrop-blur-md shadow-md" 
+              : "bg-[#F9F7F2]/95 border-zinc-200 text-zinc-900 border-b backdrop-blur-md shadow-md")
+          : "bg-transparent border-transparent text-white"
       }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex justify-between items-center">
           
           {/* Logo Brand matching the provided design */}
-          <div className="flex items-center gap-3 cursor-pointer select-none" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} id="logo-tampa-seduh">
-            <svg className="h-12 w-auto text-stone-900 dark:text-amber-50" viewBox="0 0 280 80" fill="currentColor">
-              {/* Hand sketch holding moka pot handle */}
-              <path d="M 12 34 C 4 33, 2 25, 9 20 C 16 15, 23 17, 28 21 L 29 17 C 21 11, 8 11, 2 22 C -4 33, 1 44, 10 49 L 14 45 Z" />
-              <path d="M 10 20 Q 15 13, 22 20" stroke="currentColor" strokeWidth="2" fill="none" />
-              {/* Finger lines */}
-              <path d="M 13 25 L 21 27" stroke="currentColor" strokeWidth="1.5" />
-              <path d="M 13 29 L 21 31" stroke="currentColor" strokeWidth="1.5" />
-              <path d="M 12 33 L 19 35" stroke="currentColor" strokeWidth="1.5" />
-
-              {/* Moka Pot geometry */}
-              <path d="M 32 15 L 64 35" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-              <circle cx="30" cy="11" r="3" />
-              <path d="M 33 22 L 61 39" stroke="currentColor" strokeWidth="1" opacity="0.3" />
-              <path d="M 35 20 L 63 38 L 47 62 L 21 44 Z" stroke="currentColor" strokeWidth="3.5" strokeLinejoin="miter" fill="none" />
-              <path d="M 21 44 C 11 46, 8 56, 15 62 L 18 58 C 13 54, 15 48, 21 46 Z" />
-              <line x1="34" y1="53" x2="55" y2="50" stroke="currentColor" strokeWidth="2.5" />
-              <path d="M 47 62 L 36 78 L 56 78 L 60 70 Z" stroke="currentColor" strokeWidth="3" strokeLinejoin="miter" fill="none" />
-              <circle cx="47" cy="70" r="2.5" />
-
-              {/* Pouring stream into the logo */}
-              <path d="M 62 37 Q 72 32, 75 42 C 77 50, 75 62, 85 64" stroke="currentColor" strokeWidth="3.5" fill="none" strokeLinecap="round" />
-
-              {/* Vertical stacked "STREET COFFEE" */}
-              <text x="65" y="72" fontSize="5.5" fontWeight="950" fontFamily="sans-serif" letterSpacing="0.1em" className="fill-stone-600 dark:fill-amber-300">STREET</text>
-              <text x="65" y="78" fontSize="5.5" fontWeight="950" fontFamily="sans-serif" letterSpacing="0.1em" className="fill-stone-600 dark:fill-amber-300">COFFEE</text>
-
-              {/* Giant Bold matching words "TAMPA SEDUH." */}
-              <text x="90" y="44" fontSize="33" fontWeight="900" fontFamily="system-ui, -apple-system, sans-serif" letterSpacing="-0.04em" className="fill-stone-900 dark:fill-white font-black">TAMPA</text>
-              <text x="90" y="74" fontSize="33" fontWeight="900" fontFamily="system-ui, -apple-system, sans-serif" letterSpacing="-0.04em" className="fill-stone-900 dark:fill-white font-black">SEDUH.</text>
-            </svg>
+          <div className="flex items-center gap-3 cursor-pointer select-none" onClick={() => currentPath !== "/" ? navigateTo("/") : window.scrollTo({ top: 0, behavior: "smooth" })} id="logo-tampa-seduh">
+            <img 
+              src="/Logo Tampa Seduh.png" 
+              alt="Tampa Seduh Logo" 
+              className="h-14 w-auto rounded-lg object-contain transition-all duration-300"
+              style={{
+                filter: (!isScrolled || darkMode)
+                  ? "brightness(0) invert(1)" 
+                  : "sepia(0.8) saturate(150%) hue-rotate(345deg) brightness(75%) contrast(120%)"
+              }}
+              referrerPolicy="no-referrer"
+            />
+            <div className="flex flex-col text-left justify-center">
+              <span className={`font-serif font-black text-lg sm:text-xl leading-none tracking-tight transition-colors duration-300 ${
+                (!isScrolled || darkMode) ? "text-amber-50" : "text-[#2D1B0D]"
+              }`}>
+                TAMPA
+              </span>
+              <span className={`font-serif font-black text-lg sm:text-xl leading-none tracking-tight mt-[-2px] transition-colors duration-300 ${
+                (!isScrolled || darkMode) ? "text-amber-50" : "text-[#2D1B0D]"
+              }`}>
+                SEDUH.
+              </span>
+            </div>
           </div>
 
           {/* Action Icons */}
           <div className="flex items-center gap-3">
+            {/* 1. Checkout Icon Button */}
+            <button
+              onClick={() => navigateTo("/checkout")}
+              className={`p-2.5 rounded-full transition-all duration-300 cursor-pointer flex items-center justify-center relative border ${
+                (!isScrolled || darkMode) 
+                  ? "text-amber-400 hover:bg-white/5 border-white/5" 
+                  : "text-amber-900 hover:bg-amber-900/10 border-amber-900/5"
+              }`}
+              title="Check Out"
+              id="nav-checkout-button"
+            >
+              <ShoppingCart className="w-5 h-5" />
+              {cart.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-amber-500 text-zinc-950 text-[10px] w-4.5 h-4.5 rounded-full flex items-center justify-center font-mono font-bold leading-none">
+                  {cart.reduce((sum, item) => sum + item.quantity, 0)}
+                </span>
+              )}
+            </button>
+
+            {/* 2. Theme Toggler Button */}
             <button
               onClick={() => setDarkMode(!darkMode)}
-              className="p-2.5 rounded-full hover:bg-amber-900/10 dark:hover:bg-white/5 text-amber-900 dark:text-amber-400 transition-colors cursor-pointer"
+              className={`p-2.5 rounded-full transition-all duration-300 cursor-pointer ${
+                (!isScrolled || darkMode) 
+                  ? "text-amber-400 hover:bg-white/5" 
+                  : "text-amber-900 hover:bg-amber-900/10"
+              }`}
               aria-label="Toggle Dark Mode"
               id="theme-toggler"
             >
               {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
 
+            {/* 3. Single Door Profile Login / Dashboard Button */}
             <button
-              onClick={() => setIsAdminLoginOpen(true)}
-              className="p-2.5 rounded-full hover:bg-amber-900/10 dark:hover:bg-white/5 text-amber-900 dark:text-amber-400 transition-all cursor-pointer flex items-center gap-1 border border-amber-900/5"
-              title="Admin Terminal Login"
-              id="admin-login-button"
+              onClick={() => {
+                if (!currentUser) {
+                  setIsUserLoginOpen(true);
+                } else {
+                  if (currentUser.role === "admin") {
+                    setIsAdminMode(!isAdminMode);
+                    setShowUserDashboard(false);
+                  } else {
+                    setShowUserDashboard(!showUserDashboard);
+                    setIsAdminMode(false);
+                  }
+                }
+              }}
+              className={`p-2.5 rounded-full transition-all duration-300 cursor-pointer flex items-center justify-center border ${
+                currentUser
+                  ? ((!isScrolled || darkMode)
+                      ? "text-amber-300 bg-white/10 border-amber-500"
+                      : "text-amber-900 bg-amber-900/10 border-amber-500")
+                  : ((!isScrolled || darkMode) 
+                      ? "text-amber-400 hover:bg-white/5 border-white/5" 
+                      : "text-amber-900 hover:bg-amber-900/10 border-amber-900/5")
+              }`}
+              title={currentUser ? (currentUser.role === "admin" ? "Dashboard Admin" : "Dashboard Member") : "Masuk / Daftar"}
+              id="single-login-profile-button"
             >
-              <LogIn className="w-5 h-5" />
-              <span className="text-xs font-bold hidden sm:inline">Admin</span>
+              <UserIcon className="w-5 h-5" />
             </button>
           </div>
         </div>
       </nav>
 
-      {/* 2. Hero Section (Replicating Foto 1 Vibe & Structure) */}
+      {currentPath === "/kopi-news" ? (
+        <div className="pt-24 min-h-[75vh]">
+          {/* Header Title for the dedicated News page */}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-4 text-left">
+            <span className="text-xs font-bold text-amber-800 dark:text-amber-400 uppercase tracking-widest bg-amber-900/5 dark:bg-amber-400/10 px-3 py-1 rounded-full font-sans">
+              Update Terbaru & Informasi
+            </span>
+            <h1 className="text-4xl sm:text-5xl font-serif font-black text-[#2D1B0D] dark:text-amber-100 italic tracking-tight mt-2">
+              Kopi News & Budaya
+            </h1>
+            <p className="text-sm text-zinc-650 dark:text-zinc-400 mt-2 font-sans">
+              Daftar berita terbaru, kisah menarik, dan catatan seputar perkebunan serta budaya kopi di Kotabunan Bolaang Mongondow Timur.
+            </p>
+          </div>
+          <CoffeeNews />
+        </div>
+      ) : (
+        <>
+          {/* 2. Hero Section (Replicating Foto 1 Vibe & Structure) */}
       <section 
         id="hero-section" 
-        className={`relative overflow-hidden py-12 lg:py-20 border-b transition-colors duration-300 ${
-          darkMode 
-            ? "bg-gradient-to-b from-zinc-950 via-[#1F140A]/95 to-zinc-950 border-amber-950/20 text-amber-50" 
-            : "bg-[#F9F7F2] border-[#E8E2D9] text-stone-900"
-        }`}
+        className="relative overflow-hidden pt-28 lg:pt-36 pb-20 lg:pb-28 border-b transition-all duration-300 bg-cover bg-center text-white"
+        style={{
+          backgroundImage: "url('/Hero.jpeg')"
+        }}
       >
-        {/* Background Subtle elements */}
-        <div className="absolute inset-0 opacity-20 pointer-events-none mix-blend-overlay">
-          <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#8B5E3C] rounded-full blur-3xl" />
-        </div>
+        {/* Dark overlay with sepia coffee tint to make text highly readable */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/80 to-black/35 dark:from-zinc-950/95 dark:via-zinc-955/80 dark:to-zinc-955/45 z-0 pointer-events-none" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10">
           
           {/* Left Column (Hero Content) */}
-          <div className="lg:col-span-5 space-y-8 text-left">
-            <span className={`inline-block px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest leading-none ${
-              darkMode 
-                ? "bg-amber-900/30 border border-amber-550/20 text-amber-300"
-                : "bg-white border border-[#E8E2D9] text-[#8B5E3C] shadow-sm animate-pulse"
-            }`}>
-              ✨ Premium Local Roastery
+          <div className="lg:col-span-7 space-y-8 text-left">
+            <span className="inline-block px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest leading-none bg-[#4B3621] border border-amber-900/20 text-amber-200 shadow-sm animate-pulse">
+              ✨ 24/7 Delivery
             </span>
 
             <div className="space-y-4">
-              <h1 className="text-5xl sm:text-7xl font-serif font-black leading-[1.08] tracking-tight text-stone-950 dark:text-amber-50">
-                Menikmati Kopi <br/>
-                <span className="italic font-light text-[#8B5E3C] dark:text-amber-300">Tanpa Batas.</span>
+              <h1 className="text-5xl sm:text-7xl font-serif font-black leading-[1.08] tracking-tight text-white dark:text-amber-50">
+                TAMPA SEDUH <br/>
+                <span className="italic font-light text-amber-300 dark:text-amber-350">Street Coffee</span>
               </h1>
-              
-              <p className="text-base sm:text-lg text-zinc-650 dark:text-stone-300 max-w-md leading-relaxed font-sans">
-                Rasakan kehangatan biji kopi pilihan dari pegunungan Kotabunan, diseduh dengan hati untuk menemani harimu di tiap lintasan jalan Trans Sulawesi.
-              </p>
+            
             </div>
 
             {/* Micro-interactive quote block replicating the card on Foto 1 */}
             <motion.div 
               whileHover={{ scale: 1.02, rotate: -2 }}
-              className={`p-5 rounded-2xl border transition-all duration-300 cursor-pointer shadow-md rotate-[-1deg] relative max-w-md ${
-                darkMode 
-                  ? "bg-[#2A1B0E]/80 border-amber-900/40 text-amber-100" 
-                  : "bg-white border-[#E8E2D9] text-stone-900"
-              }`}
+              className="p-5 rounded-2xl border border-amber-900/30 bg-[#2A1B0E]/90 text-amber-100 transition-all duration-300 cursor-pointer shadow-md rotate-[-1deg] relative max-w-md"
             >
               <span className="text-3xl font-serif text-[#8B5E3C] opacity-35 absolute -top-1 left-2">“</span>
-              <p className="font-serif font-black text-sm uppercase tracking-wide px-5 text-center text-[#2D1B0D] dark:text-amber-100 italic leading-snug">
+              <p className="font-serif font-black text-sm uppercase tracking-wide px-5 text-center italic leading-snug">
                 "Mo Pulang Mar
                 <br />
                 Mo Suka Tamba Ulang"
               </p>
-              <div className="mt-3 flex justify-between items-center text-[10px] font-bold text-zinc-500 uppercase tracking-widest pl-5 pr-2">
+              <div className="mt-3 flex justify-between items-center text-[10px] font-bold text-stone-400 uppercase tracking-widest pl-5 pr-2">
                 <span>- Quote Legendaris</span>
-                <span className="text-[#8B5E3C] bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded">Rasa Bersahaja</span>
+                <span className="text-amber-300 bg-amber-900/40 px-2 py-0.5 rounded">Rasa Bersahaja</span>
               </div>
             </motion.div>
 
             <div className="flex flex-wrap gap-4 pt-2">
               <button
                 onClick={() => setIsOrderPopupOpen(true)}
-                className="px-8 py-4 bg-[#4B3621] hover:bg-[#322314] text-white rounded-full font-black shadow-lg shadow-[#4B3621]/20 cursor-pointer transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-wider"
+                className="px-8 py-4 bg-[#8B5E3C] hover:bg-[#6F4E37] text-white rounded-full font-black shadow-lg shadow-[#8B5E3C]/20 cursor-pointer transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-wider"
                 id="btn-hero-order-sekarang"
               >
                 Order Sekarang
               </button>
               <button
                 onClick={() => scrollToId("menu-section")}
-                className={`px-8 py-4 rounded-full font-black cursor-pointer transition-all border text-sm uppercase tracking-wider ${
-                  darkMode 
-                    ? "bg-white/5 border-zinc-700 text-amber-300 hover:bg-white/10" 
-                    : "bg-white border-[#E8E2D9] text-[#4B3621] hover:bg-stone-50"
-                }`}
+                className="px-8 py-4 rounded-full font-black cursor-pointer transition-all border border-white/20 bg-white/5 text-amber-300 hover:bg-white/10 text-sm uppercase tracking-wider"
                 id="btn-hero-lihat-menu"
               >
                 Lihat Menu
@@ -278,117 +598,8 @@ export default function App() {
             </div>
           </div>
 
-          {/* Right Column (Absolute Stunning Interactive Replica of Foto 1) */}
-          <div className="lg:col-span-7 flex justify-center items-center relative py-10 lg:py-0">
-            {/* Visual background table slab container */}
-            <div className="w-full max-w-xl h-[480px] rounded-[48px] bg-[#E8E2D9]/40 dark:bg-[#201409]/60 border border-[#E8E2D9]/80 dark:border-amber-955/40 p-8 flex flex-col justify-between overflow-hidden relative shadow-inner">
-              
-              {/* Scattered roasted coffee beans floating decor with real shadow */}
-              <div className="absolute top-6 left-12 w-6 h-5 bg-[#3E2A17] rounded-full filter rotate-45 opacity-90 shadow-md transform hover:scale-110 cursor-pointer transition-all" title="Biji Kopi Kotabunan" />
-              <div className="absolute top-1/2 left-8 w-5 h-4 bg-[#2D1B0D] rounded-full filter -rotate-12 opacity-85 shadow-md transform hover:scale-115 cursor-pointer transition-all" />
-              <div className="absolute bottom-12 right-20 w-6 h-4 bg-[#3E2A17] rounded-full filter rotate-12 opacity-95 shadow-md transform hover:scale-110 cursor-pointer transition-all" />
-              
-              {/* Cup Carrier tray & Dual Paper Cups Layout mockup exactly from Foto 1 */}
-              <div className="relative w-full h-full flex items-center justify-center gap-4 pt-10">
-                
-                {/* 1. Iced Paper Cup in Molded Carton Holder Basket */}
-                <div className="relative z-10 flex flex-col items-center">
-                  
-                  {/* Textured pulp molded carrier basket bottom */}
-                  <div className="absolute bottom-[-10px] w-36 h-14 bg-[#C2B6A3]/80 rounded-b-2xl border-t border-[#A89582] shadow-lg flex justify-around px-3 items-center text-[10px] font-serif italic text-stone-600">
-                    <span className="opacity-40">Original Carrier</span>
-                  </div>
-
-                  {/* High Quality Paper Cup Body (Left, Iced, in tray) */}
-                  <motion.div 
-                    whileHover={{ y: -8 }}
-                    className="w-32 h-44 bg-white rounded-b-2xl rounded-t-lg shadow-2xl flex flex-col justify-between p-3.5 relative overflow-hidden border border-zinc-200"
-                  >
-                    {/* Pouring/iced details - transparent cover & straw */}
-                    <div className="absolute top-0 inset-x-0 h-4 bg-[#A89582]/30 backdrop-blur-xs flex items-center justify-center overflow-hidden">
-                      <div className="w-2.5 h-12 bg-amber-900 border-r border-[#4B3621]/40 rounded-full rotate-12 absolute -top-4 right-1/4" />
-                    </div>
-
-                    {/* Moka Cup Logo block */}
-                    <div className="text-center mt-2">
-                      <div className="flex justify-center mb-1">
-                        <svg className="w-5 h-5 text-stone-800" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M6 4h12l-2 10H8L6 4zm13 2h2v4h-2V6z" />
-                        </svg>
-                      </div>
-                      <span className="text-[6px] uppercase tracking-widest font-black leading-none text-zinc-500 block">STREET COFFEE</span>
-                    </div>
-
-                    {/* Bold Cup Logo Text (matching cups in Foto 1 exactly) */}
-                    <div className="text-center my-1">
-                      <span className="font-serif font-black text-[#2D1B0D] leading-none text-xl block tracking-tighter">TAMPA</span>
-                      <span className="font-serif font-black text-[#2D1B0D] leading-none text-xl block tracking-tighter mt-[-2px]">SEDUH.</span>
-                    </div>
-
-                    {/* Quote text written in tiny letters in paper cup style */}
-                    <div className="text-center font-serif text-[6px] font-bold text-stone-700 italic border-t border-zinc-200 pt-1">
-                      “MO PULANG MAR MO SUKA TAMBA ULANG”
-                    </div>
-                  </motion.div>
-                </div>
-
-                {/* 2. Hot Paper Cup (with Black Lid, resting on a wooden slab) */}
-                <div className="relative z-20 flex flex-col items-center pt-8">
-                  
-                  {/* Thick Wood stand element */}
-                  <div className="absolute bottom-[-12px] w-32 h-7 bg-[#8B5E3C]/80 rounded border-b-2 border-stone-800 shadow-md" />
-
-                  {/* Cup element */}
-                  <motion.div 
-                    whileHover={{ y: -8 }}
-                    className="w-28 h-36 bg-[#F2EDE4] dark:bg-stone-100 rounded-b-xl rounded-t-sm shadow-xl flex flex-col justify-between p-3 relative overflow-hidden text-stone-900 border border-zinc-300"
-                  >
-                    {/* Black cup lid (Foto 1) */}
-                    <div className="absolute top-0 inset-x-0 h-3.5 bg-zinc-900 border-b border-black rounded-t flex justify-center items-center">
-                      <div className="w-8 h-1 bg-zinc-800 rounded-full" />
-                    </div>
-
-                    {/* Logo & cursive */}
-                    <div className="text-center mt-3">
-                      <span className="text-[5px] uppercase tracking-[0.25em] font-black leading-none text-[#8B5E3C] block">STREET COFFEE</span>
-                    </div>
-
-                    <div className="text-center my-0.5">
-                      <span className="font-serif font-black text-[#4B3621] leading-none text-base block tracking-tight">TAMPA</span>
-                      <span className="font-serif font-black text-[#4B3621] leading-none text-base block tracking-tight mt-[-2px]">SEDUH.</span>
-                    </div>
-
-                    {/* Bottom ripple design (chocolate wave print) as in Foto 1 */}
-                    <div className="h-6 w-full bg-[#4B3621] rounded-b-md flex justify-center items-center">
-                      <span className="text-[6px] font-mono text-zinc-100 uppercase tracking-widest font-black">Hot Blend</span>
-                    </div>
-                  </motion.div>
-                </div>
-
-              </div>
-
-              {/* Index Card overlay foreground mimicking typewriter layout of Foto 1 */}
-              <div className="absolute bottom-4 left-4 z-30 transform rotate-[-4deg] scale-95 origin-bottom-left max-w-[210px]">
-                <div className="bg-[#FFFDF9] rounded-xl p-4 shadow-xl border border-[#E8E2D9] flex flex-col space-y-2 text-stone-950">
-                  <span className="text-xl font-bold font-serif leading-none text-[#8B5E3C]">“</span>
-                  <p className="text-[9px] font-serif font-bold uppercase tracking-wide leading-tight text-center">
-                    “MO PULANG MAR <br />
-                    MO SUKA TAMBA ULANG”
-                  </p>
-                </div>
-              </div>
-
-              {/* Circular Coaster Stamp next to it (Foto 1 foreground) */}
-              <div className="absolute bottom-3 right-6 z-30 transform rotate-[15deg] scale-90">
-                <div className="w-16 h-16 rounded-full bg-[#4B3621] border border-[#2D1B0D] flex flex-col justify-center items-center text-center text-white shadow-lg cursor-pointer hover:bg-stone-900 transition-colors">
-                  <span className="text-[6px] font-serif font-black tracking-widest leading-none block">TAMPA</span>
-                  <span className="text-[6px] font-serif font-black tracking-widest leading-none block mt-0.5">SEDUH.</span>
-                  <span className="text-[4px] uppercase tracking-normal opacity-50 block mt-1">100% Original</span>
-                </div>
-              </div>
-
-            </div>
-          </div>
+          {/* Right Column is empty to let the background Hero image show completely */}
+          <div className="lg:col-span-5 hidden lg:block" />
 
         </div>
       </section>
@@ -443,8 +654,8 @@ export default function App() {
               {menuItems
                 .filter((item) => !item.isHot) // Ice/Cold items
                 .map((item) => {
-                  const isInCartReg = cart.some(e => e.item.id === item.id && e.size === "R");
-                  const isInCartLrg = cart.some(e => e.item.id === item.id && e.size === "L");
+                  const isInCartReg = cart.some(e => e.id === item.id && e.size === "R");
+                  const isInCartLrg = cart.some(e => e.id === item.id && e.size === "L");
 
                   return (
                     <motion.div
@@ -465,7 +676,7 @@ export default function App() {
                           <div className="flex items-center gap-3">
                             <button
                               onClick={() => {
-                                addToCart(item, "R");
+                                addToCart(item, "R", false);
                                 setOrderNotification(`1x ${item.name} (R) ditambahkan!`);
                                 setTimeout(() => setOrderNotification(null), 3000);
                               }}
@@ -476,13 +687,13 @@ export default function App() {
                                   : "bg-[#F2EDE4]/60 dark:bg-white/5 border-transparent text-[#4A3728] dark:text-[#E8E2D9] hover:bg-[#E8E2D9]"
                               }`}
                             >
-                              <span className="opacity-75">R |</span>
-                              <span className="font-extrabold">{item.priceReg} K</span>
+                              <span className="opacity-75 font-sans">R |</span>
+                              <span className="font-extrabold font-mono">{item.priceReg} K</span>
                               {isInCartReg ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
                             </button>
                             {isInCartReg && (
                               <button 
-                                onClick={() => removeFromCart(item, "R")}
+                                onClick={() => removeFromCart(item.id, "R")}
                                 className="p-1 hover:bg-red-500/10 text-red-500 rounded-lg cursor-pointer"
                                 title="Kurangi item"
                               >
@@ -496,7 +707,7 @@ export default function App() {
                             <div className="flex items-center gap-3">
                               <button
                                 onClick={() => {
-                                  addToCart(item, "L");
+                                  addToCart(item, "L", false);
                                   setOrderNotification(`1x ${item.name} (L) ditambahkan!`);
                                   setTimeout(() => setOrderNotification(null), 3000);
                                 }}
@@ -507,13 +718,13 @@ export default function App() {
                                     : "bg-[#F2EDE4]/60 dark:bg-white/5 border-transparent text-[#4A3728] dark:text-[#E8E2D9] hover:bg-[#E8E2D9]"
                                 }`}
                               >
-                                <span className="opacity-75">L |</span>
-                                <span className="font-extrabold">{item.priceLarge} K</span>
+                                <span className="opacity-75 font-sans">L |</span>
+                                <span className="font-extrabold font-mono">{item.priceLarge} K</span>
                                 {isInCartLrg ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
                               </button>
                               {isInCartLrg && (
                                 <button 
-                                  onClick={() => removeFromCart(item, "L")}
+                                  onClick={() => removeFromCart(item.id, "L")}
                                   className="p-1 hover:bg-red-500/10 text-red-500 rounded-lg cursor-pointer"
                                   title="Kurangi item"
                                 >
@@ -522,7 +733,6 @@ export default function App() {
                               )}
                             </div>
                           )}
-
                         </div>
                       </div>
 
@@ -591,8 +801,8 @@ export default function App() {
               {menuItems
                 .filter((item) => item.isHot) // Hot items
                 .map((item) => {
-                  const isInCartReg = cart.some(e => e.item.id === item.id && e.size === "R");
-                  const isInCartLrg = cart.some(e => e.item.id === item.id && e.size === "L");
+                  const isInCartReg = cart.some(e => e.id === item.id && e.size === "R");
+                  const isInCartLrg = cart.some(e => e.id === item.id && e.size === "L");
 
                   return (
                     <motion.div
@@ -613,7 +823,7 @@ export default function App() {
                           <div className="flex items-center gap-3">
                             <button
                               onClick={() => {
-                                addToCart(item, "R");
+                                addToCart(item, "R", false);
                                 setOrderNotification(`1x ${item.name} ditambahkan!`);
                                 setTimeout(() => setOrderNotification(null), 3000);
                               }}
@@ -624,12 +834,12 @@ export default function App() {
                                   : "bg-[#F2EDE4]/65 dark:bg-white/5 border-transparent text-[#4A3728] dark:text-[#E8E2D9] hover:bg-[#E8E2D9]"
                               }`}
                             >
-                              <span className="font-extrabold">{item.priceReg} K</span>
+                              <span className="font-extrabold font-mono">{item.priceReg} K</span>
                               {isInCartReg ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
                             </button>
                             {isInCartReg && (
                               <button 
-                                onClick={() => removeFromCart(item, "R")}
+                                onClick={() => removeFromCart(item.id, "R")}
                                 className="p-1 hover:bg-red-500/10 text-red-500 rounded-lg cursor-pointer"
                                 title="Kurangi item"
                               >
@@ -643,7 +853,7 @@ export default function App() {
                             <div className="flex items-center gap-3">
                               <button
                                 onClick={() => {
-                                  addToCart(item, "L");
+                                  addToCart(item, "L", false);
                                   setOrderNotification(`1x ${item.name} (L) ditambahkan!`);
                                   setTimeout(() => setOrderNotification(null), 3000);
                                 }}
@@ -654,13 +864,13 @@ export default function App() {
                                     : "bg-[#F2EDE4]/65 dark:bg-white/5 border-transparent text-[#4A3728] dark:text-[#E8E2D9] hover:bg-[#E8E2D9]"
                                 }`}
                               >
-                                <span className="opacity-75">L |</span>
-                                <span className="font-extrabold">{item.priceLarge} K</span>
+                                <span className="opacity-75 font-sans">L |</span>
+                                <span className="font-extrabold font-mono">{item.priceLarge} K</span>
                                 {isInCartLrg ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
                               </button>
                               {isInCartLrg && (
                                 <button 
-                                  onClick={() => removeFromCart(item, "L")}
+                                  onClick={() => removeFromCart(item.id, "L")}
                                   className="p-1 hover:bg-red-500/10 text-red-500 rounded-lg cursor-pointer"
                                   title="Kurangi item"
                                 >
@@ -704,6 +914,235 @@ export default function App() {
                 <span>|</span>
                 <span>100% Street Coffee</span>
               </div>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      {/* 4.5 Coffee Packages Section */}
+      <section id="packages-section" className="py-20 border-t border-amber-900/5 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center space-y-3 mb-12">
+          <span className="text-xs font-bold text-amber-800 dark:text-amber-400 uppercase tracking-widest bg-amber-900/5 dark:bg-amber-400/10 px-3 py-1 rounded-full font-sans">Kombinasi Kopi Spesial Lebih Hemat</span>
+          <h2 className="text-3xl sm:text-4xl font-serif font-bold text-amber-955 dark:text-amber-100 italic tracking-tight">Paket Kopi Tampa Seduh</h2>
+          <p className="text-sm text-zinc-555 dark:text-zinc-400">Pilih paket kombinasi kopi dingin dan hangat tradisional untuk dinikmati rame-rame dengan harga lebih murah.</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {packages.map((pack) => {
+            const isInCart = cart.some(e => e.id === pack.id);
+            return (
+              <motion.div
+                key={pack.id}
+                whileHover={{ y: -8 }}
+                className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-md flex flex-col justify-between text-left relative"
+              >
+                {pack.badge && (
+                  <span className="absolute top-4 right-4 bg-amber-900 text-amber-100 dark:bg-amber-450 dark:text-amber-950 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full font-sans">
+                    {pack.badge}
+                  </span>
+                )}
+                
+                <div className="space-y-4">
+                  {pack.image ? (
+                    <div className="w-full h-44 rounded-2xl overflow-hidden mb-4 bg-stone-100 border border-zinc-150 dark:border-zinc-800 flex-shrink-0">
+                      <img 
+                        src={pack.image} 
+                        alt={pack.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-amber-900/5 dark:bg-white/5 inline-block rounded-2xl mb-4">
+                      <Coffee className="w-6 h-6 text-amber-800 dark:text-amber-400" />
+                    </div>
+                  )}
+                  <div>
+                    <h3 className="font-serif font-bold text-xl text-amber-955 dark:text-amber-50">{pack.name}</h3>
+                    <p className="text-xs text-zinc-400 mt-1 leading-relaxed">{pack.description}</p>
+                  </div>
+
+                  <div className="border-t border-b py-3 dark:border-zinc-800 space-y-1.5">
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block font-sans">Kombinasi Menu:</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {pack.items.map((itemId, idx) => {
+                        const item = menuItems.find(m => m.id === itemId);
+                        return (
+                          <span key={idx} className="bg-[#F2EDE4] dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-[10px] font-semibold px-2 py-0.5 rounded-lg font-sans">
+                            {item ? item.name : itemId}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center mt-6">
+                  <div>
+                    <span className="text-[10px] text-zinc-400 block leading-none font-sans">Harga Spesial</span>
+                    <span className="font-mono text-xl font-black text-[#2D1B0D] dark:text-amber-400">Rp {pack.price}.000</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    {!isInCart ? (
+                      <button
+                        onClick={() => {
+                          addToCart(pack, "Default", true);
+                          setOrderNotification(`Paket ${pack.name} ditambahkan!`);
+                          setTimeout(() => setOrderNotification(null), 3000);
+                        }}
+                        className="px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm font-sans bg-amber-900/10 hover:bg-amber-900 text-amber-900 hover:text-white dark:bg-amber-450/10 dark:text-amber-450 dark:hover:bg-amber-450 dark:hover:text-amber-955"
+                      >
+                        Beli Paket
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => navigateTo("/checkout")}
+                          className="px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer shadow-sm font-sans bg-amber-500 hover:bg-amber-600 text-zinc-950 flex items-center gap-1"
+                        >
+                          <span>Bayar Sekarang</span>
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                        
+                        <div className="flex items-center bg-[#F2EDE4] dark:bg-zinc-800 rounded-xl border border-zinc-250/20">
+                          <button
+                            onClick={() => removeFromCart(pack.id, "Default")}
+                            className="p-2 hover:bg-red-500/10 text-red-500 rounded-l-xl cursor-pointer"
+                            title="Kurangi"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="px-2 text-xs font-bold text-zinc-800 dark:text-zinc-200">
+                            {cart.find(e => e.id === pack.id)?.quantity || 1}
+                          </span>
+                          <button
+                            onClick={() => addToCart(pack, "Default", true)}
+                            className="p-2 hover:bg-green-500/10 text-green-600 rounded-r-xl cursor-pointer"
+                            title="Tambah"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* 4.7 Roti Kampung Education Section */}
+      <section id="roti-edu-section" className="py-20 bg-gradient-to-b from-[#F9F7F2] to-amber-50/20 dark:from-zinc-950 dark:to-zinc-900 text-stone-900 dark:text-stone-100 border-t border-amber-900/5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+          
+          <div className="text-center max-w-3xl mx-auto space-y-3">
+            <span className="text-xs font-bold text-amber-800 dark:text-amber-400 uppercase tracking-widest bg-amber-900/5 dark:bg-amber-400/10 px-3 py-1 rounded-full font-sans">Kearifan Lokal & Selera Khas</span>
+            <h2 className="text-3xl sm:text-4xl font-serif font-black tracking-tight text-[#2D1B0D] dark:text-amber-100 leading-tight">
+              Roti Kampung & Kopi: <br className="hidden sm:block"/> Pasangan yang Cocok dari Dulu
+            </h2>
+            <p className="text-sm text-zinc-650 dark:text-zinc-400">
+              Di Tampa Seduh, torang sengaja pilih <strong>roti kampung</strong> asli Kotabunan untuk jadi teman ngopi kawan, bukan roti pabrikan luar yang ba pelembut buatan.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            {/* Left Content Column */}
+            <div className="lg:col-span-7 space-y-6 text-left">
+              
+              <div className="bg-white dark:bg-zinc-900/90 p-8 rounded-3xl border border-zinc-200/60 dark:border-zinc-800/80 shadow-xs space-y-4">
+                <h3 className="text-xl font-serif font-bold text-amber-955 dark:text-amber-200">Bukan Sekadar Roti Biasa jo!</h3>
+                <p className="text-sm text-zinc-650 dark:text-zinc-400 leading-relaxed font-sans">
+                  Lantaran torang percaya kopi yang gaga musti berpasangan dengan makanan alami yang dibikin penuh hati dan kesabaran, ndak asal cepat saji. Sama dengan kopi yang diseduh pelan-pelan, roti kampung le diproses lambat tanpa bahan tambahan kimia berbahaya.
+                </p>
+              </div>
+
+              <div className="bg-white dark:bg-zinc-900/90 p-8 rounded-3xl border border-zinc-200/60 dark:border-zinc-800/80 shadow-xs space-y-4">
+                <h3 className="text-xl font-serif font-bold text-amber-955 dark:text-amber-200">Apa Itu Roti Kampung Sebenarnya?</h3>
+                <p className="text-sm text-zinc-650 dark:text-zinc-400 leading-relaxed font-sans">
+                  Roti kampung tradisional Kotabunan cuma pake bahan-bahan sederhana yang sehat: tepung, air, ragi alami, dan garam. Nyanda' pake pengawet atau pelembut kimia massal. Makanya tekstur roti kampung kerasa lebe padat, berisi, dan berkarakter pas digigit. 
+                </p>
+                <div className="p-4 bg-amber-50 dark:bg-zinc-850 rounded-2xl border border-amber-900/5 dark:border-zinc-750">
+                  <p className="text-xs text-amber-900 dark:text-amber-400 italic font-medium font-sans">
+                    "Orang tua dolo di Kotabunan deng Sulawesi Utara sering bilang: Roti yang gaga itu nyanda' musti paling lembut pe leher, mar yang paling beking kenyang deng cocok skali dicelup ka kopi hangat."
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-zinc-900/90 p-8 rounded-3xl border border-zinc-200/60 dark:border-zinc-800/80 shadow-xs space-y-4">
+                <h3 className="text-xl font-serif font-bold text-amber-955 dark:text-amber-200">Fermentasi Lebe Lama, Rasa Lebe Kaya</h3>
+                <p className="text-sm text-zinc-650 dark:text-zinc-400 leading-relaxed font-sans">
+                  Kunci kelezatannya ada di proses fermentasi lambat (4 sampai 24 jam). Ini beking aroma roti lebe harum, tekstur alami berserat gaga, kenyang tahan lama, deng lebe gampang dicerna di perut.
+                </p>
+                <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pt-2">Tentang Gluten</h4>
+                <p className="text-xs text-zinc-500 dark:text-zinc-450 leading-relaxed font-sans">
+                  Roti kampung tetap ada gluten lantaran terigu. Mar proses fermentasi tradisional yang lama beking gluten terurai alami, jadi lebe nyaman dikonsumsi dibanding roti pabrikan yang serba instan.
+                </p>
+              </div>
+
+            </div>
+
+            {/* Right Table Column */}
+            <div className="lg:col-span-5 space-y-6">
+              
+              <div className="bg-[#FAF8F5] dark:bg-zinc-900/40 p-6 sm:p-8 rounded-3xl border border-amber-900/5 dark:border-zinc-800 text-left space-y-6">
+                <h3 className="text-lg font-serif font-bold text-[#2D1B0D] dark:text-amber-200">Perbandingan Karakter Roti</h3>
+                
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs font-sans">
+                    <thead>
+                      <tr className="border-b border-amber-900/10 dark:border-zinc-800 text-[10px] uppercase tracking-wider text-zinc-450 font-bold">
+                        <th className="py-2.5 text-left font-bold">Faktor</th>
+                        <th className="py-2.5 text-left font-bold">Roti Kampung</th>
+                        <th className="py-2.5 text-left font-bold">Roti Pabrikan</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-amber-900/5 dark:divide-zinc-850">
+                      <tr>
+                        <td className="py-3 font-semibold text-amber-950 dark:text-amber-300">Fermentasi</td>
+                        <td className="py-3 text-zinc-600 dark:text-zinc-400">Lama (4-24 jam)</td>
+                        <td className="py-3 text-zinc-500">Cepat (1-3 jam)</td>
+                      </tr>
+                      <tr>
+                        <td className="py-3 font-semibold text-amber-950 dark:text-amber-300">Bahan Baku</td>
+                        <td className="py-3 text-zinc-600 dark:text-zinc-400">Tepung, air, ragi, garam murni</td>
+                        <td className="py-3 text-zinc-500">Banyak emulsifier & pengawet</td>
+                      </tr>
+                      <tr>
+                        <td className="py-3 font-semibold text-amber-950 dark:text-amber-300">Tekstur</td>
+                        <td className="py-3 text-zinc-600 dark:text-zinc-400">Padat, berserat, berkarakter</td>
+                        <td className="py-3 text-zinc-500">Sangat empuk, berongga kosong</td>
+                      </tr>
+                      <tr>
+                        <td className="py-3 font-semibold text-amber-950 dark:text-amber-300">Crust / Kulit</td>
+                        <td className="py-3 text-zinc-600 dark:text-zinc-400">Tebal & renyah gurih</td>
+                        <td className="py-3 text-zinc-500">Tipis & lunak basah</td>
+                      </tr>
+                      <tr>
+                        <td className="py-3 font-semibold text-amber-950 dark:text-amber-300">Umur Simpan</td>
+                        <td className="py-3 text-zinc-600 dark:text-zinc-400">Pendek (2-3 hari)</td>
+                        <td className="py-3 text-zinc-500">Lama (berminggu-minggu)</td>
+                      </tr>
+                      <tr>
+                        <td className="py-3 font-semibold text-amber-950 dark:text-amber-300">Cita Rasa</td>
+                        <td className="py-3 text-zinc-600 dark:text-zinc-400">Kompleks, alami khas ragi</td>
+                        <td className="py-3 text-zinc-500">Manis dominan, rasa seragam</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="pt-4 border-t border-amber-900/10 dark:border-zinc-800 text-center">
+                  <h4 className="text-sm font-serif font-black text-amber-900 dark:text-amber-400 italic">"Ngopi jo, makan roti jo."</h4>
+                  <p className="text-[10px] text-zinc-400 mt-1">Sederhana mar beking rindu kawan.</p>
+                </div>
+              </div>
+
             </div>
 
           </div>
@@ -854,6 +1293,8 @@ export default function App() {
         </div>
       </section>
 
+
+
       {/* 5. Coffee News Blog section on frontpage */}
       <CoffeeNews />
 
@@ -978,6 +1419,9 @@ export default function App() {
         </div>
       </section>
 
+        </>
+      )}
+
       {/* 8. Contact Section at the Bottom */}
       <footer id="contact-section" className="bg-[#1b100a] dark:bg-black text-amber-100 py-16 border-t border-amber-900/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-12 text-left pb-12 border-b border-white/5">
@@ -995,7 +1439,15 @@ export default function App() {
             </p>
             <div className="pt-2 text-xs text-amber-400">
               <span className="block font-bold">Jam Operasional Kedai:</span>
-              <span>Sabtu - Jumat: Pukul 10.00 WITA - 23.00 WITA</span>
+              <span className="block">Setiap hari: Pukul 18.00 WITA - 24.00 WITA</span>
+              <span className="block text-amber-300 font-semibold mt-0.5">Delivery 24/7</span>
+              <button 
+                onClick={() => navigateTo("/kopi-news")}
+                className="mt-3.5 inline-flex items-center gap-1.5 bg-amber-900/40 border border-amber-500/20 hover:bg-amber-900/80 text-amber-250 hover:text-white px-3 py-1.5 rounded-xl font-bold transition-all text-[11px] cursor-pointer font-sans"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                Baca Kopi News
+              </button>
             </div>
           </div>
 
@@ -1010,6 +1462,12 @@ export default function App() {
               <li className="flex items-center gap-2.5">
                 <Mail className="w-4 h-4 text-amber-500 shrink-0" />
                 <span>Email: <strong className="underline">kopi@tampaseduh.com</strong></span>
+              </li>
+              <li className="flex items-center gap-2.5">
+                <Instagram className="w-4 h-4 text-amber-500 shrink-0" />
+                <a href="https://www.instagram.com/tampa_seduh/" target="_blank" rel="noopener noreferrer" className="hover:text-amber-400 transition-colors">
+                  Instagram: <strong>@tampa_seduh</strong>
+                </a>
               </li>
             </ul>
           </div>
@@ -1030,8 +1488,23 @@ export default function App() {
 
         {/* Brand attribution copyright */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 flex flex-col sm:flex-row justify-between items-center text-[11px] text-amber-250/50">
-          <span>&copy; {new Date().getFullYear()} Tampa Seduh Street Coffee Boltim. All Rights Reserved.</span>
-          <span className="opacity-80">Berdikari Bersama Komunitas Petani Kopi Lokal Kotabunan Malalayang.</span>
+          <div className="flex flex-col gap-1 text-left">
+            <span>&copy; {new Date().getFullYear()} Tampa Seduh Street Coffee Boltim. All Rights Reserved.</span>
+            <span className="opacity-80">Berdikari Bersama Komunitas Petani Kopi Lokal Kotabunan Malalayang.</span>
+          </div>
+          <div className="flex flex-col items-end gap-1 mt-4 sm:mt-0 font-sans">
+            <div className="flex gap-2 text-[10px] text-amber-400/80">
+              <a href="https://indodesign.website" target="_blank" rel="noopener noreferrer" className="hover:underline">indodesign.website</a>
+              <span>&bull;</span>
+              <a href="https://bali.enterprises" target="_blank" rel="noopener noreferrer" className="hover:underline">bali.enterprises</a>
+            </div>
+            <span>
+              Bagian dari{" "}
+              <a href="https://mybisnis.app" target="_blank" rel="noopener noreferrer" className="text-amber-400 font-bold hover:underline">
+                Kotabunan Projek
+              </a>
+            </span>
+          </div>
         </div>
       </footer>
 
@@ -1092,69 +1565,277 @@ export default function App() {
           setOrderNotification(`Pesanan sukses terkirim dengan ID ${id}!`);
           setTimeout(() => setOrderNotification(null), 5000);
         }}
+        currentUser={currentUser}
+        menuItems={menuItems}
+        packages={packages}
+        addToCart={addToCart}
+        removeFromCart={removeFromCart}
       />
+
+      {/* Floating Cart Button */}
+      {cart.length > 0 && (
+        <motion.button
+          onClick={() => setIsOrderPopupOpen(true)}
+          initial={{ scale: 0, y: 50 }}
+          animate={{ scale: 1, y: 0 }}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="fixed bottom-6 right-6 z-40 bg-[#4B3621] dark:bg-amber-500 text-white dark:text-zinc-950 px-5 py-3.5 rounded-full shadow-2xl flex items-center gap-2.5 cursor-pointer border border-amber-900/10 hover:shadow-[#4B3621]/30 transition-all font-sans font-bold text-xs uppercase tracking-wider"
+          id="floating-cart-button"
+        >
+          <ShoppingCart className="w-4 h-4 text-amber-300 dark:text-zinc-900" />
+          <span>{cart.reduce((sum, item) => sum + item.quantity, 0)} Item</span>
+          <span className="bg-amber-900 dark:bg-white text-white dark:text-zinc-950 text-[10px] px-2.5 py-0.5 rounded-full font-mono font-bold leading-none">
+            {totalCartSum} K
+          </span>
+        </motion.button>
+      )}
 
       {/* Floating AI chat assistant */}
       <AiChatWidget />
 
-      {/* Admin Login Dialog Drawer Portal */}
+      {/* User Login Dialog Modal */}
       <AnimatePresence>
-        {isAdminLoginOpen && (
+        {isUserLoginOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-sm bg-white dark:bg-zinc-904 px-6 py-6 rounded-2xl shadow-2xl border border-amber-900/10 text-zinc-900 dark:text-zinc-100 bg-neutral-50 dark:bg-zinc-900"
+              className="w-full max-w-sm bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-2xl border border-amber-900/10 text-zinc-900 dark:text-zinc-100 font-sans"
             >
               <div className="flex justify-between items-center border-b pb-3 border-zinc-100 dark:border-zinc-800">
-                <h4 className="font-serif font-bold text-base text-amber-955 dark:text-amber-50">Otorisasi Admin Kedai</h4>
+                <h4 className="font-serif font-bold text-base text-amber-955 dark:text-amber-50">Masuk Akun Member</h4>
                 <button
                   onClick={() => {
-                    setIsAdminLoginOpen(false);
-                    setLoginError("");
+                    setIsUserLoginOpen(false);
+                    setAuthError("");
                   }}
-                  className="text-zinc-405 hover:text-zinc-600 cursor-pointer"
-                  id="btn-close-admin-login"
+                  className="text-zinc-400 hover:text-zinc-600 cursor-pointer"
+                  id="btn-close-user-login"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <form onSubmit={handleAdminLogin} className="mt-4 space-y-4">
-                <div className="bg-amber-900/5 dark:bg-white/5 p-3 rounded-xl border text-[11px] leading-relaxed text-zinc-650 dark:text-zinc-400 mb-2">
-                  🔐 <strong>Hak Akses Demo:</strong> Ketik password <code className="bg-amber-100 dark:bg-amber-900/40 px-1 py-0.5 rounded font-bold font-mono">admin</code> atau <code className="bg-amber-100 dark:bg-amber-900/40 px-1 py-0.5 rounded font-bold font-mono">tampaseduh</code> untuk masuk ke Admin Dashboard.
-                </div>
-
-                {loginError && (
-                  <p className="text-xs text-red-600 bg-red-100 p-2 rounded-xl border border-red-200">{loginError}</p>
+              <form onSubmit={handleUserLogin} className="mt-4 space-y-4 text-left">
+                {authError && (
+                  <p className="text-xs text-red-650 bg-red-150 dark:bg-red-950/20 p-2.5 rounded-xl border border-red-200 dark:border-red-800/20">{authError}</p>
                 )}
 
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Masukan Pin Otorisasi</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-550 mb-1">Email</label>
                   <input
-                    type="password"
-                    placeholder="E.g., tampaseduh"
-                    value={passwordInput}
-                    onChange={(e) => setPasswordInput(e.target.value)}
-                    className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-805 text-sm rounded-xl border border-zinc-200 dark:border-zinc-750 focus:outline-none"
+                    type="email"
+                    placeholder="kawan@example.com"
+                    value={userEmailInput}
+                    onChange={(e) => setUserEmailInput(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 focus:outline-none"
                     required
-                    autoFocus
                   />
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-555">Password</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const emailText = userEmailInput ? ` dengan email: ${userEmailInput}` : "";
+                        const url = `https://wa.me/6285696224448?text=Halo%20Tampa%20Seduh,%20saya%20lupa%20password%20akun%20saya${encodeURIComponent(emailText)}`;
+                        window.open(url, "_blank");
+                      }}
+                      className="text-[10px] text-amber-800 dark:text-amber-400 hover:underline font-bold transition-all cursor-pointer"
+                    >
+                      Lupa Password?
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Masukkan password kawan..."
+                      value={userPasswordInput}
+                      onChange={(e) => setUserPasswordInput(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 focus:outline-none pr-10"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-650 cursor-pointer"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full bg-amber-900 hover:bg-amber-800 text-amber-50 font-bold py-2.5 rounded-xl text-xs cursor-pointer transition-all shadow"
-                  id="btn-confirm-admin-login"
+                  className="w-full bg-[#4B3621] hover:bg-[#322314] text-white font-bold py-3 rounded-xl text-xs cursor-pointer transition-all shadow"
+                  id="btn-submit-user-login"
                 >
-                  Masuk Terminal Admin
+                  Masuk Sekarang
                 </button>
+
+                <div className="relative flex py-2 items-center">
+                  <div className="flex-grow border-t border-zinc-150 dark:border-zinc-800"></div>
+                  <span className="flex-shrink mx-3 text-[9px] text-zinc-400 font-bold uppercase tracking-wider">Atau</span>
+                  <div className="flex-grow border-t border-zinc-150 dark:border-zinc-800"></div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleGoogleSignIn}
+                  disabled={isGoogleLoading}
+                  className="w-full py-2.5 border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-750 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-750 font-bold rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm disabled:opacity-60 disabled:cursor-wait"
+                  id="btn-google-login"
+                >
+                  {isGoogleLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-zinc-500" />
+                  ) : (
+                    <svg className="w-4 h-4" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.85z"/>
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.85c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                  )}
+                  {isGoogleLoading ? "Mengarahkan ke Google..." : "Masuk dengan Google"}
+                </button>
+
+                <div className="text-center pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsUserLoginOpen(false);
+                      setIsUserRegisterOpen(true);
+                      setAuthError("");
+                    }}
+                    className="text-xs text-amber-800 dark:text-amber-400 hover:underline font-bold"
+                  >
+                    Belum punya akun? Daftar gratis kawan
+                  </button>
+                </div>
               </form>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
+
+      {/* User Register Dialog Modal */}
+      <AnimatePresence>
+        {isUserRegisterOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-sm bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-2xl border border-amber-900/10 text-zinc-900 dark:text-zinc-100 font-sans"
+            >
+              <div className="flex justify-between items-center border-b pb-3 border-zinc-100 dark:border-zinc-800">
+                <h4 className="font-serif font-bold text-base text-amber-955 dark:text-amber-50">Daftar Akun Baru</h4>
+                <button
+                  onClick={() => {
+                    setIsUserRegisterOpen(false);
+                    setAuthError("");
+                  }}
+                  className="text-zinc-400 hover:text-zinc-650 cursor-pointer"
+                  id="btn-close-user-register"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleUserRegister} className="mt-4 space-y-3.5 text-left">
+                {authError && (
+                  <p className="text-xs text-red-650 bg-red-150 dark:bg-red-950/20 p-2.5 rounded-xl border border-red-200 dark:border-red-800/20">{authError}</p>
+                )}
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-550 mb-1">Nama Lengkap</label>
+                  <input
+                    type="text"
+                    placeholder="E.g., Andika Pratama"
+                    value={userNameInput}
+                    onChange={(e) => setUserNameInput(e.target.value)}
+                    className="w-full px-4 py-2 bg-zinc-50 dark:bg-zinc-800 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 focus:outline-none"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-550 mb-1">Email</label>
+                  <input
+                    type="email"
+                    placeholder="andika@gmail.com"
+                    value={userEmailInput}
+                    onChange={(e) => setUserEmailInput(e.target.value)}
+                    className="w-full px-4 py-2 bg-zinc-50 dark:bg-zinc-800 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 focus:outline-none"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-550 mb-1">No. WhatsApp</label>
+                  <input
+                    type="tel"
+                    placeholder="Contoh: 085696224448"
+                    value={userWhatsappInput}
+                    onChange={(e) => setUserWhatsappInput(e.target.value)}
+                    className="w-full px-4 py-2 bg-zinc-50 dark:bg-zinc-800 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 focus:outline-none"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-550 mb-1">Password</label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Minimal 6 karakter"
+                      value={userPasswordInput}
+                      onChange={(e) => setUserPasswordInput(e.target.value)}
+                      className="w-full px-4 py-2 pr-10 bg-zinc-50 dark:bg-zinc-800 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 focus:outline-none"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full bg-[#4B3621] hover:bg-[#322314] text-white font-bold py-3 rounded-xl text-xs cursor-pointer transition-all shadow-md mt-2"
+                  id="btn-submit-user-register"
+                >
+                  Daftar Sekarang
+                </button>
+
+                <div className="text-center pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsUserRegisterOpen(false);
+                      setIsUserLoginOpen(true);
+                      setAuthError("");
+                    }}
+                    className="text-xs text-amber-800 dark:text-amber-400 hover:underline font-bold"
+                  >
+                    Sudah punya akun? Masuk disini kawan
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
 
     </div>
   );

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import {
   BarChart3, MessageSquare, Users, Coffee, Layers, ShoppingBag,
-  Sparkles, FileClock, Wallet, Mail, BookOpen, Plus, Trash2, Edit2, CheckCircle, RefreshCw, Moon, Sun, ArrowLeft
+  Sparkles, FileClock, Wallet, Mail, BookOpen, Plus, Trash2, Edit2, CheckCircle, RefreshCw, Moon, Sun, ArrowLeft, X, Lock
 } from "lucide-react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { MenuItem, CoffeePackage, Order, AuditLog, User, BlogNews, EmailLog, FinancialSummary } from "../types";
+import { getApiUrl } from "../lib/api";
 
 interface AdminDashboardProps {
   onBackToStorefront: () => void;
@@ -44,6 +45,9 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   // Loading & Action State
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<Order | null>(null);
+  const [editingPack, setEditingPack] = useState<CoffeePackage | null>(null);
+  const [editingMenu, setEditingMenu] = useState<MenuItem | null>(null);
 
   // Forms states
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -55,7 +59,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
 
   const [isPackOpen, setIsPackOpen] = useState(false);
   const [newPack, setNewPack] = useState<Omit<CoffeePackage, "id">>({
-    name: "", price: 25, items: [], description: "", badge: "Promo"
+    name: "", price: 25, items: [], description: "", badge: "Promo", image: ""
   });
 
   const [isNewsOpen, setIsNewsOpen] = useState(false);
@@ -72,15 +76,15 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
     setLoading(true);
     try {
       const [mRes, pRes, oRes, uRes, lRes, eRes, nRes, fRes, aiRes] = await Promise.all([
-        fetch("/api/menu"),
-        fetch("/api/packages"),
-        fetch("/api/orders"),
-        fetch("/api/users"),
-        fetch("/api/logs"),
-        fetch("/api/emails"),
-        fetch("/api/news"),
-        fetch("/api/finances"),
-        fetch("/api/ai-config")
+        fetch(getApiUrl("/api/menu")),
+        fetch(getApiUrl("/api/packages")),
+        fetch(getApiUrl("/api/orders")),
+        fetch(getApiUrl("/api/users")),
+        fetch(getApiUrl("/api/logs")),
+        fetch(getApiUrl("/api/emails")),
+        fetch(getApiUrl("/api/news")),
+        fetch(getApiUrl("/api/finances")),
+        fetch(getApiUrl("/api/ai-config"))
       ]);
 
       if (mRes.ok) setMenuList(await mRes.json());
@@ -104,18 +108,125 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   }, [refreshKey]);
 
   // Actions
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [updatingUserPass, setUpdatingUserPass] = useState<User | null>(null);
+  const [newUserPassword, setNewUserPassword] = useState("");
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: "menu" | "package") => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingImage(true);
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = async () => {
+      try {
+        const img = new Image();
+        img.src = reader.result as string;
+        img.onload = async () => {
+          const canvas = document.createElement("canvas");
+          const MAX_WIDTH = 800;
+          const MAX_HEIGHT = 600;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) throw new Error("Gagal mengambil context canvas 2D");
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Convert to WebP
+          const webpData = canvas.toDataURL("image/webp", 0.85);
+
+          // Upload to backend
+          const uploadRes = await fetch(getApiUrl("/api/upload"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              base64Data: webpData,
+              fileName: file.name.replace(/\.[^/.]+$/, "") + ".webp",
+              fileType: "image/webp"
+            })
+          });
+
+          if (!uploadRes.ok) {
+            throw new Error("Gagal mengunggah gambar ke server");
+          }
+
+          const uploadData = await uploadRes.json();
+          if (type === "menu") {
+            if (editingMenu) {
+              setEditingMenu(prev => prev ? { ...prev, image: uploadData.publicUrl } : null);
+            } else {
+              setNewMenu(prev => ({ ...prev, image: uploadData.publicUrl }));
+            }
+          } else {
+            if (editingPack) {
+              setEditingPack(prev => prev ? { ...prev, image: uploadData.publicUrl } : null);
+            } else {
+              setNewPack(prev => ({ ...prev, image: uploadData.publicUrl }));
+            }
+          }
+        };
+      } catch (err: any) {
+        alert("Gagal memproses gambar: " + err.message);
+      } finally {
+        setIsUploadingImage(false);
+      }
+    };
+  };
+
+  const handleChangeUserPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!updatingUserPass) return;
+    try {
+      const res = await fetch(getApiUrl(`/api/users/${updatingUserPass.id}/password`), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: newUserPassword })
+      });
+      if (res.ok) {
+        alert(`Password untuk kawan ${updatingUserPass.name} berhasil diubah!`);
+        setUpdatingUserPass(null);
+        setNewUserPassword("");
+        setRefreshKey(p => p + 1);
+      } else {
+        const errData = await res.json();
+        alert("Gagal mengubah password: " + errData.error);
+      }
+    } catch (err: any) {
+      alert("Gagal menghubungi server: " + err.message);
+    }
+  };
 
   // 1. Menu Actions
   const handleAddMenu = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch("/api/menu", {
-        method: "POST",
+      const url = editingMenu ? `/api/menu/${editingMenu.id}` : "/api/menu";
+      const method = editingMenu ? "PUT" : "POST";
+      const body = editingMenu ? editingMenu : newMenu;
+      const res = await fetch(getApiUrl(url), {
+        method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newMenu)
+        body: JSON.stringify(body)
       });
       if (res.ok) {
         setIsMenuOpen(false);
+        setEditingMenu(null);
         setNewMenu({
           name: "", priceReg: 12, priceLarge: 17, isHot: false, isAvailable: true,
           image: "https://images.unsplash.com/photo-1541167760496-1628856ab772?w=500",
@@ -131,7 +242,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   const handleDeleteMenu = async (id: string) => {
     if (!confirm("Hapus menu kopi ini kawan?")) return;
     try {
-      const res = await fetch(`/api/menu/${id}`, { method: "DELETE" });
+      const res = await fetch(getApiUrl(`/api/menu/${id}`), { method: "DELETE" });
       if (res.ok) {
         setRefreshKey(p => p + 1);
       }
@@ -142,7 +253,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
 
   const handleToggleAvailability = async (item: MenuItem) => {
     try {
-      await fetch(`/api/menu/${item.id}`, {
+      await fetch(getApiUrl(`/api/menu/${item.id}`), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isAvailable: !item.isAvailable })
@@ -153,10 +264,44 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
     }
   };
 
+  const handleSavePack = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const url = editingPack ? `/api/packages/${editingPack.id}` : "/api/packages";
+      const method = editingPack ? "PUT" : "POST";
+      const body = editingPack ? { ...editingPack } : { ...newPack };
+      const res = await fetch(getApiUrl(url), {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      if (res.ok) {
+        setIsPackOpen(false);
+        setEditingPack(null);
+        setNewPack({ name: "", price: 25, items: [], description: "", badge: "Promo", image: "" });
+        setRefreshKey(p => p + 1);
+      }
+    } catch (err) {
+      console.error("Gagal menyimpan paket:", err);
+    }
+  };
+
+  const handleDeletePack = async (id: string) => {
+    if (!confirm("Hapus paket hemat ini kawan?")) return;
+    try {
+      const res = await fetch(getApiUrl(`/api/packages/${id}`), { method: "DELETE" });
+      if (res.ok) {
+        setRefreshKey(p => p + 1);
+      }
+    } catch (err) {
+      console.error("Gagal menghapus paket:", err);
+    }
+  };
+
   // 2. Orders Action
   const handleUpdateOrderStatus = async (id: string, status: Order["status"]) => {
     try {
-      const res = await fetch(`/api/orders/${id}/status`, {
+      const res = await fetch(getApiUrl(`/api/orders/${id}/status`), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status })
@@ -173,7 +318,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   const handleSaveAiPrompt = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch("/api/ai-config", {
+      const res = await fetch(getApiUrl("/api/ai-config"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(aiConfig)
@@ -191,7 +336,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   const handleAddNews = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch("/api/news", {
+      const res = await fetch(getApiUrl("/api/news"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newNews)
@@ -487,6 +632,13 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                               <td className="p-4 text-center">
                                 <div className="inline-flex gap-1 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-lg">
                                   <button
+                                    onClick={() => setSelectedInvoiceOrder(order)}
+                                    className="text-[10px] font-bold px-2 py-1 bg-amber-900 text-amber-50 hover:bg-amber-850 rounded cursor-pointer"
+                                    title="Invoice"
+                                  >
+                                    Invoice
+                                  </button>
+                                  <button
                                     onClick={() => handleUpdateOrderStatus(order.id, "preparing")}
                                     className="text-[10px] font-bold px-2 py-1 bg-white dark:bg-zinc-700 hover:bg-orange-100 dark:hover:bg-zinc-650 rounded cursor-pointer"
                                     title="Seduh / Proses"
@@ -544,15 +696,20 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                       onSubmit={handleAddMenu}
                       className="p-6 bg-white dark:bg-zinc-900 border border-amber-900/10 rounded-2xl shadow-md space-y-4"
                     >
-                      <h4 className="font-serif font-bold text-lg text-amber-950 dark:text-amber-100 border-b border-zinc-100 dark:border-zinc-800 pb-2">Buat Menu Baru</h4>
+                      <h4 className="font-serif font-bold text-lg text-amber-955 dark:text-amber-100 border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                        {editingMenu ? `Edit Menu: ${editingMenu.name}` : "Buat Menu Baru"}
+                      </h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                         <div>
                           <label className="block text-xs font-bold text-zinc-450 uppercase mb-1">Nama Minuman</label>
                           <input
                             type="text"
                             placeholder="E.g., Ice Coffee Avocado"
-                            value={newMenu.name}
-                            onChange={(e) => setNewMenu({ ...newMenu, name: e.target.value })}
+                            value={editingMenu ? editingMenu.name : newMenu.name}
+                            onChange={(e) => {
+                              if (editingMenu) setEditingMenu({ ...editingMenu, name: e.target.value });
+                              else setNewMenu({ ...newMenu, name: e.target.value });
+                            }}
                             className="w-full text-xs px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border rounded-xl"
                             required
                           />
@@ -562,8 +719,12 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                           <input
                             type="number"
                             placeholder="E.g., 15"
-                            value={newMenu.priceReg}
-                            onChange={(e) => setNewMenu({ ...newMenu, priceReg: parseInt(e.target.value) || 0 })}
+                            value={editingMenu ? editingMenu.priceReg : newMenu.priceReg}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value) || 0;
+                              if (editingMenu) setEditingMenu({ ...editingMenu, priceReg: val });
+                              else setNewMenu({ ...newMenu, priceReg: val });
+                            }}
                             className="w-full text-xs px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border rounded-xl"
                             required
                           />
@@ -573,8 +734,12 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                           <input
                             type="number"
                             placeholder="E.g., 20"
-                            value={newMenu.priceLarge || ""}
-                            onChange={(e) => setNewMenu({ ...newMenu, priceLarge: parseInt(e.target.value) || undefined })}
+                            value={editingMenu ? (editingMenu.priceLarge || "") : (newMenu.priceLarge || "")}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value) || undefined;
+                              if (editingMenu) setEditingMenu({ ...editingMenu, priceLarge: val });
+                              else setNewMenu({ ...newMenu, priceLarge: val });
+                            }}
                             className="w-full text-xs px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border rounded-xl"
                           />
                         </div>
@@ -582,17 +747,37 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                           <label className="block text-xs font-bold text-zinc-450 uppercase mb-1">Ilustrasi Cover (Link Image)</label>
                           <input
                             type="text"
-                            value={newMenu.image}
-                            onChange={(e) => setNewMenu({ ...newMenu, image: e.target.value })}
+                            value={editingMenu ? editingMenu.image : newMenu.image}
+                            onChange={(e) => {
+                              if (editingMenu) setEditingMenu({ ...editingMenu, image: e.target.value });
+                              else setNewMenu({ ...newMenu, image: e.target.value });
+                            }}
                             className="w-full text-xs px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border rounded-xl"
                             required
                           />
                         </div>
                         <div>
+                          <label className="block text-xs font-bold text-zinc-450 uppercase mb-1">Upload Foto Produk</label>
+                          <div className="flex gap-2 items-center">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => handleImageUpload(e, "menu")}
+                              className="w-full text-xs text-zinc-500"
+                              id="menu-file-upload"
+                            />
+                            {isUploadingImage && <div className="w-4 h-4 border-2 border-amber-900 border-t-transparent rounded-full animate-spin"></div>}
+                          </div>
+                        </div>
+                        <div>
                           <label className="block text-xs font-bold text-zinc-450 uppercase mb-1">Sifat Penyajian</label>
                           <select
-                            value={newMenu.isHot ? "true" : "false"}
-                            onChange={(e) => setNewMenu({ ...newMenu, isHot: e.target.value === "true" })}
+                            value={editingMenu ? (editingMenu.isHot ? "true" : "false") : (newMenu.isHot ? "true" : "false")}
+                            onChange={(e) => {
+                              const val = e.target.value === "true";
+                              if (editingMenu) setEditingMenu({ ...editingMenu, isHot: val });
+                              else setNewMenu({ ...newMenu, isHot: val });
+                            }}
                             className="w-full text-xs px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border rounded-xl"
                           >
                             <option value="false">Ice Drink (Dingin)</option>
@@ -602,8 +787,12 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                         <div>
                           <label className="block text-xs font-bold text-zinc-450 uppercase mb-1">Ketersediaan Stok</label>
                           <select
-                            value={newMenu.isAvailable ? "true" : "false"}
-                            onChange={(e) => setNewMenu({ ...newMenu, isAvailable: e.target.value === "true" })}
+                            value={editingMenu ? (editingMenu.isAvailable ? "true" : "false") : (newMenu.isAvailable ? "true" : "false")}
+                            onChange={(e) => {
+                              const val = e.target.value === "true";
+                              if (editingMenu) setEditingMenu({ ...editingMenu, isAvailable: val });
+                              else setNewMenu({ ...newMenu, isAvailable: val });
+                            }}
                             className="w-full text-xs px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border rounded-xl"
                           >
                             <option value="true">Ada Stok</option>
@@ -616,8 +805,11 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                         <textarea
                           rows={2}
                           placeholder="Tuliskan racikan komposisi..."
-                          value={newMenu.description}
-                          onChange={(e) => setNewMenu({ ...newMenu, description: e.target.value })}
+                          value={editingMenu ? editingMenu.description : newMenu.description}
+                          onChange={(e) => {
+                            if (editingMenu) setEditingMenu({ ...editingMenu, description: e.target.value });
+                            else setNewMenu({ ...newMenu, description: e.target.value });
+                          }}
                           className="w-full text-xs px-3 py-3 bg-zinc-50 dark:bg-zinc-800 border rounded-xl"
                           required
                         />
@@ -625,7 +817,10 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                       <div className="flex justify-end gap-2">
                         <button
                           type="button"
-                          onClick={() => setIsMenuOpen(false)}
+                          onClick={() => {
+                            setIsMenuOpen(false);
+                            setEditingMenu(null);
+                          }}
                           className="px-4 py-2 text-xs bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-805 rounded-xl cursor-pointer"
                         >
                           Batal
@@ -670,13 +865,23 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                           <div className="flex gap-2 pt-2">
                             <button
                               onClick={() => handleToggleAvailability(item)}
-                              className={`flex-1 text-[11px] font-bold py-1.5 px-2 rounded-xl transition-all cursor-pointer ${
+                              className={`flex-grow text-[11px] font-bold py-1.5 px-2 rounded-xl transition-all cursor-pointer ${
                                 item.isAvailable
                                   ? "bg-green-500/10 hover:bg-green-500/20 text-green-500"
                                   : "bg-red-500/10 hover:bg-red-500/20 text-red-500"
                               }`}
                             >
                               {item.isAvailable ? "Ready" : "Habis"}
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingMenu(item);
+                                setIsMenuOpen(true);
+                              }}
+                              className="p-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-xl transition-all cursor-pointer"
+                              title="Edit Kopi"
+                            >
+                              <Edit2 className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => handleDeleteMenu(item.id)}
@@ -703,39 +908,217 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                     </span>
                     <button
                       onClick={() => {
-                        alert("Gunakan template pre-seed untuk menambah bundel baru kawan!");
+                        setEditingPack(null);
+                        setNewPack({
+                          name: "", price: 25, items: [], description: "", badge: "Promo"
+                        });
+                        setIsPackOpen(!isPackOpen);
                       }}
-                      className="bg-amber-950 hover:bg-amber-900 text-amber-50 text-xs font-bold py-2 px-4 rounded-xl cursor-pointer"
+                      className="bg-amber-950 hover:bg-amber-900 text-amber-50 text-xs font-bold py-2 px-4 rounded-xl cursor-pointer flex items-center gap-1.5"
                     >
+                      <Plus className="w-4 h-4" />
                       Buat Paket Baru
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {packages.map((pack) => (
-                      <div key={pack.id} className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-150 dark:border-zinc-800 shadow-sm space-y-4">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 font-bold px-2 py-0.5 rounded-full uppercase">
-                            {pack.badge || "PROMO"}
-                          </span>
-                          <span className="font-serif font-black text-xl text-amber-900 dark:text-amber-400">Rp {pack.price}.000</span>
+                  {/* Pack Add/Edit Form */}
+                  {isPackOpen && (
+                    <motion.form
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      onSubmit={handleSavePack}
+                      className="p-6 bg-white dark:bg-zinc-900 border border-amber-900/10 rounded-2xl shadow-md space-y-4"
+                    >
+                      <h4 className="font-serif font-bold text-lg text-amber-955 dark:text-amber-100 border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                        {editingPack ? `Edit Paket: ${editingPack.name}` : "Buat Paket Hemat Baru"}
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-left">
+                        <div>
+                          <label className="block text-xs font-bold text-amber-900 dark:text-amber-400 uppercase mb-1">Nama Paket</label>
+                          <input
+                            type="text"
+                            value={editingPack ? editingPack.name : newPack.name}
+                            onChange={(e) => {
+                              if (editingPack) setEditingPack({ ...editingPack, name: e.target.value });
+                              else setNewPack({ ...newPack, name: e.target.value });
+                            }}
+                            className="w-full px-3 py-2 border rounded-xl dark:bg-zinc-800 dark:border-zinc-700 text-sm text-zinc-900 dark:text-zinc-100"
+                            placeholder="Contoh: Paket Duo TPS"
+                            required
+                          />
                         </div>
                         <div>
-                          <h4 className="font-serif font-bold text-lg dark:text-amber-50">{pack.name}</h4>
-                          <p className="text-xs text-zinc-500 leading-relaxed mt-1">{pack.description}</p>
+                          <label className="block text-xs font-bold text-amber-900 dark:text-amber-400 uppercase mb-1">Harga (K - Ribu)</label>
+                          <input
+                            type="number"
+                            value={editingPack ? editingPack.price : newPack.price}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value) || 0;
+                              if (editingPack) setEditingPack({ ...editingPack, price: val });
+                              else setNewPack({ ...newPack, price: val });
+                            }}
+                            className="w-full px-3 py-2 border rounded-xl dark:bg-zinc-800 dark:border-zinc-700 text-sm text-zinc-900 dark:text-zinc-100"
+                            required
+                          />
                         </div>
-                        <div className="bg-zinc-50 dark:bg-zinc-950/40 p-3 rounded-xl space-y-1.5 text-xs">
-                          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide">Minuman Terkait:</span>
-                          <ul className="list-disc pl-4 space-y-0.5 font-sans font-medium text-zinc-700 dark:text-zinc-350">
-                            {pack.items.map((it, idx) => {
-                              const found = menuList.find(m => m.id === it);
-                              return (
-                                <li key={idx}>
-                                  {found ? found.name : "Kopi Spesial"}
-                                </li>
-                              )
-                            })}
-                          </ul>
+                        <div>
+                          <label className="block text-xs font-bold text-amber-900 dark:text-amber-400 uppercase mb-1">Badge Promo</label>
+                          <input
+                            type="text"
+                            value={editingPack ? editingPack.badge || "" : newPack.badge || ""}
+                            onChange={(e) => {
+                              if (editingPack) setEditingPack({ ...editingPack, badge: e.target.value });
+                              else setNewPack({ ...newPack, badge: e.target.value });
+                            }}
+                            className="w-full px-3 py-2 border rounded-xl dark:bg-zinc-800 dark:border-zinc-700 text-sm text-zinc-900 dark:text-zinc-100"
+                            placeholder="Contoh: Hemat, Terlaris"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-amber-900 dark:text-amber-400 uppercase mb-1">Foto Cover Paket (Link/URL)</label>
+                          <input
+                            type="text"
+                            value={editingPack ? editingPack.image || "" : newPack.image || ""}
+                            onChange={(e) => {
+                              if (editingPack) setEditingPack({ ...editingPack, image: e.target.value });
+                              else setNewPack({ ...newPack, image: e.target.value });
+                            }}
+                            className="w-full px-3 py-2 border rounded-xl dark:bg-zinc-800 dark:border-zinc-700 text-sm text-zinc-900 dark:text-zinc-100"
+                            placeholder="Contoh: /Produk/WhatsApp Image..."
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-amber-900 dark:text-amber-400 uppercase mb-1">Upload Foto Cover Paket</label>
+                          <div className="flex gap-2 items-center">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => handleImageUpload(e, "package")}
+                              className="w-full text-xs text-zinc-500"
+                              id="pack-file-upload"
+                            />
+                            {isUploadingImage && <div className="w-4 h-4 border-2 border-amber-900 border-t-transparent rounded-full animate-spin"></div>}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-left">
+                        <label className="block text-xs font-bold text-amber-900 dark:text-amber-400 uppercase mb-1">Deskripsi Paket</label>
+                        <textarea
+                          value={editingPack ? editingPack.description : newPack.description}
+                          onChange={(e) => {
+                            if (editingPack) setEditingPack({ ...editingPack, description: e.target.value });
+                            else setNewPack({ ...newPack, description: e.target.value });
+                          }}
+                          className="w-full px-3 py-2 border rounded-xl dark:bg-zinc-800 dark:border-zinc-700 text-sm text-zinc-900 dark:text-zinc-100"
+                          rows={2}
+                          placeholder="Tuliskan keuntungan paket kawan..."
+                          required
+                        />
+                      </div>
+
+                      {/* Items selection checkboxes */}
+                      <div className="text-left">
+                        <label className="block text-xs font-bold text-amber-900 dark:text-amber-400 uppercase mb-1">Pilih Produk untuk Paket</label>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-3 border rounded-xl bg-zinc-50 dark:bg-zinc-950/20 max-h-40 overflow-y-auto dark:border-zinc-800">
+                          {menuList.map((m) => {
+                            const isChecked = editingPack
+                              ? editingPack.items.includes(m.id)
+                              : newPack.items.includes(m.id);
+                            return (
+                              <label key={m.id} className="flex items-center gap-2 text-xs cursor-pointer select-none">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={(e) => {
+                                    const checked = e.target.checked;
+                                    if (editingPack) {
+                                      const updatedItems = checked
+                                        ? [...editingPack.items, m.id]
+                                        : editingPack.items.filter(id => id !== m.id);
+                                      setEditingPack({ ...editingPack, items: updatedItems });
+                                    } else {
+                                      const updatedItems = checked
+                                        ? [...newPack.items, m.id]
+                                        : newPack.items.filter(id => id !== m.id);
+                                      setNewPack({ ...newPack, items: updatedItems });
+                                    }
+                                  }}
+                                  className="rounded border-zinc-300 dark:border-zinc-700 text-amber-900 focus:ring-amber-800"
+                                />
+                                <span className="truncate text-zinc-900 dark:text-zinc-150">{m.name}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsPackOpen(false);
+                            setEditingPack(null);
+                          }}
+                          className="px-4 py-2 border rounded-xl text-xs font-bold hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-zinc-700 dark:text-zinc-300"
+                        >
+                          Batal
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-4 py-2 bg-amber-900 hover:bg-amber-800 text-amber-50 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                        >
+                          Simpan Paket
+                        </button>
+                      </div>
+                    </motion.form>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {packages.map((pack) => (
+                      <div key={pack.id} className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-150 dark:border-zinc-800 shadow-sm flex flex-col justify-between space-y-4">
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 font-bold px-2 py-0.5 rounded-full uppercase">
+                              {pack.badge || "PROMO"}
+                            </span>
+                            <span className="font-serif font-black text-xl text-amber-900 dark:text-amber-400">Rp {pack.price}.000</span>
+                          </div>
+                          <div>
+                            <h4 className="font-serif font-bold text-lg dark:text-amber-50 text-left">{pack.name}</h4>
+                            <p className="text-xs text-zinc-550 dark:text-zinc-400 leading-relaxed mt-1 text-left">{pack.description}</p>
+                          </div>
+                          <div className="bg-zinc-50 dark:bg-zinc-950/40 p-3 rounded-xl space-y-1.5 text-xs text-left">
+                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide">Minuman Terkait:</span>
+                            <ul className="list-disc pl-4 space-y-0.5 font-sans font-medium text-zinc-700 dark:text-zinc-350">
+                              {pack.items.map((it, idx) => {
+                                const found = menuList.find(m => m.id === it);
+                                return (
+                                  <li key={idx}>
+                                    {found ? found.name : "Kopi Spesial"}
+                                  </li>
+                                )
+                              })}
+                            </ul>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 justify-end border-t pt-3 mt-2 dark:border-zinc-800">
+                          <button
+                            onClick={() => {
+                              setEditingPack(pack);
+                              setIsPackOpen(true);
+                            }}
+                            className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 transition-colors cursor-pointer"
+                            title="Edit Paket"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeletePack(pack.id)}
+                            className="p-1.5 hover:bg-red-500/10 rounded-lg text-red-500 transition-colors cursor-pointer"
+                            title="Hapus Paket"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -950,8 +1333,10 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                             <th className="p-3">Nama Pengguna</th>
                             <th className="p-3">Alamat Surat & Email</th>
                             <th className="p-3">Peranan</th>
+                            <th className="p-3">Status Member</th>
                             <th className="p-3">Kunjungan Beli</th>
                             <th className="p-3">Aktivitas Terakhir</th>
+                            <th className="p-3 text-center">Aksi</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -967,8 +1352,27 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                                   {usr.role}
                                 </span>
                               </td>
+                              <td className="p-3">
+                                <span className={`text-[9px] uppercase tracking-wider font-extrabold px-2.5 py-0.5 rounded-full ${
+                                  usr.isMember ? "bg-amber-100 text-amber-800 border border-amber-300/40" : "bg-zinc-100 text-zinc-550"
+                                }`}>
+                                  {usr.isMember ? "Member" : "Non-Member"}
+                                </span>
+                              </td>
                               <td className="p-3 font-bold">{usr.ordersCount} kali</td>
                               <td className="p-3 text-xs text-zinc-500">{usr.lastActive}</td>
+                              <td className="p-3 text-center">
+                                <button
+                                  onClick={() => {
+                                    setUpdatingUserPass(usr);
+                                    setNewUserPassword("");
+                                  }}
+                                  className="px-2.5 py-1 bg-amber-900/10 hover:bg-amber-900 hover:text-amber-50 text-amber-900 text-xs font-bold rounded-lg cursor-pointer transition-all flex items-center gap-1.5 mx-auto"
+                                >
+                                  <Lock className="w-3.5 h-3.5" />
+                                  Ubah Password
+                                </button>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -1136,6 +1540,208 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
           )}
         </div>
       </main>
+
+      {/* Invoice Panel Modal */}
+      <AnimatePresence>
+        {selectedInvoiceOrder && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs font-sans print:bg-white print:p-0">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-2xl bg-amber-50 dark:bg-zinc-900 rounded-3xl overflow-hidden shadow-2xl border border-amber-900/10 text-zinc-900 dark:text-zinc-100 flex flex-col max-h-[90vh] print:max-h-none print:shadow-none print:border-none print:rounded-none print:w-full print:bg-white print:text-black"
+            >
+              {/* Header */}
+              <div className="px-6 py-4 bg-gradient-to-r from-amber-900 to-amber-955 text-amber-50 flex justify-between items-center print:hidden">
+                <div className="flex items-center gap-2">
+                  <ShoppingBag className="w-5 h-5 text-amber-300" />
+                  <span className="font-serif font-bold text-base">Invoice Panel - Tampa Seduh</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => window.print()}
+                    className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-lg cursor-pointer transition-all"
+                  >
+                    Cetak Invoice
+                  </button>
+                  <button
+                    onClick={() => setSelectedInvoiceOrder(null)}
+                    className="p-1 rounded-full text-amber-200 hover:bg-white/10 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Invoice Body */}
+              <div className="p-6 overflow-y-auto flex-1 space-y-6 print:overflow-visible print:p-0">
+                {/* Brand Header (Visible in print) */}
+                <div className="hidden print:flex justify-between items-center border-b-2 border-stone-850 pb-4 mb-4">
+                  <div>
+                    <h1 className="text-2xl font-serif font-black tracking-tight text-stone-900">TAMPA SEDUH.</h1>
+                    <p className="text-xs text-stone-500 font-mono">Jl. Tangkudeagan No. 2 Kotabunan Selatan</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm font-bold uppercase tracking-wider text-stone-500">Invoice Belanja</span>
+                    <p className="text-xs font-mono font-bold mt-1 text-stone-900">#{selectedInvoiceOrder.id}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-left">
+                  <div className="space-y-1">
+                    <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block font-mono">Pelanggan</span>
+                    <strong className="text-base text-zinc-905 dark:text-zinc-100 print:text-black">{selectedInvoiceOrder.customerName}</strong>
+                    <p className="text-xs font-mono text-zinc-500">{selectedInvoiceOrder.email}</p>
+                    <p className="text-xs font-mono font-bold text-amber-900 dark:text-amber-400 print:text-stone-900">{selectedInvoiceOrder.whatsapp}</p>
+                  </div>
+
+                  <div className="space-y-1 sm:text-right print:text-right">
+                    <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block font-mono">Metode Antar & Tanggal</span>
+                    <strong className="text-sm text-zinc-905 dark:text-zinc-100 print:text-black block">
+                      {selectedInvoiceOrder.deliveryMethod === "pickup" ? "Ambil Sendiri di Kedai" : "Delivery Antar"}
+                    </strong>
+                    <span className="text-xs text-zinc-500 block font-mono">
+                      {new Date(selectedInvoiceOrder.createdAt).toLocaleString("id-ID", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        timeZone: "Asia/Makassar"
+                      })} WITA
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 text-left bg-white dark:bg-zinc-950 p-4 rounded-2xl border border-zinc-200/40 dark:border-zinc-800 print:bg-white print:border-stone-850 print:p-0 print:border-t print:border-b print:rounded-none">
+                  <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block mb-2 print:text-stone-500 font-mono">Rincian Belanja</span>
+                  <div className="space-y-2">
+                    {selectedInvoiceOrder.items.map((item, idx) => (
+                      <div key={idx} className="flex justify-between items-center text-xs text-zinc-700 dark:text-zinc-350 print:text-black">
+                        <span>
+                          {item.name} ({item.size}) <strong className="text-zinc-400 print:text-stone-500">x{item.quantity}</strong>
+                        </span>
+                        <span className="font-mono">Rp {item.price * item.quantity}.000</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="border-t border-zinc-150 dark:border-zinc-800 pt-3 mt-3 space-y-1 text-xs text-zinc-500 print:border-stone-850 print:text-black">
+                    <div className="flex justify-between">
+                      <span>Subtotal:</span>
+                      <span className="font-mono">Rp {selectedInvoiceOrder.subtotal || selectedInvoiceOrder.total}.000</span>
+                    </div>
+                    {selectedInvoiceOrder.shippingCost && selectedInvoiceOrder.shippingCost > 0 ? (
+                      <div className="flex justify-between">
+                        <span>Ongkir Delivery:</span>
+                        <span className="font-mono">Rp {selectedInvoiceOrder.shippingCost}.000</span>
+                      </div>
+                    ) : null}
+                    {selectedInvoiceOrder.shippingDiscount && selectedInvoiceOrder.shippingDiscount > 0 ? (
+                      <div className="flex justify-between text-amber-600 dark:text-amber-400 print:text-black font-semibold">
+                        <span>Diskon Ongkir Member:</span>
+                        <span className="font-mono">-Rp {selectedInvoiceOrder.shippingDiscount}.000</span>
+                      </div>
+                    ) : null}
+                    <div className="border-t pt-2 mt-2 dark:border-zinc-800 flex justify-between items-center font-bold text-[#8B5E3C] dark:text-amber-400 text-sm print:border-stone-850 print:text-black">
+                      <span>Grand Total:</span>
+                      <span className="font-mono text-base">Rp {selectedInvoiceOrder.total}.000</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-left bg-white dark:bg-zinc-950 p-4 rounded-2xl border border-zinc-200/40 dark:border-zinc-800 print:bg-white print:border-none print:p-0">
+                  <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block mb-1 font-mono">Alamat Pengiriman & Catatan</span>
+                  <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-205 print:text-black">{selectedInvoiceOrder.address}</p>
+                  {selectedInvoiceOrder.notes && (
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 italic">Catatan: {selectedInvoiceOrder.notes}</p>
+                  )}
+                </div>
+
+                {/* QRIS Proof Image (If uploaded) */}
+                {selectedInvoiceOrder.paymentProofUrl && (
+                  <div className="space-y-2 pt-2 border-t dark:border-zinc-800 print:hidden text-left">
+                    <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block text-left font-mono">Lampiran Bukti Transfer QRIS</span>
+                    <div className="max-w-[200px] border dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm hover:opacity-90 transition-opacity">
+                      <a href={selectedInvoiceOrder.paymentProofUrl} target="_blank" rel="noreferrer">
+                        <img 
+                          src={selectedInvoiceOrder.paymentProofUrl} 
+                          alt="Bukti Bayar" 
+                          className="w-full h-auto object-cover max-h-[140px]"
+                        />
+                      </a>
+                    </div>
+                    <span className="text-[9px] text-zinc-400 block italic font-mono">Klik gambar untuk melihat resolusi penuh di tab baru.</span>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Ubah Password User */}
+      <AnimatePresence>
+        {updatingUserPass && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs font-sans">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-md bg-amber-50 dark:bg-zinc-900 rounded-3xl overflow-hidden shadow-2xl border border-amber-900/10 text-zinc-900 dark:text-zinc-100"
+            >
+              <form onSubmit={handleChangeUserPassword} className="p-6 space-y-4">
+                <div className="flex justify-between items-center border-b pb-2 border-zinc-200 dark:border-zinc-800">
+                  <h4 className="font-serif font-bold text-base text-amber-955 dark:text-amber-100 flex items-center gap-2">
+                    <Lock className="w-5 h-5 text-amber-850" />
+                    Ubah Password Kawan
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => setUpdatingUserPass(null)}
+                    className="p-1 rounded-full text-zinc-400 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="space-y-1.5 text-left text-xs">
+                  <p><strong>Nama:</strong> {updatingUserPass.name}</p>
+                  <p><strong>Email:</strong> {updatingUserPass.email}</p>
+                </div>
+
+                <div className="text-left space-y-1">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-550">Password Baru</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ketik password baru..."
+                    value={newUserPassword}
+                    onChange={(e) => setNewUserPassword(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border rounded-xl dark:bg-zinc-800 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 focus:outline-none"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setUpdatingUserPass(null)}
+                    className="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-805 rounded-xl cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-amber-900 text-amber-50 font-bold rounded-xl hover:bg-amber-800 cursor-pointer"
+                  >
+                    Simpan Password
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

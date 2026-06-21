@@ -3,6 +3,8 @@ import { BookOpen, User, Calendar, Tag, ArrowRight, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { BlogNews } from "../types";
 
+import { getApiUrl } from "../lib/api";
+
 export default function CoffeeNews() {
   const [blogs, setBlogs] = useState<BlogNews[]>([]);
   const [activeBlog, setActiveBlog] = useState<BlogNews | null>(null);
@@ -10,7 +12,7 @@ export default function CoffeeNews() {
 
   const fetchNews = async () => {
     try {
-      const res = await fetch("/api/news");
+      const res = await fetch(getApiUrl("/api/news"));
       if (res.ok) {
         const data = await res.ok ? await res.json() : [];
         setBlogs(data);

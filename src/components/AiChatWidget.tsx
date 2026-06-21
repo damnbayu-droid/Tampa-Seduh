@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from "react";
 import { MessageSquare, X, Send, Coffee, Compass, Phone } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
+import { getApiUrl } from "../lib/api";
+
 interface Message {
   role: "user" | "model";
   text: string;
@@ -53,7 +55,7 @@ export default function AiChatWidget() {
         text: m.text
       }));
 
-      const response = await fetch("/api/chat", {
+      const response = await fetch(getApiUrl("/api/chat"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: chatHistory })
@@ -108,7 +110,7 @@ export default function AiChatWidget() {
                   <h4 className="font-serif font-bold tracking-wide">Asisten Tampa Seduh</h4>
                   <p className="text-[10px] text-green-300 flex items-center gap-1.5 font-sans font-medium">
                     <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-ping"></span>
-                    Gemini AI Active
+                    GPT-5.4-mini Active
                   </p>
                 </div>
               </div>
@@ -205,7 +207,7 @@ export default function AiChatWidget() {
         id="btn-toggle-chatbot"
       >
         <MessageSquare className="w-6 h-6 text-amber-300" />
-        {isOpen ? "Tutup Chat" : "Tanya AI"}
+        {isOpen ? "Tutup Chat" : "Tanya Emat"}
       </motion.button>
     </div>
   );
