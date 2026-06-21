@@ -2,6 +2,7 @@ import express from "express";
 import path from "path";
 import dotenv from "dotenv";
 import OpenAI from "openai";
+import { Resend } from "resend";
 import { createClient } from "@supabase/supabase-js";
 import ws from "ws";
 import { MenuItem, CoffeePackage, Order, AuditLog, User, BlogNews, EmailLog, FinancialSummary } from "./src/types.js";
@@ -11,6 +12,9 @@ dotenv.config();
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || "",
 });
+
+const resendApiKey = process.env.RESEND_API_KEY || "";
+const resend = new Resend(resendApiKey);
 
 const supabaseUrl = process.env.SUPABASE_URL || "";
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "";
@@ -784,7 +788,7 @@ app.get("/api/orders", (req, res) => {
   res.json(orders);
 });
 
-app.post("/api/orders", (req, res) => {
+app.post("/api/orders", async (req, res) => {
   const { customerName, whatsapp, email, address, items, subtotal, shippingCost, deliveryMethod, notes, paymentProofUrl } = req.body;
   if (!customerName || !whatsapp || !address || !items || !items.length) {
     return res.status(400).json({ error: "Missing required order data" });
@@ -861,17 +865,63 @@ app.post("/api/orders", (req, res) => {
     });
   }
 
-  // Add system email log automatically
-  const newEmailLogObj: EmailLog = {
-    id: "em-" + (emailLogs.length + 1),
-    recipient: email || "kopi@tampaseduh.com",
-    subject: `Tagihan Order Baru Tampa Seduh ${newOrder.id}`,
-    status: "Sent",
+  // Send email summary using Resend
+  let emailStatus = "Pending";
+  let emailBody = `Terima kasih kawan ${customerName}! Barista kami sedang mempersiapkan pesanan Anda senilai Rp ${finalTotal}.000.`;
+
+  if (email && resendApiKey) {
+    try {
+      const itemsHtml = items.map((i: any) => `<li>${i.name} (${i.size || 'Regular'}) x${i.quantity} - Rp ${i.price * i.quantity}.000</li>`).join('');
+      const invoiceHtml = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+          <h2 style="color: #8B5E3C; text-align: center;">INVOICE TAMPA SEDUH</h2>
+          <p>Halo <strong>${customerName}</strong>,</p>
+          <p>Terima kasih telah memesan kopi di Tampa Seduh! Berikut adalah detail pesanan Anda (Order #${newOrder.id}):</p>
+          <ul>
+            ${itemsHtml}
+          </ul>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+          <p><strong>Subtotal:</strong> Rp ${finalSubtotal}.000</p>
+          <p><strong>Ongkir:</strong> Rp ${finalShippingCost}.000</p>
+          <p><strong>Diskon Member:</strong> -Rp ${shippingDiscount}.000</p>
+          <h3><strong>Total Tagihan:</strong> Rp ${finalTotal}.000</h3>
+          <p><strong>Metode Pengantaran:</strong> ${deliveryMethod}</p>
+          <p><strong>Alamat:</strong> ${address}</p>
+          ${notes ? `<p><strong>Catatan:</strong> ${notes}</p>` : ''}
+          <br/>
+          <p>Pesanan Anda sedang kami proses kawan!</p>
+          <p style="font-size: 12px; color: #888; text-align: center; margin-top: 30px;">Tampa Seduh Street Coffee, Kotabunan Selatan</p>
+        </div>
+      `;
+
+      await resend.emails.send({
+        from: 'Tampa Seduh <onboarding@resend.dev>',
+        to: [email],
+        subject: `Invoice Pesanan #${newOrder.id} - Tampa Seduh`,
+        html: invoiceHtml
+      });
+      emailStatus = "Delivered";
+    } catch (err: any) {
+      console.error("Resend Error:", err);
+      emailStatus = "Failed";
+      emailBody += ` (Error: ${err.message})`;
+    }
+  } else if (!resendApiKey) {
+    console.warn("Resend API Key tidak ditemukan, email tidak dikirim.");
+    emailStatus = "Skipped (No API Key)";
+  } else {
+    emailStatus = "Skipped (No Email)";
+  }
+
+  const newEmailLogObj = {
+    id: "em-" + Date.now(),
+    recipient: email || "Guest",
+    subject: `Order Confirmation #${newOrder.id}`,
+    status: emailStatus,
     timestamp: new Date().toISOString(),
-    body: `Terima kasih kawan ${customerName}! Barista kami sedang mempersiapkan pesanan Anda senilai Rp ${finalTotal}.000.`
+    body: emailBody
   };
   emailLogs.unshift(newEmailLogObj);
-
   writeSupabase('email_logs', 'insert', {}, newEmailLogObj);
 
   // Record audit log

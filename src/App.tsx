@@ -45,7 +45,15 @@ export default function App() {
   const [showPassword, setShowPassword] = useState(false);
   // Google login loading state
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  
+  // Render Error Debugging State
+  const [renderError, setRenderError] = useState<string | null>(null);
 
+  useEffect(() => {
+    const handleError = (e: ErrorEvent) => setRenderError(e.message);
+    window.addEventListener('error', handleError);
+    return () => window.removeEventListener('error', handleError);
+  }, []);
   useEffect(() => {
     const handleLocationChange = () => {
       setCurrentPath(window.location.pathname);

@@ -87,7 +87,7 @@ export interface EmailLog {
   id: string;
   recipient: string;
   subject: string;
-  status: "Delivered" | "Sent" | "Failed";
+  status: "Delivered" | "Sent" | "Failed" | "Pending" | "Skipped (No API Key)" | "Skipped (No Email)";
   timestamp: string;
   body: string;
 }

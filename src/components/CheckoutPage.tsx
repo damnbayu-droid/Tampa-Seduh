@@ -691,7 +691,7 @@ export default function CheckoutPage({
                   </div>
                 )}
 
-                <div className="border-t pt-3 mt-1.5 dark:border-zinc-800 flex justify-between items-center font-bold text-sm text-stone-900 dark:text-amber-100">
+                <div className="border-t pt-3 mt-1.5 dark:border-zinc-800 flex justify-between items-center font-bold text-sm text-stone-900 dark:text-amber-300">
                   <span>Grand Total (QRIS):</span>
                   <span className="font-mono text-base text-[#8B5E3C] dark:text-amber-400">Rp {totalCost}.000</span>
                 </div>
