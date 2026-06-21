@@ -64,6 +64,16 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 // Security Hardening: Helmet
 app.use(helmet({
   crossOriginResourcePolicy: false, // Membiarkan resource (gambar) diakses lintas origin jika diperlukan
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'", "https:", "http:", "data:", "ws:", "wss:"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https:", "http:"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https:", "http:"],
+      imgSrc: ["'self'", "data:", "https:", "http:", "blob:"],
+      connectSrc: ["'self'", "https:", "http:", "ws:", "wss:"],
+      fontSrc: ["'self'", "https:", "http:", "data:"],
+    },
+  },
 }));
 
 // Security Hardening: Rate Limiting
