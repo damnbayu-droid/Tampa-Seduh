@@ -13,6 +13,7 @@ interface UserDashboardProps {
   onSubscribe: () => void;
   isSubscribing: boolean;
   onLogout: () => void;
+  onUpdateProfile?: (updates: Partial<User>) => void;
   darkMode: boolean;
   setDarkMode: (val: boolean) => void;
 }
@@ -24,10 +25,26 @@ export default function UserDashboard({
   onSubscribe,
   isSubscribing,
   onLogout,
+  onUpdateProfile,
   darkMode,
   setDarkMode
-}: UserDashboardProps) {
+}: UserDashboardProps) => {
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: currentUser.name || "",
+    email: currentUser.email || "",
+    whatsapp: currentUser.whatsapp || "",
+    address: currentUser.address || "",
+    avatarUrl: currentUser.avatarUrl || ""
+  });
+
+  const handleSaveProfile = () => {
+    if (onUpdateProfile) {
+      onUpdateProfile(editForm);
+    }
+    setIsEditingProfile(false);
+  };
 
   const isMember = currentUser.isMember || false;
 
@@ -149,6 +166,56 @@ export default function UserDashboard({
                 </div>
               </div>
             )}
+
+            {/* Edit Profile Form Section */}
+            <div className="p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-sm space-y-4">
+              <div className="flex justify-between items-center">
+                <h4 className="font-serif font-bold text-lg text-amber-950 dark:text-amber-100">Profil Saya</h4>
+                <button 
+                  onClick={() => setIsEditingProfile(!isEditingProfile)}
+                  className="text-xs text-amber-600 hover:text-amber-800 font-bold"
+                >
+                  {isEditingProfile ? "Batal" : "Edit Profil"}
+                </button>
+              </div>
+
+              {isEditingProfile ? (
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    placeholder="Nama Lengkap"
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+                    className="w-full px-4 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-sm"
+                  />
+                  <input
+                    type="text"
+                    placeholder="WhatsApp"
+                    value={editForm.whatsapp}
+                    onChange={(e) => setEditForm({...editForm, whatsapp: e.target.value})}
+                    className="w-full px-4 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-sm"
+                  />
+                  <textarea
+                    placeholder="Alamat Pengantaran Default"
+                    value={editForm.address}
+                    onChange={(e) => setEditForm({...editForm, address: e.target.value})}
+                    className="w-full px-4 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-sm"
+                    rows={2}
+                  />
+                  <button 
+                    onClick={handleSaveProfile}
+                    className="w-full py-2.5 bg-green-600 text-white rounded-xl text-sm font-bold mt-2"
+                  >
+                    Simpan Perubahan
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+                  <p><strong>WA:</strong> {currentUser.whatsapp || "-"}</p>
+                  <p><strong>Alamat:</strong> {currentUser.address || "-"}</p>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Column 2 & 3: Order History */}
@@ -232,6 +299,15 @@ export default function UserDashboard({
                             }`}>
                               {order.status === "completed" ? "Selesai" : order.status === "delivering" ? "Diantar" : order.status === "preparing" ? "Disiapkan" : "Menunggu"}
                             </span>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                alert("Invoice sedang disiapkan, kawan!");
+                              }}
+                              className="px-2 py-1 bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded text-[10px] font-bold hover:bg-zinc-300 dark:hover:bg-zinc-700 transition"
+                            >
+                              Cetak Invoice
+                            </button>
                           </div>
                         </div>
 

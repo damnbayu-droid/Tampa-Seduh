@@ -63,8 +63,11 @@ export interface User {
   password?: string;
   role: "admin" | "customer";
   isMember?: boolean;
-  ordersCount: number;
-  lastActive: string;
+  ordersCount?: number;
+  lastActive?: string;
+  avatarUrl?: string;
+  whatsapp?: string;
+  address?: string;
 }
 
 export interface AuditLog {

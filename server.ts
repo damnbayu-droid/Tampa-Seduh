@@ -57,122 +57,68 @@ async function syncFromSupabase() {
   console.log("Mencoba menyinkronkan data dari Supabase...");
 
   try {
-    // 1. Sync Menu
-    const { data: menuData, error: menuErr } = await supabase.from("menu").select("*");
-    if (menuErr) {
-      console.warn("Koneksi Supabase Menu Gagal atau tabel belum dibuat:", menuErr.message);
-    } else if (menuData && menuData.length > 0) {
-      menuItems = menuData.map(m => ({
-        id: m.id,
-        name: m.name,
-        priceReg: m.price_reg,
-        priceLarge: m.price_large,
-        isHot: m.is_hot,
-        isAvailable: m.is_available,
-        image: m.image,
-        description: m.description
+    const [
+      menuRes, packRes, ordRes, usrRes, newsRes, emailRes, auditRes, aiRes
+    ] = await Promise.all([
+      supabase.from("menu").select("*"),
+      supabase.from("packages").select("*"),
+      supabase.from("orders").select("*"),
+      supabase.from("users").select("*"),
+      supabase.from("blog_news").select("*"),
+      supabase.from("email_logs").select("*"),
+      supabase.from("audit_logs").select("*"),
+      supabase.from("ai_settings").select("*").eq("key", "settings")
+    ]);
+
+    if (!menuRes.error && menuRes.data) {
+      menuItems = menuRes.data.map(m => ({
+        id: m.id, name: m.name, priceReg: m.price_reg, priceLarge: m.price_large,
+        isHot: m.is_hot, isAvailable: m.is_available, image: m.image, description: m.description
       }));
-      console.log(`Berhasil menyinkronkan ${menuItems.length} menu dari Supabase.`);
     }
 
-    // 2. Sync Packages
-    const { data: packData, error: packErr } = await supabase.from("packages").select("*");
-    if (packErr) {
-      console.warn("Koneksi Supabase Packages Gagal:", packErr.message);
-    } else if (packData && packData.length > 0) {
-      coffeePackages = packData;
-      console.log(`Berhasil menyinkronkan ${coffeePackages.length} paket dari Supabase.`);
+    if (!packRes.error && packRes.data) {
+      coffeePackages = packRes.data;
     }
 
-    // 3. Sync Orders
-    const { data: ordData, error: ordErr } = await supabase.from("orders").select("*");
-    if (ordErr) {
-      console.warn("Koneksi Supabase Orders Gagal:", ordErr.message);
-    } else if (ordData && ordData.length > 0) {
-      orders = ordData.map(o => ({
-        id: o.id,
-        customerName: o.customer_name,
-        whatsapp: o.whatsapp,
-        email: o.email,
-        address: o.address,
-        items: o.items,
-        total: o.total,
-        status: o.status,
-        createdAt: o.created_at,
-        deliveryMethod: o.delivery_method,
-        subtotal: o.subtotal,
-        shippingCost: o.shipping_cost,
-        shippingDiscount: o.shipping_discount,
-        notes: o.notes,
+    if (!ordRes.error && ordRes.data) {
+      orders = ordRes.data.map(o => ({
+        id: o.id, customerName: o.customer_name, whatsapp: o.whatsapp, email: o.email,
+        address: o.address, items: o.items, total: o.total, status: o.status,
+        createdAt: o.created_at, deliveryMethod: o.delivery_method, subtotal: o.subtotal,
+        shippingCost: o.shipping_cost, shippingDiscount: o.shipping_discount, notes: o.notes,
         paymentProofUrl: o.payment_proof_url
       }));
-      console.log(`Berhasil menyinkronkan ${orders.length} pesanan dari Supabase.`);
     }
 
-    // 4. Sync Users
-    const { data: usrData, error: usrErr } = await supabase.from("users").select("*");
-    if (usrErr) {
-      console.warn("Koneksi Supabase Users Gagal:", usrErr.message);
-    } else if (usrData && usrData.length > 0) {
-      registeredUsers = usrData.map(u => ({
-        id: u.id,
-        name: u.name,
-        email: u.email,
-        password: u.password,
-        role: u.role,
-        isMember: u.is_member,
-        ordersCount: u.orders_count,
-        lastActive: u.last_active
+    if (!usrRes.error && usrRes.data) {
+      registeredUsers = usrRes.data.map(u => ({
+        id: u.id, name: u.name, email: u.email, password: u.password, role: u.role,
+        isMember: u.is_member, ordersCount: u.orders_count, lastActive: u.last_active
       }));
-      console.log(`Berhasil menyinkronkan ${registeredUsers.length} pengguna dari Supabase.`);
     }
 
-    // 5. Sync Blog News
-    const { data: newsData, error: newsErr } = await supabase.from("blog_news").select("*");
-    if (newsErr) {
-      console.warn("Koneksi Supabase Blog News Gagal:", newsErr.message);
-    } else if (newsData && newsData.length > 0) {
-      blogNews = newsData.map(n => ({
-        id: n.id,
-        title: n.title,
-        slug: n.slug,
-        content: n.content,
-        author: n.author,
-        date: n.date,
-        coverImage: n.cover_image,
-        category: n.category
+    if (!newsRes.error && newsRes.data) {
+      blogNews = newsRes.data.map(n => ({
+        id: n.id, title: n.title, slug: n.slug, content: n.content, author: n.author,
+        date: n.date, coverImage: n.cover_image, category: n.category
       }));
-      console.log(`Berhasil menyinkronkan ${blogNews.length} berita dari Supabase.`);
     }
 
-    // 6. Sync Email Logs
-    const { data: emailData, error: emailErr } = await supabase.from("email_logs").select("*");
-    if (emailErr) {
-      console.warn("Koneksi Supabase Email Logs Gagal:", emailErr.message);
-    } else if (emailData && emailData.length > 0) {
-      emailLogs = emailData;
-      console.log(`Berhasil menyinkronkan ${emailLogs.length} log email dari Supabase.`);
+    if (!emailRes.error && emailRes.data) {
+      emailLogs = emailRes.data;
     }
 
-    // 7. Sync Audit Logs
-    const { data: auditData, error: auditErr } = await supabase.from("audit_logs").select("*");
-    if (auditErr) {
-      console.warn("Koneksi Supabase Audit Logs Gagal:", auditErr.message);
-    } else if (auditData && auditData.length > 0) {
-      auditLogs = auditData;
-      console.log(`Berhasil menyinkronkan ${auditLogs.length} log audit dari Supabase.`);
+    if (!auditRes.error && auditRes.data) {
+      auditLogs = auditRes.data;
     }
 
-    // 8. Sync AI Settings
-    const { data: aiData, error: aiErr } = await supabase.from("ai_settings").select("*").eq("key", "settings");
-    if (aiErr) {
-      console.warn("Koneksi Supabase AI Settings Gagal:", aiErr.message);
-    } else if (aiData && aiData.length > 0) {
-      aiSettings.systemPrompt = aiData[0].system_prompt;
-      aiSettings.temperature = aiData[0].temperature;
-      console.log("Berhasil menyinkronkan AI Master settings dari Supabase.");
+    if (!aiRes.error && aiRes.data && aiRes.data.length > 0) {
+      aiSettings.systemPrompt = aiRes.data[0].system_prompt;
+      aiSettings.temperature = aiRes.data[0].temperature;
     }
 
+    console.log("Berhasil menyinkronkan seluruh data dari Supabase secara paralel.");
   } catch (err: any) {
     console.error("Gagal melakukan sinkronisasi dengan Supabase:", err.message);
   }
@@ -1222,6 +1168,36 @@ app.post("/api/auth/subscribe", (req, res) => {
 
   registeredUsers[idx].isMember = true;
   writeSupabase("users", "update", { id: registeredUsers[idx].id }, { is_member: true });
+
+  res.json({ success: true, user: registeredUsers[idx] });
+});
+
+app.post("/api/users/update", (req, res) => {
+  const { id, name, email, whatsapp, address, avatarUrl } = req.body;
+  if (!id) {
+    return res.status(400).json({ error: "ID User wajib dikirim kawan" });
+  }
+
+  const idx = registeredUsers.findIndex(u => u.id === id);
+  if (idx === -1) {
+    return res.status(404).json({ error: "User tidak ditemukan" });
+  }
+
+  // Update in memory
+  if (name) registeredUsers[idx].name = name;
+  if (email) registeredUsers[idx].email = email;
+  if (whatsapp) registeredUsers[idx].whatsapp = whatsapp;
+  if (address) registeredUsers[idx].address = address;
+  if (avatarUrl) registeredUsers[idx].avatarUrl = avatarUrl;
+
+  // Persist to Supabase
+  writeSupabase("users", "update", { id }, { 
+    name, 
+    email, 
+    whatsapp: whatsapp || null,
+    address: address || null,
+    avatar_url: avatarUrl || null
+  });
 
   res.json({ success: true, user: registeredUsers[idx] });
 });

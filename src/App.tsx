@@ -425,6 +425,28 @@ export default function App() {
     setUserOrders([]);
   };
 
+  const handleUpdateProfile = async (updates: Partial<User>) => {
+    if (!currentUser) return;
+    try {
+      const res = await fetch(getApiUrl("/api/users/update"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: currentUser.id, ...updates })
+      });
+      if (res.ok) {
+        const data = await safeParseJson(res);
+        if (data.success && data.user) {
+          setCurrentUser(data.user);
+          alert("Profil berhasil diperbarui!");
+        }
+      } else {
+        alert("Gagal memperbarui profil.");
+      }
+    } catch (err) {
+      console.error("Gagal update profil:", err);
+      alert("Terjadi kesalahan jaringan.");
+    }
+  };
 
   // Scroll helper
   const scrollToId = (id: string) => {
@@ -465,6 +487,7 @@ export default function App() {
         onSubscribe={handleSubscribeMember}
         isSubscribing={isSubscribing}
         onLogout={handleUserLogout}
+        onUpdateProfile={handleUpdateProfile}
         darkMode={darkMode}
         setDarkMode={setDarkMode}
       />
