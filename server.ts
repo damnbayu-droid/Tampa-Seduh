@@ -866,7 +866,7 @@ app.post("/api/orders", async (req, res) => {
   }
 
   // Send email summary using Resend
-  let emailStatus = "Pending";
+  let emailStatus: "Delivered" | "Sent" | "Failed" | "Pending" | "Skipped (No API Key)" | "Skipped (No Email)" = "Pending";
   let emailBody = `Terima kasih kawan ${customerName}! Barista kami sedang mempersiapkan pesanan Anda senilai Rp ${finalTotal}.000.`;
 
   if (email && resendApiKey) {
@@ -895,7 +895,7 @@ app.post("/api/orders", async (req, res) => {
       `;
 
       await resend.emails.send({
-        from: 'Tampa Seduh <kopi@tampaseduh.com>',
+        from: 'TAMPA SEDUH Street Coffee <kopi@tampaseduh.com>',
         to: [email],
         subject: `Invoice Pesanan #${newOrder.id} - Tampa Seduh`,
         html: invoiceHtml
