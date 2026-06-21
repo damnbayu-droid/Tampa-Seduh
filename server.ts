@@ -20,8 +20,13 @@ const resend = new Resend(resendApiKey);
 const supabaseUrl = process.env.SUPABASE_URL || "https://dummy.supabase.co";
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "dummy_key";
 
+import WebSocket from 'ws';
+
 const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: { persistSession: false }
+  auth: { persistSession: false },
+  realtime: {
+    transport: WebSocket as any,
+  }
 });
 
 // Create 'Bukti Bayar' bucket in Supabase storage if it doesn't exist
