@@ -70,6 +70,14 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   const [loading, setLoading] = useState(true);
   const [isVerifyingProof, setIsVerifyingProof] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  
+  const [globalNotif, setGlobalNotif] = useState<{message: string, type: "success" | "error" | "info" | "loading"} | null>(null);
+  const showNotif = (message: string, type: "success" | "error" | "info" | "loading" = "info", ms: number = 3000) => {
+    setGlobalNotif({ message, type });
+    if (type !== "loading") {
+      setTimeout(() => setGlobalNotif(null), ms);
+    }
+  };
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<Order | null>(null);
   const [editingPack, setEditingPack] = useState<CoffeePackage | null>(null);
   const [editingMenu, setEditingMenu] = useState<MenuItem | null>(null);
@@ -158,6 +166,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
     if (!file) return;
 
     setIsUploadingImage(true);
+    showNotif("Mengunggah foto, mohon tunggu...", "loading");
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = async () => {
@@ -221,11 +230,13 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
               setNewPack(prev => ({ ...prev, image: uploadData.publicUrl }));
             }
           }
+          showNotif("Foto berhasil diunggah!", "success");
         };
       } catch (err: any) {
-        alert("Gagal memproses gambar: " + err.message);
+        showNotif("Gagal memproses gambar: " + err.message, "error");
       } finally {
         setIsUploadingImage(false);
+        if (globalNotif?.type === "loading") setGlobalNotif(null);
       }
     };
   };
@@ -256,6 +267,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   // 1. Menu Actions
   const handleAddMenu = async (e: React.FormEvent) => {
     e.preventDefault();
+    showNotif(editingMenu ? "Menyimpan perubahan menu..." : "Menambahkan menu baru...", "loading");
     try {
       const url = editingMenu ? `/api/menu/${editingMenu.id}` : "/api/menu";
       const method = editingMenu ? "PUT" : "POST";
@@ -274,9 +286,13 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
           description: ""
         });
         setRefreshKey(p => p + 1);
+        showNotif(editingMenu ? "Menu berhasil diperbarui!" : "Menu baru berhasil ditambahkan!", "success");
+      } else {
+        showNotif("Gagal menyimpan menu.", "error");
       }
     } catch (err) {
       console.error(err);
+      showNotif("Terjadi kesalahan jaringan.", "error");
     }
   };
 
@@ -307,6 +323,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
 
   const handleSavePack = async (e: React.FormEvent) => {
     e.preventDefault();
+    showNotif(editingPack ? "Menyimpan perubahan paket..." : "Menambahkan paket baru...", "loading");
     try {
       const url = editingPack ? `/api/packages/${editingPack.id}` : "/api/packages";
       const method = editingPack ? "PUT" : "POST";
@@ -321,9 +338,13 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
         setEditingPack(null);
         setNewPack({ name: "", price: 25, items: [], description: "", badge: "Promo", image: "" });
         setRefreshKey(p => p + 1);
+        showNotif(editingPack ? "Paket berhasil diperbarui!" : "Paket baru berhasil ditambahkan!", "success");
+      } else {
+        showNotif("Gagal menyimpan paket.", "error");
       }
     } catch (err) {
       console.error("Gagal menyimpan paket:", err);
+      showNotif("Terjadi kesalahan jaringan.", "error");
     }
   };
 
@@ -530,7 +551,25 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto max-h-screen">
+      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto max-h-screen relative">
+        {/* Global Notification Overlay */}
+        <AnimatePresence>
+          {globalNotif && (
+            <motion.div
+              initial={{ opacity: 0, y: -20, x: "-50%" }}
+              animate={{ opacity: 1, y: 0, x: "-50%" }}
+              exit={{ opacity: 0, y: -20, x: "-50%" }}
+              className={`fixed top-6 left-1/2 z-50 px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 border ${
+                globalNotif.type === "success" ? "bg-emerald-50 dark:bg-emerald-900/90 border-emerald-200 dark:border-emerald-700 text-emerald-900 dark:text-emerald-100" :
+                globalNotif.type === "error" ? "bg-red-50 dark:bg-red-900/90 border-red-200 dark:border-red-700 text-red-900 dark:text-red-100" :
+                "bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200"
+              }`}
+            >
+              {globalNotif.type === "loading" && <RefreshCw className="w-5 h-5 animate-spin text-amber-600" />}
+              <span className="text-sm font-bold">{globalNotif.message}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
         {/* Header toolbar */}
         <header className="bg-white dark:bg-zinc-900/90 border-b border-zinc-250 dark:border-zinc-800 py-4 px-6 sm:px-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sticky top-0 z-20 backdrop-blur">
           <div>

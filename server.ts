@@ -854,16 +854,7 @@ app.get("/api/test-images-html", (req, res) => {
 });
 
 // 1. Menu API
-app.get("/api/menu", async (req, res) => {
-  if (supabaseUrl) {
-    const { data, error } = await supabase.from('menu').select('*');
-    if (!error && data) {
-      menuItems = data.map(m => ({
-        id: m.id, name: m.name, priceReg: m.price_reg, priceLarge: m.price_large,
-        isHot: m.is_hot, isAvailable: m.is_available, image: m.image, description: m.description
-      }));
-    }
-  }
+app.get("/api/menu", (req, res) => {
   res.json(menuItems);
 });
 
@@ -1026,13 +1017,7 @@ app.delete("/api/menu/:id", (req, res) => {
 });
 
 // 2. Packages API
-app.get("/api/packages", async (req, res) => {
-  if (supabaseUrl) {
-    const { data, error } = await supabase.from('packages').select('*');
-    if (!error && data) {
-      coffeePackages = data;
-    }
-  }
+app.get("/api/packages", (req, res) => {
   res.json(coffeePackages);
 });
 
@@ -1478,6 +1463,25 @@ app.get("/api/logs", (req, res) => {
 // 5. Users API
 app.get("/api/users", (req, res) => {
   res.json(registeredUsers);
+});
+
+app.post("/api/users/sync", (req, res) => {
+  const newUser = req.body;
+  if (!newUser || !newUser.id) return res.status(400).json({ error: "Invalid user data" });
+  
+  const existingIdx = registeredUsers.findIndex(u => u.id === newUser.id || u.email === newUser.email);
+  if (existingIdx !== -1) {
+    registeredUsers[existingIdx] = { ...registeredUsers[existingIdx], ...newUser, lastActive: "Baru saja" };
+  } else {
+    registeredUsers.push({
+      ...newUser,
+      ordersCount: newUser.orders_count || 0,
+      isMember: newUser.is_member || false,
+      lastActive: "Baru saja",
+      isBlocked: false
+    });
+  }
+  res.json({ success: true });
 });
 
 app.put("/api/users/:id/password", (req, res) => {

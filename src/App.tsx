@@ -414,8 +414,7 @@ export default function App() {
               role: "customer",
               is_member: false,
               orders_count: 0,
-              last_active: "Baru saja",
-              avatar_url: supaUser.user_metadata?.avatar_url
+              last_active: "Baru saja"
            };
            await supabase.from("users").insert(newUser);
            profile = newUser;
@@ -431,8 +430,19 @@ export default function App() {
           avatarUrl: profile.avatar_url || supaUser.user_metadata?.avatar_url
         };
         
-        // Update last active
+        // Update last active in Supabase
         await supabase.from("users").update({ last_active: "Baru saja" }).eq("id", profile.id);
+
+        // Sync with Backend memory
+        try {
+          await fetch(getApiUrl("/api/users/sync"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(loggedInUser)
+          });
+        } catch (e) {
+          console.error("Gagal sync user ke backend", e);
+        }
 
         setCurrentUser(loggedInUser);
         if (loggedInUser.role === "admin" || loggedInUser.email === "tampaseduh@gmail.com") {
