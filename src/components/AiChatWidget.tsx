@@ -24,7 +24,9 @@ export default function AiChatWidget() {
   const [isLoading, setIsLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  if (!isWidgetVisible) return null;
+  if (!isWidgetVisible) {
+    return <div style={{ display: 'none' }} />;
+  }
 
   const quickQuestions = [
     { label: "📍 Lokasi Kedai", text: "Di mana alamat atau lokasi lengkap kedai Tampa Seduh?" },

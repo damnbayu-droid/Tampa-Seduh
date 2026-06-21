@@ -253,29 +253,48 @@ export default function App() {
     e.preventDefault();
     setAuthError("");
     try {
-      const response = await fetch(getApiUrl("/api/auth/login"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: userEmailInput, password: userPasswordInput })
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: userEmailInput,
+        password: userPasswordInput
       });
-      const data = await safeParseJson(response);
-      if (!response.ok) {
-        throw new Error(data.error || "Gagal login kawan");
+
+      if (authError) throw new Error(authError.message);
+
+      // Get profile from public.users
+      const { data: profile, error: profileError } = await supabase
+        .from("users")
+        .select("*")
+        .eq("email", userEmailInput)
+        .single();
+        
+      if (profileError || !profile) {
+        throw new Error("Profil tidak ditemukan. Pastikan data tersinkronisasi kawan.");
       }
-      setCurrentUser(data.user);
-      if (data.user.role === "admin") {
+      
+      const loggedInUser: User = {
+        id: profile.id,
+        name: profile.name,
+        email: profile.email,
+        role: profile.role || "customer",
+        isMember: profile.is_member,
+        whatsapp: profile.whatsapp,
+        avatarUrl: profile.avatar_url
+      };
+
+      setCurrentUser(loggedInUser);
+      if (loggedInUser.role === "admin" || loggedInUser.email === "tampaseduh@gmail.com") {
         setIsAdminMode(true);
         setIsUserLoginOpen(false);
         setShowUserDashboard(false);
       } else {
         setIsUserLoginOpen(false);
-        loadUserOrders(data.user.email);
+        loadUserOrders(loggedInUser.email);
         setShowUserDashboard(true);
       }
       setUserEmailInput("");
       setUserPasswordInput("");
     } catch (err: any) {
-      setAuthError(err.message);
+      setAuthError(err.message === "Invalid login credentials" ? "Password salah kawan, coba ingat kembali." : err.message);
     }
   };
 
@@ -283,29 +302,56 @@ export default function App() {
     e.preventDefault();
     setAuthError("");
     try {
-      const response = await fetch(getApiUrl("/api/auth/register"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: userNameInput,
-          email: userEmailInput,
-          password: userPasswordInput,
-          whatsapp: userWhatsappInput
-        })
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: userEmailInput,
+        password: userPasswordInput,
+        options: {
+          data: {
+            full_name: userNameInput,
+            whatsapp: userWhatsappInput
+          }
+        }
       });
-      const data = await safeParseJson(response);
-      if (!response.ok) {
-        throw new Error(data.error || "Gagal mendaftar kawan");
-      }
-      setCurrentUser(data.user);
-      setIsUserRegisterOpen(false);
-      loadUserOrders(data.user.email);
-      setUserNameInput("");
+      
+      if (authError) throw new Error(authError.message);
+
+      // Create profile in public.users
+      const newUser: User = {
+        id: authData.user?.id || "u-" + Date.now(),
+        name: userNameInput,
+        email: userEmailInput,
+        whatsapp: userWhatsappInput,
+        role: "customer",
+        isMember: false,
+        ordersCount: 0,
+        lastActive: "Baru saja"
+      };
+
+      await supabase.from("users").upsert({
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        whatsapp: newUser.whatsapp,
+        role: newUser.role,
+        is_member: newUser.isMember,
+        orders_count: newUser.ordersCount,
+        last_active: newUser.lastActive
+      });
+
+      setCurrentUser(newUser);
+      setIsUserLoginOpen(false);
+      loadUserOrders(newUser.email);
+      setShowUserDashboard(true);
+      setOrderNotification("Selamat datang kawan! Akun berhasil dibuat 🎉");
+      setTimeout(() => setOrderNotification(null), 5000);
+      
+      setIsLoginView(true);
       setUserEmailInput("");
       setUserPasswordInput("");
+      setUserNameInput("");
       setUserWhatsappInput("");
     } catch (err: any) {
-      setAuthError(err.message);
+      setAuthError(err.message === "User already registered" ? "Email sudah terdaftar kawan." : err.message);
     }
   };
 
@@ -335,34 +381,69 @@ export default function App() {
     }
   };
 
-  // Sync session Supabase ke backend
+  // Sync session Supabase (Directly to public.users)
   const syncSupabaseSession = useCallback(async (session: any) => {
     try {
       if (session?.user) {
         const supaUser = session.user;
-        const res = await fetch(getApiUrl("/api/auth/google-sync"), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: supaUser.email,
-            name: supaUser.user_metadata?.full_name || supaUser.user_metadata?.name || supaUser.email?.split("@")[0],
-            supabase_id: supaUser.id,
-            avatar_url: supaUser.user_metadata?.avatar_url
-          })
-        });
-        const data = await safeParseJson(res);
-        if (res.ok && data.user) {
-          setCurrentUser(data.user);
-          if (data.user.role === "admin") {
-            setIsAdminMode(true);
-            setShowUserDashboard(false);
-          } else {
-            loadUserOrders(data.user.email);
-            setShowUserDashboard(true);
-          }
-          setOrderNotification(`Selamat datang kawan ${data.user.name}! 🎉`);
-          setTimeout(() => setOrderNotification(null), 5000);
+        
+        // Fetch profile directly from Supabase users table
+        let { data: profile, error: profileError } = await supabase
+          .from("users")
+          .select("*")
+          .eq("id", supaUser.id)
+          .single();
+          
+        if (profileError || !profile) {
+           // Fallback attempt by email
+           const { data: profileByEmail } = await supabase
+             .from("users")
+             .select("*")
+             .eq("email", supaUser.email)
+             .single();
+             
+           profile = profileByEmail;
         }
+
+        if (!profile) {
+           // Create new user profile if not exists
+           const newUser = {
+              id: supaUser.id,
+              name: supaUser.user_metadata?.full_name || supaUser.user_metadata?.name || supaUser.email?.split("@")[0],
+              email: supaUser.email,
+              role: "customer",
+              is_member: false,
+              orders_count: 0,
+              last_active: "Baru saja",
+              avatar_url: supaUser.user_metadata?.avatar_url
+           };
+           await supabase.from("users").insert(newUser);
+           profile = newUser;
+        }
+
+        const loggedInUser: User = {
+          id: profile.id,
+          name: profile.name,
+          email: profile.email,
+          role: profile.role || "customer",
+          isMember: profile.is_member,
+          whatsapp: profile.whatsapp,
+          avatarUrl: profile.avatar_url || supaUser.user_metadata?.avatar_url
+        };
+        
+        // Update last active
+        await supabase.from("users").update({ last_active: "Baru saja" }).eq("id", profile.id);
+
+        setCurrentUser(loggedInUser);
+        if (loggedInUser.role === "admin" || loggedInUser.email === "tampaseduh@gmail.com") {
+          setIsAdminMode(true);
+          setShowUserDashboard(false);
+        } else {
+          loadUserOrders(loggedInUser.email);
+          setShowUserDashboard(true);
+        }
+        setOrderNotification(`Selamat datang kawan ${loggedInUser.name}! 🎉`);
+        setTimeout(() => setOrderNotification(null), 5000);
       }
     } catch (err: any) {
       console.error("Callback sync error:", err.message);
