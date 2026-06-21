@@ -362,9 +362,9 @@ export default function App() {
     }
   }, []);
 
-  // Trigger callback handler when on /auth/callback path
+  // Trigger callback handler when on /auth/callback path or when URL contains access_token
   useEffect(() => {
-    if (currentPath === "/auth/callback") {
+    if (currentPath === "/auth/callback" || window.location.hash.includes("access_token")) {
       handleAuthCallback();
     }
   }, [currentPath, handleAuthCallback]);
