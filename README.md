@@ -1,20 +1,30 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# Tampa Seduh Street Coffee
 
-# Run and deploy your AI Studio app
+Website resmi **Tampa Seduh Street Coffee Boltim** (Bolaang Mongondow Timur). Menghubungkan kedai kopi lokal Kotabunan dengan komunitas pelanggan melalui platform digital modern.
 
-This contains everything you need to run your app locally.
+---
 
-View your app in AI Studio: https://ai.studio/apps/f32924ea-0347-4561-a130-d31fbf17f070
+### Design & Development Credits
+Website ini dirancang dan dikembangkan dengan bangga oleh:
+* **[indodesign.website](https://indodesign.website)**
+* **PT Indonesian Visas Agency** / **[indonesianvisas.com](https://indonesianvisas.com)**
+* **Kotabunan Project** / **[mybisnis.app](https://mybisnis.app)**
 
-## Run Locally
+---
 
-**Prerequisites:**  Node.js
+## Cara Menjalankan Secara Lokal
 
+**Prasyarat:** Node.js v18 atau v20+
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in `.env.local` to your Gemini API key
-3. Run the app:
-   `npm run dev`
+1. Instal dependensi:
+   ```bash
+   npm install
+   ```
+2. Buat file `.env` dan atur kunci API Anda (lihat `.env.example` sebagai referensi).
+3. Jalankan server pengembangan lokal:
+   ```bash
+   npm run dev
+   ```
+
+## Cara Deploy ke Cloudflare Pages
+Silakan baca panduan lengkap di [deployment_guide.md](./deployment_guide.md) untuk mempelajari konfigurasi variabel lingkungan dan pengaturan build di Cloudflare Pages.
