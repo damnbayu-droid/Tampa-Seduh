@@ -201,6 +201,16 @@ async function writeSupabase(table: string, action: 'insert' | 'update' | 'delet
 
 app.use(express.json({ limit: "50mb" }));
 
+// Penyelamat Memori untuk Vercel (Serverless Cold Start)
+let isVercelSynced = false;
+app.use(async (req, res, next) => {
+  if (process.env.VERCEL && !isVercelSynced) {
+    await syncFromSupabase();
+    isVercelSynced = true;
+  }
+  next();
+});
+
 // In-Memory Database / Server State
 let menuItems: MenuItem[] = [
   // COLD DRINKS
@@ -1435,4 +1445,12 @@ async function bootstrap() {
   });
 }
 
-bootstrap();
+if (process.env.VERCEL) {
+  // Jika berjalan di Vercel Serverless, cukup export app-nya (jangan jalankan app.listen)
+  console.log("Berjalan dalam mode Vercel Serverless");
+} else {
+  // Jika berjalan normal (npm run dev atau server node biasa), jalankan bootstrap
+  bootstrap();
+}
+
+export default app;
