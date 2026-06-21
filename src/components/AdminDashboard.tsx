@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   BarChart3, MessageSquare, Users, Coffee, Layers, ShoppingBag,
-  Sparkles, FileClock, Wallet, Mail, BookOpen, Plus, Trash2, Edit2, CheckCircle, RefreshCw, Moon, Sun, ArrowLeft, X, Lock
+  Sparkles, FileClock, Wallet, Mail, BookOpen, Plus, Trash2, Edit2, CheckCircle, RefreshCw, Moon, Sun, ArrowLeft, X, Lock, Receipt
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { MenuItem, CoffeePackage, Order, AuditLog, User, BlogNews, EmailLog, FinancialSummary } from "../types";
@@ -20,6 +20,7 @@ type ActiveTab =
   | "menu"
   | "packages"
   | "orders"
+  | "invoices"
   | "aimaster"
   | "logs"
   | "finances"
@@ -359,6 +360,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   const sidebarItems = [
     { id: "overview", label: "Overview", icon: BarChart3 },
     { id: "orders", label: "Order", icon: ShoppingBag, badge: orderList.filter(o => o.status === "pending").length },
+    { id: "invoices", label: "Invoice & Bukti", icon: Receipt },
     { id: "menu", label: "Daftar Menu", icon: Coffee },
     { id: "packages", label: "Daftar Paket", icon: Layers },
     { id: "finances", label: "Keuangan", icon: Wallet },
@@ -661,6 +663,72 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                                     Selesai
                                   </button>
                                 </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Tab: Invoices */}
+              {activeTab === "invoices" && (
+                <div className="space-y-6">
+                  <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-sm overflow-hidden">
+                    <div className="flex justify-between items-center mb-4 pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                      <h3 className="font-serif font-bold text-lg text-amber-950 dark:text-amber-50">Invoice & Riwayat Pembayaran</h3>
+                      <span className="text-xs bg-amber-900/5 dark:bg-amber-400/10 text-amber-900 dark:text-amber-300 font-bold px-3 py-1 rounded-full">
+                        {orderList.length} Total Invoice
+                      </span>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-sm whitespace-nowrap">
+                        <thead>
+                          <tr className="bg-zinc-50 dark:bg-zinc-800 text-zinc-500 text-xs font-bold tracking-wider">
+                            <th className="p-3.5 rounded-l-xl">Order ID</th>
+                            <th className="p-3.5">Pelanggan</th>
+                            <th className="p-3.5">Total Tagihan</th>
+                            <th className="p-3.5">Bukti Bayar (QRIS)</th>
+                            <th className="p-3.5">Status Order</th>
+                            <th className="p-3.5 rounded-r-xl text-center">Tindakan</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                          {orderList.map((order) => (
+                            <tr key={order.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-colors">
+                              <td className="p-4 font-mono font-bold text-amber-800 dark:text-amber-400">{order.id}</td>
+                              <td className="p-4 font-semibold text-zinc-900 dark:text-zinc-100">{order.customerName}</td>
+                              <td className="p-4 font-mono font-bold text-amber-900 dark:text-amber-300">Rp {order.total}.000</td>
+                              <td className="p-4 text-xs">
+                                {order.paymentProofUrl ? (
+                                  <a href={order.paymentProofUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2">
+                                    <img src={order.paymentProofUrl} alt="QRIS" className="w-8 h-8 object-cover rounded shadow-sm border border-zinc-200" />
+                                    <span className="text-green-600 dark:text-green-400 font-bold">Terlampir</span>
+                                  </a>
+                                ) : (
+                                  <span className="text-red-500 font-bold opacity-80">Belum Ada Bukti</span>
+                                )}
+                              </td>
+                              <td className="p-4">
+                                <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider ${
+                                  order.status === "completed" ? "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300" :
+                                  order.status === "delivering" ? "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300" :
+                                  order.status === "preparing" ? "bg-orange-100 text-orange-800 dark:bg-orange-950/40 dark:text-orange-300" :
+                                  "bg-red-150 text-red-800 dark:bg-red-950/40 dark:text-red-300"
+                                }`}>
+                                  {order.status}
+                                </span>
+                              </td>
+                              <td className="p-4 text-center">
+                                <button
+                                  onClick={() => setSelectedInvoiceOrder(order)}
+                                  className="text-[11px] font-bold px-3 py-1.5 bg-amber-900 text-amber-50 hover:bg-amber-850 rounded-lg cursor-pointer shadow-sm transition-all"
+                                >
+                                  Buka Invoice
+                                </button>
                               </td>
                             </tr>
                           ))}

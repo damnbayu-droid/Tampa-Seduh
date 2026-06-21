@@ -10,11 +10,16 @@ import { MenuItem, CoffeePackage, Order, AuditLog, User, BlogNews, EmailLog, Fin
 
 dotenv.config();
 
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const resendApiKey = process.env.RESEND_API_KEY || "";
 const resend = new Resend(resendApiKey);
+
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Initialize Gemini Client
 const gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");

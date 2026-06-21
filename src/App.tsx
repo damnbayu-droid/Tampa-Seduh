@@ -345,7 +345,6 @@ export default function App() {
       setOrderNotification("Selamat datang kawan! Akun berhasil dibuat 🎉");
       setTimeout(() => setOrderNotification(null), 5000);
       
-      setIsLoginView(true);
       setUserEmailInput("");
       setUserPasswordInput("");
       setUserNameInput("");
