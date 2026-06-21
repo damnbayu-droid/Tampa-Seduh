@@ -1613,7 +1613,7 @@ app.post("/api/news", (req, res) => {
 
 // 8. Financial Accounting API (Real Data Aggregation)
 app.get("/api/finances", (req, res) => {
-  const completedOrders = orders.filter(o => o.status === "Selesai");
+  const completedOrders = orders.filter(o => o.status === "completed");
   const totalRevenue = completedOrders.reduce((sum, o) => sum + o.total, 0);
   const totalCosts = totalRevenue * 0.45; // Asumsi Modal 45% dari omset
   const netProfit = totalRevenue - totalCosts;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   BarChart3, MessageSquare, Users, Coffee, Layers, ShoppingBag,
-  Sparkles, FileClock, Wallet, Mail, BookOpen, Plus, Trash2, Edit2, CheckCircle, RefreshCw, Moon, Sun, ArrowLeft, X, Lock, Receipt
+  Sparkles, FileClock, Wallet, Mail, BookOpen, Plus, Trash2, Edit2, CheckCircle, RefreshCw, Moon, Sun, ArrowLeft, X, Lock, Receipt, Download
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { MenuItem, CoffeePackage, Order, AuditLog, User, BlogNews, EmailLog, FinancialSummary } from "../types";

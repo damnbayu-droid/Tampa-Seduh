@@ -368,17 +368,17 @@ export default function UserDashboard({
                                     : '<span style="background:#f59e0b; color:white; padding:4px 12px; border-radius:999px; font-weight:bold; font-size:12px;">UNPAID</span>';
 
                                   const itemsHtml = order.items.map((i: any) => 
-                                    \`<tr>
-                                      <td style="padding:12px; border-bottom:1px solid #eee;">\${i.name} (\${i.size})</td>
-                                      <td style="padding:12px; border-bottom:1px solid #eee; text-align:center;">\${i.quantity}</td>
-                                      <td style="padding:12px; border-bottom:1px solid #eee; text-align:right;">Rp \${i.price}.000</td>
-                                    </tr>\`
+                                    `<tr>
+                                      <td style="padding:12px; border-bottom:1px solid #eee;">${i.name} (${i.size})</td>
+                                      <td style="padding:12px; border-bottom:1px solid #eee; text-align:center;">${i.quantity}</td>
+                                      <td style="padding:12px; border-bottom:1px solid #eee; text-align:right;">Rp ${i.price}.000</td>
+                                    </tr>`
                                   ).join('');
 
-                                  document.body.innerHTML = \`
+                                  document.body.innerHTML = `
                                     <html>
                                       <head>
-                                        <title>Invoice \${order.id}</title>
+                                        <title>Invoice ${order.id}</title>
                                         <style>
                                           @media print {
                                             @page { size: A4 portrait; margin: 20mm; }
@@ -394,21 +394,21 @@ export default function UserDashboard({
                                           </div>
                                           <div style="text-align:right;">
                                             <h2 style="margin:0; font-size:24px; color:#111;">INVOICE</h2>
-                                            <p style="margin:5px 0; font-size:14px; color:#666;">#\${order.id.split('-')[0].toUpperCase()}</p>
-                                            \${statusBadge}
+                                            <p style="margin:5px 0; font-size:14px; color:#666;">#${order.id.split('-')[0].toUpperCase()}</p>
+                                            ${statusBadge}
                                           </div>
                                         </div>
                                         
                                         <div style="display:flex; justify-content:space-between; margin-bottom: 40px;">
                                           <div>
                                             <p style="margin:0; font-size:12px; color:#666; font-weight:bold; text-transform:uppercase;">Ditagihkan Kepada:</p>
-                                            <p style="margin:5px 0 0 0; font-size:16px; font-weight:bold;">\${order.userEmail.split('@')[0]}</p>
-                                            <p style="margin:5px 0 0 0; font-size:14px; color:#444;">\${order.address}<br>WA: \${order.whatsapp}</p>
+                                            <p style="margin:5px 0 0 0; font-size:16px; font-weight:bold;">${order.userEmail.split('@')[0]}</p>
+                                            <p style="margin:5px 0 0 0; font-size:14px; color:#444;">${order.address}<br>WA: ${order.whatsapp}</p>
                                           </div>
                                           <div style="text-align:right;">
                                             <p style="margin:0; font-size:12px; color:#666; font-weight:bold; text-transform:uppercase;">Informasi Order:</p>
-                                            <p style="margin:5px 0 0 0; font-size:14px;">Tanggal: \${new Date(order.createdAt).toLocaleDateString('id-ID')}</p>
-                                            <p style="margin:5px 0 0 0; font-size:14px;">Metode: \${order.deliveryMethod === 'pickup' ? 'Ambil di Kedai' : 'Kirim Ke Alamat'}</p>
+                                            <p style="margin:5px 0 0 0; font-size:14px;">Tanggal: ${new Date(order.createdAt).toLocaleDateString('id-ID')}</p>
+                                            <p style="margin:5px 0 0 0; font-size:14px;">Metode: ${order.deliveryMethod === 'pickup' ? 'Ambil di Kedai' : 'Kirim Ke Alamat'}</p>
                                           </div>
                                         </div>
 
@@ -421,7 +421,7 @@ export default function UserDashboard({
                                             </tr>
                                           </thead>
                                           <tbody>
-                                            \${itemsHtml}
+                                            ${itemsHtml}
                                           </tbody>
                                         </table>
 
@@ -429,19 +429,19 @@ export default function UserDashboard({
                                           <table style="width: 300px; font-size: 14px;">
                                             <tr>
                                               <td style="padding: 5px 0;">Subtotal:</td>
-                                              <td style="text-align:right; padding: 5px 0;">Rp \${order.subtotal || order.total}.000</td>
+                                              <td style="text-align:right; padding: 5px 0;">Rp ${order.subtotal || order.total}.000</td>
                                             </tr>
-                                            \${order.shippingCost ? \`<tr>
+                                            ${order.shippingCost ? `<tr>
                                               <td style="padding: 5px 0;">Ongkir:</td>
-                                              <td style="text-align:right; padding: 5px 0;">Rp \${order.shippingCost}.000</td>
-                                            </tr>\` : ''}
-                                            \${order.shippingDiscount ? \`<tr>
+                                              <td style="text-align:right; padding: 5px 0;">Rp ${order.shippingCost}.000</td>
+                                            </tr>` : ''}
+                                            ${order.shippingDiscount ? `<tr>
                                               <td style="padding: 5px 0; color:#b45309;">Diskon Ongkir:</td>
-                                              <td style="text-align:right; padding: 5px 0; color:#b45309;">-Rp \${order.shippingDiscount}.000</td>
-                                            </tr>\` : ''}
+                                              <td style="text-align:right; padding: 5px 0; color:#b45309;">-Rp ${order.shippingDiscount}.000</td>
+                                            </tr>` : ''}
                                             <tr>
                                               <td style="padding: 10px 0; font-weight:bold; font-size: 18px; border-top: 2px solid #333;">TOTAL TAGIHAN:</td>
-                                              <td style="text-align:right; padding: 10px 0; font-weight:bold; font-size: 18px; border-top: 2px solid #333;">Rp \${order.total}.000</td>
+                                              <td style="text-align:right; padding: 10px 0; font-weight:bold; font-size: 18px; border-top: 2px solid #333;">Rp ${order.total}.000</td>
                                             </tr>
                                           </table>
                                         </div>
@@ -452,7 +452,7 @@ export default function UserDashboard({
                                         </div>
                                       </body>
                                     </html>
-                                  \`;
+                                  `;
                                   setTimeout(() => {
                                     window.print();
                                     document.body.innerHTML = original;
