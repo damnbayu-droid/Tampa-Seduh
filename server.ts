@@ -20,6 +20,7 @@ const gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 const supabaseUrl = process.env.SUPABASE_URL || "https://dummy.supabase.co";
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "dummy_key";
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // Gunakan DummyWS agar Vercel Serverless tidak crash akibat module "ws" native
 class DummyWS {
@@ -28,7 +29,7 @@ class DummyWS {
     close() {}
 }
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+const supabase = createClient(supabaseUrl, supabaseServiceKey || supabaseAnonKey, {
   auth: { persistSession: false },
   realtime: {
     transport: DummyWS as any,
@@ -706,10 +707,10 @@ app.post("/api/chat", async (req, res) => {
   }
 
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const openaiApiKey = process.env.OPENAI_API_KEY;
 
-    if (!apiKey || apiKey.trim() === "" || apiKey === "MY_GEMINI_API_KEY") {
-      console.warn("GEMINI_API_KEY environment variable is not configured. Simulating AI response.");
+    if (!openaiApiKey || openaiApiKey.trim() === "" || openaiApiKey === "MY_OPENAI_API_KEY") {
+      console.warn("OPENAI_API_KEY environment variable is not configured. Simulating AI response.");
 
       const textResponse = simulateTampaSeduhAI(lastMessage);
       session.messages.push({ sender: "ai", text: textResponse, timestamp: new Date().toISOString() });
@@ -719,32 +720,30 @@ app.post("/api/chat", async (req, res) => {
       });
     }
 
-    // Call Gemini API
-    const model = gemini.getGenerativeModel({
-      model: "gemini-1.5-flash",
-      systemInstruction: aiSettings.systemPrompt,
+    // Call OpenAI API
+    const openai = new OpenAI({ apiKey: openaiApiKey });
+    const formattedMessages = messages.map((m: any) => ({
+      role: (m.role === "user" ? "user" : "assistant") as "user" | "assistant",
+      content: String(m.text)
+    }));
+
+    const result = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: aiSettings.systemPrompt },
+        ...formattedMessages
+      ],
+      temperature: aiSettings.temperature || 0.7,
     });
 
-    // Convert messages to Gemini format
-    const chat = model.startChat({
-      history: messages.slice(0, -1).map((m: any) => ({
-        role: m.role === "user" ? "user" : "model",
-        parts: [{ text: String(m.text) }],
-      })),
-      generationConfig: {
-        temperature: aiSettings.temperature || 0.7,
-      }
-    });
-
-    const result = await chat.sendMessage(lastMessage);
-    const responseText = result.response.text();
+    const responseText = result.choices[0]?.message?.content;
 
     const aiResponse = responseText || "Maaf kawan, saya sedang sedikit bingung. Bisa diulang pertanyaannya?";
     session.messages.push({ sender: "ai", text: aiResponse, timestamp: new Date().toISOString() });
 
     res.json({
       text: aiResponse,
-      modelUsed: "gemini-1.5-flash"
+      modelUsed: "gpt-4o-mini"
     });
 
   } catch (error: any) {
@@ -1257,6 +1256,93 @@ app.put("/api/orders/:id/status", (req, res) => {
     res.json(orders[idx]);
   } else {
     res.status(404).json({ error: "Order not found" });
+  }
+});
+
+// Endpoint Verifikasi Pembayaran dengan AI Gemini Vision
+app.post("/api/orders/:id/verify-payment", async (req, res) => {
+  const { id } = req.params;
+  const idx = orders.findIndex(o => o.id === id);
+  if (idx === -1) return res.status(404).json({ error: "Order not found" });
+
+  const order = orders[idx];
+  if (!order.paymentProofUrl || order.paymentProofUrl.includes("REJECTED")) {
+    return res.status(400).json({ error: "Tidak ada bukti bayar untuk diverifikasi." });
+  }
+
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey || apiKey.trim() === "" || apiKey === "MY_GEMINI_API_KEY") {
+      // Simulasi
+      return res.json({ valid: true, reason: "[Simulasi] Bukti bayar terlihat sah." });
+    }
+
+    const response = await fetch(order.paymentProofUrl);
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const mimeType = response.headers.get("content-type") || "image/jpeg";
+
+    const visionModel = gemini.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const prompt = `Anda adalah asisten Kasir Tampa Seduh. 
+Analisis gambar struk / bukti transfer QRIS ini. 
+Total tagihan yang harus dibayar adalah: Rp ${order.total}.000.
+Tugas Anda:
+1. Pastikan gambar ini adalah bukti transfer / struk pembayaran yang masuk akal (bukan sekadar gambar acak/pemandangan).
+2. Periksa apakah ada angka nominal yang sesuai dengan Total Tagihan (Rp ${order.total}.000 atau Rp ${order.total}000 atau mirip).
+3. Jika Anda tidak bisa membaca dengan sangat jelas, tapi gambarnya terlihat seperti struk pembayaran bank/e-wallet yang sah, asumsikan valid (true).
+4. Hanya tolak (false) jika gambarnya jelas-jelas BUKAN struk pembayaran (misalnya gambar pemandangan, gambar makanan) ATAU nominalnya terbaca sangat jauh berbeda.
+
+Balas HANYA dengan format JSON tanpa markdown:
+{"valid": true, "reason": "Alasan singkat (maks 2 kalimat)"}`;
+
+    const imageParts = [{ inlineData: { data: buffer.toString("base64"), mimeType } }];
+    const result = await visionModel.generateContent([prompt, ...imageParts]);
+    const responseText = result.response.text();
+
+    let analysisResult;
+    try {
+      analysisResult = JSON.parse(responseText.replace(/```json/g, "").replace(/```/g, "").trim());
+    } catch (e) {
+      analysisResult = { valid: false, reason: "Gagal memparsing respon AI: " + responseText };
+    }
+
+    if (!analysisResult.valid) {
+      // Tandai sebagai palsu
+      order.notes = (order.notes ? order.notes + " | " : "") + "SISTEM AI: BUKTI BAYAR DITOLAK - " + analysisResult.reason;
+      const oldUrl = order.paymentProofUrl;
+      order.paymentProofUrl = "REJECTED_" + oldUrl;
+      
+      writeSupabase('orders', 'update', { id }, { 
+        notes: order.notes, 
+        payment_proof_url: order.paymentProofUrl 
+      });
+
+      // Record audit log
+      const newAuditLogObj = {
+        id: "log-" + (auditLogs.length + 1),
+        action: "Payment Verification Failed",
+        details: `Order ${id} payment proof rejected by AI: ${analysisResult.reason}`,
+        timestamp: new Date().toISOString()
+      };
+      auditLogs.unshift(newAuditLogObj);
+      writeSupabase('audit_logs', 'insert', {}, newAuditLogObj);
+    } else {
+      // Valid! 
+      // Record audit log
+      const newAuditLogObj = {
+        id: "log-" + (auditLogs.length + 1),
+        action: "Payment Verification Success",
+        details: `Order ${id} payment proof verified by AI.`,
+        timestamp: new Date().toISOString()
+      };
+      auditLogs.unshift(newAuditLogObj);
+      writeSupabase('audit_logs', 'insert', {}, newAuditLogObj);
+    }
+
+    res.json(analysisResult);
+  } catch (err: any) {
+    console.error("Gagal verifikasi payment dengan Gemini:", err.message);
+    res.status(500).json({ error: "Gagal memproses gambar dengan AI." });
   }
 });
 

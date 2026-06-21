@@ -68,6 +68,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   
   // Loading & Action State
   const [loading, setLoading] = useState(true);
+  const [isVerifyingProof, setIsVerifyingProof] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<Order | null>(null);
   const [editingPack, setEditingPack] = useState<CoffeePackage | null>(null);
@@ -1901,11 +1902,45 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                 {/* QRIS Proof Image (If uploaded) */}
                 {selectedInvoiceOrder.paymentProofUrl && (
                   <div className="space-y-2 pt-2 border-t dark:border-zinc-800 print:hidden text-left">
-                    <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block text-left font-mono">Lampiran Bukti Transfer QRIS</span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block text-left font-mono">Lampiran Bukti Transfer QRIS</span>
+                      {!selectedInvoiceOrder.paymentProofUrl.includes("REJECTED") && (
+                        <button 
+                          onClick={async () => {
+                            setIsVerifyingProof(true);
+                            try {
+                              const res = await fetch(getApiUrl(`/api/orders/${selectedInvoiceOrder.id}/verify-payment`), { method: "POST" });
+                              const data = await res.json();
+                              if (data.valid) {
+                                alert("SISTEM AI: Bukti transfer terdeteksi VALID/ASLI. Pesanan dapat dilanjutkan.");
+                                // Automatically fetch again
+                                setRefreshKey(k => k + 1);
+                              } else {
+                                alert("SISTEM AI MENOLAK: " + data.reason);
+                                setSelectedInvoiceOrder(null);
+                                setRefreshKey(k => k + 1);
+                              }
+                            } catch (e) {
+                              alert("Gagal menghubungi server AI.");
+                            }
+                            setIsVerifyingProof(false);
+                          }}
+                          disabled={isVerifyingProof}
+                          className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-[10px] font-bold rounded-lg transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                        >
+                          {isVerifyingProof ? "Sedang Mengecek..." : "Verifikasi Otomatis dengan AI"}
+                        </button>
+                      )}
+                    </div>
+                    {selectedInvoiceOrder.paymentProofUrl.includes("REJECTED") && (
+                      <div className="p-2 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-xs font-bold rounded-lg">
+                        BUKTI TRANSFER PALSU / DITOLAK AI
+                      </div>
+                    )}
                     <div className="max-w-[200px] border dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm hover:opacity-90 transition-opacity">
-                      <a href={selectedInvoiceOrder.paymentProofUrl} target="_blank" rel="noreferrer">
+                      <a href={selectedInvoiceOrder.paymentProofUrl.replace("REJECTED_", "")} target="_blank" rel="noreferrer">
                         <img 
-                          src={selectedInvoiceOrder.paymentProofUrl} 
+                          src={selectedInvoiceOrder.paymentProofUrl.replace("REJECTED_", "")} 
                           alt="Bukti Bayar" 
                           className="w-full h-auto object-cover max-h-[140px]"
                         />
