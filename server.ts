@@ -964,6 +964,37 @@ app.put("/api/users/:id/block", (req, res) => {
   }
 });
 
+app.put("/api/users/:id/approve-membership", (req, res) => {
+  const { id } = req.params;
+  const { approve } = req.body;
+  const idx = registeredUsers.findIndex(u => u.id === id);
+  if (idx !== -1) {
+    if (approve) {
+      registeredUsers[idx].membershipStatus = "approved";
+      registeredUsers[idx].isMember = true;
+      writeSupabase('users', 'update', { id }, {
+        membership_status: "approved",
+        is_member: true
+      });
+      // Audit log
+      auditLogs.unshift({
+        id: "log-" + (auditLogs.length + 1),
+        action: "Membership Approved",
+        details: `User '${registeredUsers[idx].name}' membership was approved.`,
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      registeredUsers[idx].membershipStatus = "none";
+      writeSupabase('users', 'update', { id }, {
+        membership_status: "none"
+      });
+    }
+    res.json({ success: true, user: registeredUsers[idx] });
+  } else {
+    res.status(404).json({ error: "User not found" });
+  }
+});
+
 app.delete("/api/menu/:id", (req, res) => {
   const { id } = req.params;
   const idx = menuItems.findIndex(m => m.id === id);
@@ -1328,10 +1359,15 @@ Balas HANYA dengan format JSON tanpa markdown:
       auditLogs.unshift(newAuditLogObj);
       writeSupabase('audit_logs', 'insert', {}, newAuditLogObj);
     } else {
+      order.status = "completed"; // Automatically mark as completed!
+      writeSupabase('orders', 'update', { id }, { 
+        status: "completed" 
+      });
+
       const newAuditLogObj = {
         id: "log-" + (auditLogs.length + 1),
         action: "Payment Verification Success",
-        details: `Order ${id} payment proof verified by AI.`,
+        details: `Order ${id} payment proof verified by AI and automatically marked as completed.`,
         timestamp: new Date().toISOString()
       };
       auditLogs.unshift(newAuditLogObj);
@@ -1580,8 +1616,9 @@ app.post("/api/auth/subscribe", (req, res) => {
     return res.status(404).json({ error: "User tidak ditemukan" });
   }
 
-  registeredUsers[idx].isMember = true;
-  writeSupabase("users", "update", { id: registeredUsers[idx].id }, { is_member: true });
+  registeredUsers[idx].membershipStatus = "pending";
+  // We don't set isMember = true until admin approves
+  writeSupabase("users", "update", { id: registeredUsers[idx].id }, { membership_status: "pending" });
 
   res.json({ success: true, user: registeredUsers[idx] });
 });

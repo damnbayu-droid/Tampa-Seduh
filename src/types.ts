@@ -63,6 +63,7 @@ export interface User {
   password?: string;
   role: "admin" | "customer";
   isMember?: boolean;
+  membershipStatus?: "none" | "pending" | "approved";
   ordersCount?: number;
   lastActive?: string;
   avatarUrl?: string;

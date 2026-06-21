@@ -137,7 +137,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   }, [refreshKey]);
 
   useEffect(() => {
-    if (activeTab === "chat") {
+    if (activeTab === "aimaster") {
       const interval = setInterval(async () => {
         try {
           const res = await fetch(getApiUrl("/api/chat-admin/sessions"));
@@ -372,6 +372,26 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
     } catch (err) {
       console.error(err);
       alert("Gagal terhubung ke server.");
+    }
+  };
+
+  const handleApproveMembership = async (user: User, approve: boolean) => {
+    try {
+      const res = await fetch(getApiUrl(`/api/users/${user.id}/approve-membership`), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approve })
+      });
+      if (res.ok) {
+        setRefreshKey(k => k + 1);
+        if (approve) {
+          alert(`Berhasil mengaktifkan member untuk ${user.name}`);
+        } else {
+          alert(`Permintaan member untuk ${user.name} telah ditolak.`);
+        }
+      }
+    } catch (e) {
+      alert("Gagal menyetujui member.");
     }
   };
 
@@ -644,6 +664,26 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                           </div>
                         </div>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Audit Logs / Informasi Lengkap */}
+                  <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-sm space-y-4">
+                    <h3 className="font-serif font-bold text-lg text-amber-950 dark:text-amber-50 border-b border-zinc-100 dark:border-zinc-800 pb-3">Informasi Lengkap (Log Sistem & Aktivitas)</h3>
+                    <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
+                      {logsList.length === 0 ? (
+                        <p className="text-sm py-4 text-center text-zinc-400">Belum ada aktivitas terekam.</p>
+                      ) : (
+                        logsList.map(log => (
+                          <div key={log.id} className="p-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-700/50 rounded-xl flex flex-col gap-1">
+                            <div className="flex justify-between items-start">
+                              <span className="text-xs font-bold text-amber-900 dark:text-amber-400 uppercase tracking-widest">{log.action}</span>
+                              <span className="text-[10px] text-zinc-400 font-mono">{new Date(log.timestamp).toLocaleString('id-ID')}</span>
+                            </div>
+                            <p className="text-xs text-zinc-700 dark:text-zinc-300">{log.details}</p>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1505,6 +1545,11 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                                       VIP Member
                                     </span>
                                   )}
+                                  {usr.membershipStatus === "pending" && (
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300 animate-pulse">
+                                      Pending Member
+                                    </span>
+                                  )}
                                 </div>
                               </td>
                               <td className="p-4 text-zinc-600 dark:text-zinc-400 font-bold">{usr.ordersCount || 0} Kali</td>
@@ -1528,6 +1573,22 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                                 >
                                   Ganti Sandi
                                 </button>
+                                {usr.membershipStatus === "pending" && (
+                                  <div className="flex gap-1 w-24">
+                                    <button
+                                      onClick={() => handleApproveMembership(usr, true)}
+                                      className="flex-1 text-[10px] font-bold py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg cursor-pointer transition-colors"
+                                    >
+                                      Terima
+                                    </button>
+                                    <button
+                                      onClick={() => handleApproveMembership(usr, false)}
+                                      className="flex-1 text-[10px] font-bold py-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-lg cursor-pointer transition-colors"
+                                    >
+                                      Tolak
+                                    </button>
+                                  </div>
+                                )}
                               </td>
                             </tr>
                             );

@@ -129,7 +129,9 @@ export default function UserDashboard({
                 <div className="flex justify-between items-end w-full border-t pt-3 border-white/10">
                   <div>
                     <span className="text-[9px] uppercase tracking-wider opacity-50 block">Status Keanggotaan</span>
-                    <span className="text-xs font-bold">{isMember ? "Aktif (Diskon Ongkir 25%)" : "Belum Berlangganan"}</span>
+                    <span className="text-xs font-bold">
+                      {isMember ? "Aktif (Diskon Ongkir 25%)" : currentUser.membershipStatus === "pending" ? "Menunggu Konfirmasi Admin" : "Belum Berlangganan"}
+                    </span>
                   </div>
                   <Gift className={`w-8 h-8 ${isMember ? "text-amber-400/70" : "text-zinc-600"}`} />
                 </div>
@@ -143,16 +145,24 @@ export default function UserDashboard({
                   <Gift className="w-5 h-5 text-amber-500" />
                   Aktivasi Member Gratis!
                 </h4>
-                <p className="text-xs text-zinc-650 dark:text-zinc-400 leading-relaxed">
-                  Gabung menjadi keluarga besar **Tampa Seduh** kawan! Dapatkan langsung potongan harga **Diskon Ongkir 25%** untuk setiap pemesanan layanan delivery kami di wilayah Kotabunan.
-                </p>
-                <button
-                  onClick={onSubscribe}
-                  disabled={isSubscribing}
-                  className="w-full py-3 bg-[#4B3621] hover:bg-[#322314] text-white rounded-2xl text-xs font-bold tracking-wider uppercase transition-all cursor-pointer shadow-md disabled:opacity-50 flex justify-center items-center gap-2"
-                >
-                  {isSubscribing ? "Aktivasi Member..." : "Gabung Member Sekarang"}
-                </button>
+                {currentUser.membershipStatus === "pending" ? (
+                  <div className="p-4 bg-amber-50 text-amber-900 dark:bg-amber-900/20 dark:text-amber-300 rounded-xl text-xs font-bold text-center animate-pulse">
+                    Permintaan Anda sedang ditinjau oleh Admin. Harap tunggu konfirmasi...
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-xs text-zinc-650 dark:text-zinc-400 leading-relaxed">
+                      Gabung menjadi keluarga besar **Tampa Seduh** kawan! Dapatkan langsung potongan harga **Diskon Ongkir 25%** untuk setiap pemesanan layanan delivery kami di wilayah Kotabunan.
+                    </p>
+                    <button
+                      onClick={onSubscribe}
+                      disabled={isSubscribing}
+                      className="w-full py-3 bg-[#4B3621] hover:bg-[#322314] text-white rounded-2xl text-xs font-bold tracking-wider uppercase transition-all cursor-pointer shadow-md disabled:opacity-50 flex justify-center items-center gap-2"
+                    >
+                      {isSubscribing ? "Aktivasi Member..." : "Gabung Member Sekarang"}
+                    </button>
+                  </>
+                )}
               </div>
             )}
 
@@ -351,8 +361,9 @@ export default function UserDashboard({
                               <button 
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  // Trigger chat widget to open and handoff to admin
-                                  window.dispatchEvent(new CustomEvent('trigger-admin-chat'));
+                                  // Open WhatsApp with a pre-filled message
+                                  const text = encodeURIComponent(`Halo Admin Tampa Seduh, saya ingin bertanya tentang pesanan saya (Order ID: ${order.id}).`);
+                                  window.open(`https://wa.me/6285696224448?text=${text}`, '_blank');
                                 }}
                                 className="flex-1 py-2 bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-900 dark:text-amber-300 font-bold text-[10px] uppercase tracking-wider rounded-xl transition-colors cursor-pointer"
                               >
@@ -361,7 +372,9 @@ export default function UserDashboard({
                               <button 
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  const original = document.body.innerHTML;
+                                  const printWindow = window.open('', '_blank');
+                                  if (!printWindow) return;
+                                  
                                   const isPaid = order.status === "completed" || order.paymentProofUrl;
                                   const statusBadge = isPaid 
                                     ? '<span style="background:#22c55e; color:white; padding:4px 12px; border-radius:999px; font-weight:bold; font-size:12px;">PAID</span>'
@@ -375,15 +388,19 @@ export default function UserDashboard({
                                     </tr>`
                                   ).join('');
 
-                                  document.body.innerHTML = `
+                                  printWindow.document.write(`
                                     <html>
                                       <head>
-                                        <title>Invoice ${order.id}</title>
+                                        <title>Invoice - ${order.id}</title>
                                         <style>
-                                          @media print {
-                                            @page { size: A4 portrait; margin: 0; }
-                                            body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; -webkit-print-color-adjust: exact; background: white; margin: 0; padding: 20mm; height: 100%; overflow: hidden; }
-                                          }
+                                          body { font-family: 'Inter', sans-serif; padding: 40px; color: #333; margin: 0; }
+                                          .invoice-box { max-width: 800px; margin: auto; padding: 30px; border: 1px solid #eee; border-radius: 16px; }
+                                          .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #3E2A17; padding-bottom: 20px; margin-bottom: 30px; }
+                                          table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+                                          th { text-align: left; padding: 12px; background: #f9f9f9; border-bottom: 2px solid #ddd; }
+                                          .totals { width: 300px; float: right; }
+                                          .totals div { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+                                          @media print { body { padding: 0; } .invoice-box { border: none; } }
                                         </style>
                                       </head>
                                       <body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background: white; padding: 40px; color: #333; max-width: 800px; margin: 0 auto;">
@@ -402,7 +419,7 @@ export default function UserDashboard({
                                         <div style="display:flex; justify-content:space-between; margin-bottom: 40px;">
                                           <div>
                                             <p style="margin:0; font-size:12px; color:#666; font-weight:bold; text-transform:uppercase;">Ditagihkan Kepada:</p>
-                                            <p style="margin:5px 0 0 0; font-size:16px; font-weight:bold;">${order.userEmail.split('@')[0]}</p>
+                                            <p style="margin:5px 0 0 0; font-size:16px; font-weight:bold;">${order.userEmail ? order.userEmail.split('@')[0] : order.customerName}</p>
                                             <p style="margin:5px 0 0 0; font-size:14px; color:#444;">${order.address}<br>WA: ${order.whatsapp}</p>
                                           </div>
                                           <div style="text-align:right;">
@@ -424,7 +441,6 @@ export default function UserDashboard({
                                             ${itemsHtml}
                                           </tbody>
                                         </table>
-
                                         <div style="width: 100%; display: flex; justify-content: flex-end;">
                                           <table style="width: 300px; font-size: 14px;">
                                             <tr>
@@ -445,19 +461,17 @@ export default function UserDashboard({
                                             </tr>
                                           </table>
                                         </div>
-
                                         <div style="margin-top: 60px; text-align:center; color:#666; font-size: 14px;">
                                           <p>Terima kasih telah berbelanja di Tampa Seduh!</p>
                                           <p style="font-size:12px; color:#999;">Invoice ini sah dan diterbitkan secara digital oleh sistem.</p>
                                         </div>
+                                        <script>
+                                          window.onload = () => { window.print(); setTimeout(() => window.close(), 500); };
+                                        </script>
                                       </body>
                                     </html>
-                                  `;
-                                  setTimeout(() => {
-                                    window.print();
-                                    document.body.innerHTML = original;
-                                    window.location.reload();
-                                  }, 100);
+                                  `);
+                                  printWindow.document.close();
                                 }}
                                 className="flex-1 py-2 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-900 font-bold text-[10px] uppercase tracking-wider rounded-xl transition-colors cursor-pointer"
                               >
