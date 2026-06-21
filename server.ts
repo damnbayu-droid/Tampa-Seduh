@@ -158,7 +158,8 @@ async function syncFromSupabase() {
       if (usrRes.data.length > 0) {
         registeredUsers = usrRes.data.map(u => ({
           id: u.id, name: u.name, email: u.email, password: u.password, role: u.role,
-          isMember: u.is_member, ordersCount: u.orders_count, lastActive: u.last_active
+          isMember: u.is_member, ordersCount: u.orders_count, lastActive: u.last_active,
+          isBlocked: u.last_active === "BLOCKED"
         }));
       } else {
         console.log("Seeding users...");
@@ -756,6 +757,30 @@ app.put("/api/menu/:id", (req, res) => {
   }
 });
 
+app.put("/api/users/:id/block", (req, res) => {
+  const { id } = req.params;
+  const { isBlocked } = req.body;
+  const idx = registeredUsers.findIndex(u => u.id === id);
+  if (idx !== -1) {
+    // We use lastActive = "BLOCKED" to represent blocked status since we can't alter the schema dynamically
+    registeredUsers[idx].lastActive = isBlocked ? "BLOCKED" : "Baru saja";
+    if (isBlocked) {
+      registeredUsers[idx].isBlocked = true;
+    } else {
+      registeredUsers[idx].isBlocked = false;
+    }
+    
+    // Background write to Supabase
+    writeSupabase('users', 'update', { id }, {
+      last_active: registeredUsers[idx].lastActive
+    });
+    
+    res.json({ success: true, user: registeredUsers[idx] });
+  } else {
+    res.status(404).json({ error: "User not found" });
+  }
+});
+
 app.delete("/api/menu/:id", (req, res) => {
   const { id } = req.params;
   const idx = menuItems.findIndex(m => m.id === id);
@@ -847,6 +872,14 @@ app.post("/api/orders", async (req, res) => {
   const { customerName, whatsapp, email, address, items, subtotal, shippingCost, deliveryMethod, notes, paymentProofUrl } = req.body;
   if (!customerName || !whatsapp || !address || !items || !items.length) {
     return res.status(400).json({ error: "Missing required order data" });
+  }
+
+  // Cek apakah user di-blokir
+  if (email) {
+    const usr = registeredUsers.find(u => u.email === email);
+    if (usr && (usr.isBlocked || usr.lastActive === "BLOCKED")) {
+      return res.status(403).json({ error: "Akun Anda telah dibatasi untuk melakukan pemesanan. Silakan hubungi admin." });
+    }
   }
 
   // Hitung diskon ongkir 25% bagi member

@@ -68,6 +68,7 @@ export interface User {
   avatarUrl?: string;
   whatsapp?: string;
   address?: string;
+  isBlocked?: boolean;
 }
 
 export interface AuditLog {

@@ -6,11 +6,13 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { MenuItem, CoffeePackage, Order, AuditLog, User, BlogNews, EmailLog, FinancialSummary } from "../types";
 import { getApiUrl } from "../lib/api";
+import { supabase } from "../lib/supabase";
 
 interface AdminDashboardProps {
   onBackToStorefront: () => void;
   darkMode: boolean;
   setDarkMode: (dark: boolean) => void;
+  onLogoutAdmin?: () => void;
 }
 
 type ActiveTab =
@@ -27,7 +29,7 @@ type ActiveTab =
   | "emails"
   | "news";
 
-export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMode }: AdminDashboardProps) {
+export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMode, onLogoutAdmin }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState<ActiveTab>("overview");
   
   // Data State fetched from server
@@ -315,6 +317,26 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
     }
   };
 
+  const handleToggleBlockUser = async (user: User) => {
+    try {
+      const isCurrentlyBlocked = user.isBlocked || user.lastActive === "BLOCKED";
+      const res = await fetch(getApiUrl(`/api/users/${user.id}/block`), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isBlocked: !isCurrentlyBlocked })
+      });
+      if (res.ok) {
+        setRefreshKey(p => p + 1);
+      } else {
+        const errData = await res.json();
+        alert("Gagal memperbarui status blokir pengguna: " + errData.error);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Gagal terhubung ke server.");
+    }
+  };
+
   // 3. AI configuration action
   const handleSaveAiPrompt = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -425,13 +447,26 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
           })}
         </nav>
 
-        <div className="p-4 border-t border-amber-900/30">
+        <div className="p-4 border-t border-amber-900/30 space-y-2">
           <button
             onClick={onBackToStorefront}
             className="w-full bg-amber-900/30 hover:bg-amber-900/60 text-amber-200 border border-amber-800/40 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             Kembali Ke Kedai
+          </button>
+          
+          <button
+            onClick={async () => {
+              if (confirm("Keluar dari Sesi Admin dari Perangkat ini?")) {
+                await supabase.auth.signOut();
+                if (onLogoutAdmin) onLogoutAdmin();
+              }
+            }}
+            className="w-full bg-red-900/20 hover:bg-red-900/50 text-red-400 border border-red-900/30 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <Lock className="w-3.5 h-3.5" />
+            Keluar (Logout)
           </button>
         </div>
       </aside>
@@ -1398,51 +1433,67 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                         <thead>
                           <tr className="bg-zinc-50 dark:bg-zinc-820 text-zinc-500 font-bold text-xs uppercase tracking-wider">
                             <th className="p-3">User ID</th>
-                            <th className="p-3">Nama Pengguna</th>
-                            <th className="p-3">Alamat Surat & Email</th>
-                            <th className="p-3">Peranan</th>
-                            <th className="p-3">Status Member</th>
-                            <th className="p-3">Kunjungan Beli</th>
-                            <th className="p-3">Aktivitas Terakhir</th>
-                            <th className="p-3 text-center">Aksi</th>
+                            <th className="p-3">Nama Lengkap</th>
+                            <th className="p-3">Email & Kontak</th>
+                            <th className="p-3">Role & Membership</th>
+                            <th className="p-3">Histori Belanja</th>
+                            <th className="p-3 text-center">Status Akses</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                          {usersList.map((usr) => (
-                            <tr key={usr.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20">
-                              <td className="p-3 font-mono font-bold text-amber-800 dark:text-amber-400">{usr.id}</td>
-                              <td className="p-3 font-semibold text-zinc-900 dark:text-zinc-100">{usr.name}</td>
-                              <td className="p-3 font-mono text-zinc-500 text-xs">{usr.email}</td>
-                              <td className="p-3">
-                                <span className={`text-[9px] uppercase tracking-wider font-extrabold px-2.5 py-0.5 rounded-full ${
-                                  usr.role === "admin" ? "bg-red-100 text-red-800" : "bg-zinc-100 text-zinc-800"
-                                }`}>
-                                  {usr.role}
-                                </span>
+                          {usersList.map((usr) => {
+                            const isBlocked = usr.isBlocked || usr.lastActive === "BLOCKED";
+                            return (
+                            <tr key={usr.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-colors">
+                              <td className="p-4 font-mono font-bold text-amber-800 dark:text-amber-400">{usr.id}</td>
+                              <td className="p-4 font-semibold text-zinc-900 dark:text-zinc-100">
+                                {usr.name}
+                                {usr.lastActive && !isBlocked && <div className="text-[10px] text-green-500 font-bold mt-1">Active: {usr.lastActive}</div>}
+                                {isBlocked && <div className="text-[10px] text-red-500 font-bold mt-1">DIBLOKIR SISTEM</div>}
                               </td>
-                              <td className="p-3">
-                                <span className={`text-[9px] uppercase tracking-wider font-extrabold px-2.5 py-0.5 rounded-full ${
-                                  usr.isMember ? "bg-amber-100 text-amber-800 border border-amber-300/40" : "bg-zinc-100 text-zinc-550"
-                                }`}>
-                                  {usr.isMember ? "Member" : "Non-Member"}
-                                </span>
+                              <td className="p-4">
+                                <div className="text-zinc-700 dark:text-zinc-300 font-medium">{usr.email}</div>
+                                {usr.whatsapp && <div className="text-xs text-zinc-500 mt-0.5">WA: {usr.whatsapp}</div>}
                               </td>
-                              <td className="p-3 font-bold">{usr.ordersCount} kali</td>
-                              <td className="p-3 text-xs text-zinc-500">{usr.lastActive}</td>
-                              <td className="p-3 text-center">
+                              <td className="p-4">
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                                    usr.role === "admin" ? "bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300" : "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300"
+                                  }`}>
+                                    {usr.role}
+                                  </span>
+                                  {usr.isMember && (
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                                      VIP Member
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="p-4 text-zinc-600 dark:text-zinc-400 font-bold">{usr.ordersCount || 0} Kali</td>
+                              <td className="p-4 text-center flex flex-col gap-2 items-center">
+                                <button
+                                  onClick={() => handleToggleBlockUser(usr)}
+                                  className={`text-[10px] font-bold px-3 py-1.5 rounded-lg cursor-pointer shadow-sm transition-all w-24 ${
+                                    isBlocked 
+                                    ? "bg-green-100 hover:bg-green-200 text-green-800 dark:bg-green-900/30 dark:text-green-300" 
+                                    : "bg-red-100 hover:bg-red-200 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+                                  }`}
+                                >
+                                  {isBlocked ? "Buka Blokir" : "Blokir Akses"}
+                                </button>
                                 <button
                                   onClick={() => {
                                     setUpdatingUserPass(usr);
                                     setNewUserPassword("");
                                   }}
-                                  className="px-2.5 py-1 bg-amber-900/10 hover:bg-amber-900 hover:text-amber-50 text-amber-900 text-xs font-bold rounded-lg cursor-pointer transition-all flex items-center gap-1.5 mx-auto"
+                                  className="text-[10px] font-bold px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-200 rounded-lg cursor-pointer shadow-sm transition-all w-24"
                                 >
-                                  <Lock className="w-3.5 h-3.5" />
-                                  Ubah Password
+                                  Ganti Sandi
                                 </button>
                               </td>
                             </tr>
-                          ))}
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>

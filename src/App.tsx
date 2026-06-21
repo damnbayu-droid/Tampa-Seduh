@@ -560,6 +560,10 @@ export default function App() {
           onBackToStorefront={() => setIsAdminMode(false)} 
           darkMode={darkMode}
           setDarkMode={setDarkMode}
+          onLogoutAdmin={() => {
+            setCurrentUser(null);
+            setIsAdminMode(false);
+          }}
         />
       </Suspense>
     );
