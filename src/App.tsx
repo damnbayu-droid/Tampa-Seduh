@@ -321,18 +321,11 @@ export default function App() {
     }
   };
 
-  // Handle /auth/callback — Supabase akan redirect ke sini setelah Google OAuth
-  const handleAuthCallback = useCallback(async () => {
+  // Sync session Supabase ke backend
+  const syncSupabaseSession = useCallback(async (session: any) => {
     try {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      if (error) {
-        console.error("Auth callback error:", error.message);
-        navigateTo("/");
-        return;
-      }
       if (session?.user) {
         const supaUser = session.user;
-        // Sync dengan backend Tampa Seduh
         const res = await fetch(getApiUrl("/api/auth/google-sync"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -358,16 +351,28 @@ export default function App() {
     } catch (err: any) {
       console.error("Callback sync error:", err.message);
     } finally {
-      navigateTo("/");
+      if (window.location.hash.includes("access_token")) {
+         window.history.replaceState(null, "", window.location.pathname);
+      }
+      if (currentPath === "/auth/callback") {
+         navigateTo("/");
+      }
     }
-  }, []);
+  }, [currentPath]);
 
-  // Trigger callback handler when on /auth/callback path or when URL contains access_token
+  // Dengarkan perubahan status login dari Supabase secara otomatis
   useEffect(() => {
-    if (currentPath === "/auth/callback" || window.location.hash.includes("access_token")) {
-      handleAuthCallback();
-    }
-  }, [currentPath, handleAuthCallback]);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("Supabase Auth Event:", event);
+      if ((event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "PASSWORD_RECOVERY") && session?.user) {
+        syncSupabaseSession(session);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [syncSupabaseSession]);
 
   const handleSubscribeMember = async () => {
     if (!currentUser) return;
