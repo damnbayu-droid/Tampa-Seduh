@@ -4,7 +4,6 @@ import dotenv from "dotenv";
 import OpenAI from "openai";
 import { Resend } from "resend";
 import { createClient } from "@supabase/supabase-js";
-import ws from "ws";
 import { MenuItem, CoffeePackage, Order, AuditLog, User, BlogNews, EmailLog, FinancialSummary } from "./src/types.js";
 
 dotenv.config();
@@ -16,12 +15,11 @@ const openai = new OpenAI({
 const resendApiKey = process.env.RESEND_API_KEY || "";
 const resend = new Resend(resendApiKey);
 
-const supabaseUrl = process.env.SUPABASE_URL || "";
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "";
+const supabaseUrl = process.env.SUPABASE_URL || "https://dummy.supabase.co";
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "dummy_key";
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: { persistSession: false },
-  realtime: { transport: ws as any }
+  auth: { persistSession: false }
 });
 
 // Create 'Bukti Bayar' bucket in Supabase storage if it doesn't exist
@@ -583,17 +581,22 @@ app.post("/api/chat", async (req, res) => {
       });
     }
 
-    // Call OpenAI Responses API
-    const response = await openai.responses.create({
-      model: "gpt-5.4-mini",
-      instructions: aiSettings.systemPrompt,
-      input: `${messages.map((m: any) => `${m.role === 'user' ? 'User' : 'TampaSeduh'}: ${m.text}`).join('\n')}\nTampaSeduh:`,
-      store: true,
+    // Call OpenAI Chat Completions API
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: aiSettings.systemPrompt },
+        ...messages.map((m: any) => ({
+          role: m.role === "user" ? "user" : "assistant",
+          content: m.text
+        }))
+      ],
+      temperature: aiSettings.temperature || 0.7,
     });
 
     res.json({
-      text: response.output_text || "Aduh, maaf jo, ada sedikit gangguan jaringan di kuala. Coba ketik ulang kembali?",
-      modelUsed: "gpt-5.4-mini"
+      text: response.choices[0]?.message?.content || "Aduh, maaf jo, ada sedikit gangguan jaringan di kuala. Coba ketik ulang kembali?",
+      modelUsed: "gpt-4o-mini"
     });
 
   } catch (error: any) {

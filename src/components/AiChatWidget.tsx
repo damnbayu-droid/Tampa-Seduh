@@ -12,6 +12,7 @@ interface Message {
 
 export default function AiChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isWidgetVisible, setIsWidgetVisible] = useState(true);
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "model",
@@ -22,6 +23,8 @@ export default function AiChatWidget() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  if (!isWidgetVisible) return null;
 
   const quickQuestions = [
     { label: "📍 Lokasi Kedai", text: "Di mana alamat atau lokasi lengkap kedai Tampa Seduh?" },
@@ -199,16 +202,28 @@ export default function AiChatWidget() {
         )}
       </AnimatePresence>
 
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => setIsOpen(!isOpen)}
-        className="p-4 bg-gradient-to-r from-amber-800 to-amber-950 text-amber-50 rounded-full shadow-2xl hover:shadow-amber-900/30 border border-amber-400/20 cursor-pointer flex items-center justify-center gap-2 font-serif font-bold text-sm"
-        id="btn-toggle-chatbot"
-      >
-        <MessageSquare className="w-6 h-6 text-amber-300" />
-        {isOpen ? "Tutup Chat" : "Tanya Emat"}
-      </motion.button>
+      <div className="flex flex-col items-end gap-2">
+        {/* Tombol X untuk menghilangkan widget seluruhnya */}
+        {!isOpen && (
+          <button 
+            onClick={() => setIsWidgetVisible(false)}
+            className="p-1.5 bg-white/50 dark:bg-zinc-800/50 hover:bg-white dark:hover:bg-zinc-700 rounded-full shadow-sm text-zinc-500 transition-colors"
+            title="Hilangkan Chat Widget"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setIsOpen(!isOpen)}
+          className="p-4 bg-gradient-to-r from-amber-800 to-amber-950 text-amber-50 rounded-full shadow-2xl hover:shadow-amber-900/30 border border-amber-400/20 cursor-pointer flex items-center justify-center gap-2 font-serif font-bold text-sm"
+          id="btn-toggle-chatbot"
+        >
+          <MessageSquare className="w-6 h-6 text-amber-300" />
+          {isOpen ? "Tutup Chat" : "Tanya Emat"}
+        </motion.button>
+      </div>
     </div>
   );
 }
