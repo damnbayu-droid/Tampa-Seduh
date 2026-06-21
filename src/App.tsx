@@ -712,7 +712,7 @@ export default function App() {
                 </div>
                 <div>
                   <h4 className="font-serif font-black text-lg tracking-tight leading-none text-[#2D1B0D] dark:text-amber-50">TAMPA SEDUH.</h4>
-                  <span className="text-[8px] uppercase tracking-[0.18em] font-extrabold text-[#8B5E3C] dark:text-amber-400">STREET COFFEE EST. 2026</span>
+                  <span className="text-[8px] uppercase tracking-[0.18em] font-extrabold text-[#8B5E3C] dark:text-amber-400">STREET COFFEE EST. 2019</span>
                 </div>
               </div>
             </div>

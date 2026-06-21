@@ -523,7 +523,7 @@ export default function CheckoutPage({
                       {/* QRIS Image */}
                       <div className="bg-white p-3 rounded-2xl border-2 border-[#8B5E3C] shadow-md max-w-[260px] relative overflow-hidden">
                         <img 
-                          src="/QRIS Tampa Seduh.png" 
+                          src="/qris_tampa_seduh.png" 
                           alt="QRIS Tampa Seduh" 
                           className="w-full h-auto object-contain rounded-lg"
                           id="qris-image"
@@ -532,7 +532,7 @@ export default function CheckoutPage({
 
                       {/* Download QRIS Button */}
                       <a
-                        href="/QRIS Tampa Seduh.png"
+                        href="/qris_tampa_seduh.png"
                         download="QRIS-Tampa-Seduh.png"
                         className="flex items-center gap-2 px-5 py-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl text-xs font-bold transition-all cursor-pointer border border-zinc-200 dark:border-zinc-700"
                       >
