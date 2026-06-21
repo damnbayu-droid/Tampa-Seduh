@@ -10,7 +10,7 @@ import { MenuItem, CoffeePackage, Order, AuditLog, User, BlogNews, EmailLog, Fin
 
 dotenv.config();
 
-const resendApiKey = process.env.RESEND_API_KEY || "";
+const resendApiKey = process.env.RESEND_API_KEY || "dummy_resend_key_123456789";
 const resend = new Resend(resendApiKey);
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
