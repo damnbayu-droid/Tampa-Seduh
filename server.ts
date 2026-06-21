@@ -47,7 +47,7 @@ async function ensureBuktiBayarBucket() {
 ensureBuktiBayarBucket();
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // Helper: Sync with Supabase if tables exist
 async function syncFromSupabase() {
