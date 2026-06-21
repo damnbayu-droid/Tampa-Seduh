@@ -49,8 +49,8 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 // Helper: Sync with Supabase if tables exist
 async function syncFromSupabase() {
-  if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn("Supabase credentials not configured in .env. Running in pure in-memory mode.");
+  if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === "https://dummy.supabase.co") {
+    console.warn("Supabase credentials not configured. Running in pure in-memory mode.");
     return;
   }
 

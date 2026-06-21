@@ -36,13 +36,19 @@ export default function UserDashboard({
     email: currentUser.email || "",
     whatsapp: currentUser.whatsapp || "",
     address: currentUser.address || "",
-    avatarUrl: currentUser.avatarUrl || ""
+    avatarUrl: currentUser.avatarUrl || "",
+    newPassword: ""
   });
 
   const handleSaveProfile = () => {
     if (onUpdateProfile) {
-      onUpdateProfile(editForm);
+      const updates: Partial<User> = { ...editForm };
+      if (editForm.newPassword.trim() !== "") {
+        updates.password = editForm.newPassword;
+      }
+      onUpdateProfile(updates);
     }
+    setEditForm(prev => ({ ...prev, newPassword: "" }));
     setIsEditingProfile(false);
   };
 
@@ -202,12 +208,22 @@ export default function UserDashboard({
                     className="w-full px-4 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-sm"
                     rows={2}
                   />
-                  <button 
-                    onClick={handleSaveProfile}
-                    className="w-full py-2.5 bg-green-600 text-white rounded-xl text-sm font-bold mt-2"
-                  >
-                    Simpan Perubahan
-                  </button>
+                  <input
+                    type="password"
+                    placeholder="Ganti Password (Kosongkan jika tidak ingin ganti)"
+                    value={editForm.newPassword}
+                    onChange={(e) => setEditForm({...editForm, newPassword: e.target.value})}
+                    className="w-full px-4 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-sm mt-2"
+                  />
+                  <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                    <p className="text-[10px] text-zinc-400 mb-3">Privasi & Keamanan: Data pesanan Anda dilindungi. Password dienkripsi.</p>
+                    <button 
+                      onClick={handleSaveProfile}
+                      className="w-full py-2.5 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700 transition"
+                    >
+                      Simpan Perubahan
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
@@ -216,6 +232,23 @@ export default function UserDashboard({
                 </div>
               )}
             </div>
+
+            {/* Support / WhatsApp CTA Section */}
+            <div className="p-6 bg-[#25D366]/10 dark:bg-[#25D366]/5 rounded-3xl border border-[#25D366]/20 shadow-sm space-y-4">
+              <h4 className="font-serif font-bold text-lg text-green-900 dark:text-green-400">Bantuan & Dukungan</h4>
+              <p className="text-xs text-green-800/80 dark:text-green-500/80">
+                Ada kendala pesanan atau ingin ganti alamat mendadak? Hubungi barista kami langsung via WhatsApp untuk respon cepat!
+              </p>
+              <a 
+                href="https://wa.me/6285696224448?text=Halo%20Tampa%20Seduh,%20saya%20ingin%20bertanya%20seputar%20pesanan%20saya"
+                target="_blank"
+                rel="noreferrer"
+                className="w-full py-3 bg-[#25D366] hover:bg-[#1ebd5a] text-white rounded-2xl text-xs font-bold tracking-wider uppercase transition-all shadow-md flex justify-center items-center gap-2"
+              >
+                Chat via WhatsApp
+              </a>
+            </div>
+
           </div>
 
           {/* Column 2 & 3: Order History */}
