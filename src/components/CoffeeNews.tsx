@@ -31,7 +31,7 @@ export default function CoffeeNews() {
 
     if (!newsLoaded) {
       try {
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://yizsanjcyphlbtjcwzxl.supabase.co";
         if (supabaseUrl) {
           const { data, error } = await supabase
             .from("blog_news")

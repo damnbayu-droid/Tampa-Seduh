@@ -235,7 +235,7 @@ export default function CheckoutPage({
 
     if (!orderSuccess) {
       try {
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://yizsanjcyphlbtjcwzxl.supabase.co";
         if (supabaseUrl) {
           const { error: sbErr } = await supabase.from("orders").insert({
             id: newOrderId,

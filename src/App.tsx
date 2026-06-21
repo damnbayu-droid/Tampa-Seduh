@@ -122,7 +122,7 @@ export default function App() {
     // 2. Jika gagal (misal di static Cloudflare Pages), lakukan query langsung ke Supabase client-side
     if (!mDataLoaded || !pDataLoaded) {
       try {
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://yizsanjcyphlbtjcwzxl.supabase.co";
         if (supabaseUrl) {
           // Fetch Menu Items
           if (!mDataLoaded) {
