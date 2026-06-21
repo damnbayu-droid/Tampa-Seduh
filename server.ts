@@ -869,7 +869,7 @@ app.post("/api/orders", async (req, res) => {
   let emailStatus: "Delivered" | "Sent" | "Failed" | "Pending" | "Skipped (No API Key)" | "Skipped (No Email)" = "Pending";
   let emailBody = `Terima kasih kawan ${customerName}! Barista kami sedang mempersiapkan pesanan Anda senilai Rp ${finalTotal}.000.`;
 
-  if (email && resendApiKey) {
+  if (email && email !== "-" && resendApiKey) {
     try {
       const itemsHtml = items.map((i: any) => `<li>${i.name} (${i.size || 'Regular'}) x${i.quantity} - Rp ${i.price * i.quantity}.000</li>`).join('');
       const invoiceHtml = `

@@ -49,6 +49,8 @@ export default function App() {
   // Render Error Debugging State
   const [renderError, setRenderError] = useState<string | null>(null);
 
+  // Image Zoom/Lightbox State
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   useEffect(() => {
     const handleError = (e: ErrorEvent) => setRenderError(e.message);
     window.addEventListener('error', handleError);
@@ -822,7 +824,8 @@ export default function App() {
                         <img 
                           src={item.image} 
                           alt={item.name}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                          onClick={(e) => { e.stopPropagation(); setZoomedImage(item.image); }}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300 cursor-pointer"
                           referrerPolicy="no-referrer"
                         />
                         {!item.isAvailable && (
@@ -969,7 +972,8 @@ export default function App() {
                         <img 
                           src={item.image} 
                           alt={item.name}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                          onClick={(e) => { e.stopPropagation(); setZoomedImage(item.image); }}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300 cursor-pointer"
                           referrerPolicy="no-referrer"
                         />
                         {!item.isAvailable && (
@@ -1916,6 +1920,41 @@ export default function App() {
               </form>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modern Image Lightbox Modal */}
+      <AnimatePresence>
+        {zoomedImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setZoomedImage(null)}
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 sm:p-8 cursor-zoom-out"
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.8, opacity: 0, y: 20 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="relative max-w-4xl max-h-[90vh] w-full rounded-2xl overflow-hidden shadow-2xl"
+              onClick={(e) => e.stopPropagation()} // Prevent click from closing when clicking image itself
+            >
+              <img 
+                src={zoomedImage} 
+                alt="Zoomed Product" 
+                className="w-full h-full object-contain max-h-[90vh]"
+              />
+              <button
+                onClick={() => setZoomedImage(null)}
+                className="absolute top-4 right-4 bg-black/50 hover:bg-black/80 text-white p-2 rounded-full transition-colors backdrop-blur-md"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 

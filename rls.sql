@@ -20,3 +20,12 @@ CREATE POLICY "Public can view ai_settings" ON ai_settings FOR SELECT USING (tru
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public can insert orders" ON orders;
 CREATE POLICY "Public can insert orders" ON orders FOR INSERT WITH CHECK (true);
+
+-- Untuk users, izinkan public (anon) melakukan insert/update (untuk registrasi dan Google Sync)
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public can view users" ON users;
+DROP POLICY IF EXISTS "Public can insert users" ON users;
+DROP POLICY IF EXISTS "Public can update users" ON users;
+CREATE POLICY "Public can view users" ON users FOR SELECT USING (true);
+CREATE POLICY "Public can insert users" ON users FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public can update users" ON users FOR UPDATE USING (true);
