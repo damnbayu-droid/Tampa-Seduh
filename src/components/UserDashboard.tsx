@@ -381,8 +381,8 @@ export default function UserDashboard({
                                         <title>Invoice ${order.id}</title>
                                         <style>
                                           @media print {
-                                            @page { size: A4 portrait; margin: 20mm; }
-                                            body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; -webkit-print-color-adjust: exact; background: white; margin: 0; padding: 0; }
+                                            @page { size: A4 portrait; margin: 0; }
+                                            body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; -webkit-print-color-adjust: exact; background: white; margin: 0; padding: 20mm; height: 100%; overflow: hidden; }
                                           }
                                         </style>
                                       </head>

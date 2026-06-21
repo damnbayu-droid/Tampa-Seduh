@@ -855,7 +855,16 @@ app.get("/api/test-images-html", (req, res) => {
 });
 
 // 1. Menu API
-app.get("/api/menu", (req, res) => {
+app.get("/api/menu", async (req, res) => {
+  if (supabaseUrl) {
+    const { data, error } = await supabase.from('menu').select('*');
+    if (!error && data) {
+      menuItems = data.map(m => ({
+        id: m.id, name: m.name, priceReg: m.price_reg, priceLarge: m.price_large,
+        isHot: m.is_hot, isAvailable: m.is_available, image: m.image, description: m.description
+      }));
+    }
+  }
   res.json(menuItems);
 });
 
@@ -987,7 +996,13 @@ app.delete("/api/menu/:id", (req, res) => {
 });
 
 // 2. Packages API
-app.get("/api/packages", (req, res) => {
+app.get("/api/packages", async (req, res) => {
+  if (supabaseUrl) {
+    const { data, error } = await supabase.from('packages').select('*');
+    if (!error && data) {
+      coffeePackages = data;
+    }
+  }
   res.json(coffeePackages);
 });
 
