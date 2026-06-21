@@ -1559,8 +1559,10 @@ export default function App() {
             <div className="flex gap-2.5 text-xs text-amber-100/90 font-medium">
               <MapPin className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
               <div>
-                <strong className="block text-white">Jl. Tangkudeagan No. 2 Kotabunan Selatan</strong>
-                <span>Kec. Kotabunan, Kabupaten Bolaang Mongondow Timur, Trans Sulawesi Lingkar Selatan.</span>
+                <a href="https://maps.app.goo.gl/9MbTTfGwG43hgJ527" target="_blank" rel="noreferrer" className="block hover:opacity-80 transition-opacity">
+                  <strong className="block text-white">Jl. Tangkudeagan No. 2 Kotabunan Selatan</strong>
+                  <span>Kec. Kotabunan, Kabupaten Bolaang Mongondow Timur, Trans Sulawesi Lingkar Selatan.</span>
+                </a>
               </div>
             </div>
           </div>
