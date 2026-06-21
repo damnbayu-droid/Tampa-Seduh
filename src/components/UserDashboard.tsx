@@ -347,6 +347,124 @@ export default function UserDashboard({
                         {/* Collapsible Details */}
                         {isExpanded && (
                           <div className="px-5 pb-5 border-t border-zinc-200/50 dark:border-zinc-800 pt-4 text-xs text-zinc-650 dark:text-zinc-400 space-y-4">
+                            <div className="flex gap-2 mb-3">
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // Trigger chat widget to open and handoff to admin
+                                  window.dispatchEvent(new CustomEvent('trigger-admin-chat'));
+                                }}
+                                className="flex-1 py-2 bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-900 dark:text-amber-300 font-bold text-[10px] uppercase tracking-wider rounded-xl transition-colors cursor-pointer"
+                              >
+                                Pesan Admin
+                              </button>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const original = document.body.innerHTML;
+                                  const isPaid = order.status === "completed" || order.paymentProofUrl;
+                                  const statusBadge = isPaid 
+                                    ? '<span style="background:#22c55e; color:white; padding:4px 12px; border-radius:999px; font-weight:bold; font-size:12px;">PAID</span>'
+                                    : '<span style="background:#f59e0b; color:white; padding:4px 12px; border-radius:999px; font-weight:bold; font-size:12px;">UNPAID</span>';
+
+                                  const itemsHtml = order.items.map((i: any) => 
+                                    \`<tr>
+                                      <td style="padding:12px; border-bottom:1px solid #eee;">\${i.name} (\${i.size})</td>
+                                      <td style="padding:12px; border-bottom:1px solid #eee; text-align:center;">\${i.quantity}</td>
+                                      <td style="padding:12px; border-bottom:1px solid #eee; text-align:right;">Rp \${i.price}.000</td>
+                                    </tr>\`
+                                  ).join('');
+
+                                  document.body.innerHTML = \`
+                                    <html>
+                                      <head>
+                                        <title>Invoice \${order.id}</title>
+                                        <style>
+                                          @media print {
+                                            @page { size: A4 portrait; margin: 20mm; }
+                                            body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; -webkit-print-color-adjust: exact; background: white; margin: 0; padding: 0; }
+                                          }
+                                        </style>
+                                      </head>
+                                      <body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background: white; padding: 40px; color: #333; max-width: 800px; margin: 0 auto;">
+                                        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 40px; border-bottom: 2px solid #78350f; padding-bottom: 20px;">
+                                          <div>
+                                            <h1 style="margin:0; color:#78350f; font-size: 32px; font-weight:900;">TAMPA SEDUH.</h1>
+                                            <p style="margin:5px 0 0 0; color:#666; font-size: 14px;">Kedai Kopi Boltim<br>Kotabunan, Sulawesi Utara</p>
+                                          </div>
+                                          <div style="text-align:right;">
+                                            <h2 style="margin:0; font-size:24px; color:#111;">INVOICE</h2>
+                                            <p style="margin:5px 0; font-size:14px; color:#666;">#\${order.id.split('-')[0].toUpperCase()}</p>
+                                            \${statusBadge}
+                                          </div>
+                                        </div>
+                                        
+                                        <div style="display:flex; justify-content:space-between; margin-bottom: 40px;">
+                                          <div>
+                                            <p style="margin:0; font-size:12px; color:#666; font-weight:bold; text-transform:uppercase;">Ditagihkan Kepada:</p>
+                                            <p style="margin:5px 0 0 0; font-size:16px; font-weight:bold;">\${order.userEmail.split('@')[0]}</p>
+                                            <p style="margin:5px 0 0 0; font-size:14px; color:#444;">\${order.address}<br>WA: \${order.whatsapp}</p>
+                                          </div>
+                                          <div style="text-align:right;">
+                                            <p style="margin:0; font-size:12px; color:#666; font-weight:bold; text-transform:uppercase;">Informasi Order:</p>
+                                            <p style="margin:5px 0 0 0; font-size:14px;">Tanggal: \${new Date(order.createdAt).toLocaleDateString('id-ID')}</p>
+                                            <p style="margin:5px 0 0 0; font-size:14px;">Metode: \${order.deliveryMethod === 'pickup' ? 'Ambil di Kedai' : 'Kirim Ke Alamat'}</p>
+                                          </div>
+                                        </div>
+
+                                        <table style="width:100%; border-collapse: collapse; margin-bottom: 30px;">
+                                          <thead>
+                                            <tr style="background:#f8f9fa;">
+                                              <th style="padding:12px; text-align:left; border-bottom:2px solid #ccc; font-size:14px;">Deskripsi Item</th>
+                                              <th style="padding:12px; text-align:center; border-bottom:2px solid #ccc; font-size:14px;">Qty</th>
+                                              <th style="padding:12px; text-align:right; border-bottom:2px solid #ccc; font-size:14px;">Harga</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            \${itemsHtml}
+                                          </tbody>
+                                        </table>
+
+                                        <div style="width: 100%; display: flex; justify-content: flex-end;">
+                                          <table style="width: 300px; font-size: 14px;">
+                                            <tr>
+                                              <td style="padding: 5px 0;">Subtotal:</td>
+                                              <td style="text-align:right; padding: 5px 0;">Rp \${order.subtotal || order.total}.000</td>
+                                            </tr>
+                                            \${order.shippingCost ? \`<tr>
+                                              <td style="padding: 5px 0;">Ongkir:</td>
+                                              <td style="text-align:right; padding: 5px 0;">Rp \${order.shippingCost}.000</td>
+                                            </tr>\` : ''}
+                                            \${order.shippingDiscount ? \`<tr>
+                                              <td style="padding: 5px 0; color:#b45309;">Diskon Ongkir:</td>
+                                              <td style="text-align:right; padding: 5px 0; color:#b45309;">-Rp \${order.shippingDiscount}.000</td>
+                                            </tr>\` : ''}
+                                            <tr>
+                                              <td style="padding: 10px 0; font-weight:bold; font-size: 18px; border-top: 2px solid #333;">TOTAL TAGIHAN:</td>
+                                              <td style="text-align:right; padding: 10px 0; font-weight:bold; font-size: 18px; border-top: 2px solid #333;">Rp \${order.total}.000</td>
+                                            </tr>
+                                          </table>
+                                        </div>
+
+                                        <div style="margin-top: 60px; text-align:center; color:#666; font-size: 14px;">
+                                          <p>Terima kasih telah berbelanja di Tampa Seduh!</p>
+                                          <p style="font-size:12px; color:#999;">Invoice ini sah dan diterbitkan secara digital oleh sistem.</p>
+                                        </div>
+                                      </body>
+                                    </html>
+                                  \`;
+                                  setTimeout(() => {
+                                    window.print();
+                                    document.body.innerHTML = original;
+                                    window.location.reload();
+                                  }, 100);
+                                }}
+                                className="flex-1 py-2 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-900 font-bold text-[10px] uppercase tracking-wider rounded-xl transition-colors cursor-pointer"
+                              >
+                                Download Invoice
+                              </button>
+                            </div>
+                            
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <div className="space-y-1 bg-white dark:bg-zinc-900 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800">
                                 <span className="font-bold text-zinc-400 block uppercase text-[9px] tracking-widest">Detail Delivery</span>

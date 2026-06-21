@@ -237,6 +237,40 @@ app.use(express.json({ limit: "50mb" }));
 
 // Penyelamat Memori untuk Vercel (Serverless Cold Start)
 let isVercelSynced = false;
+
+// Real-time server states
+interface ChatSession {
+  sessionId: string;
+  userName: string;
+  messages: { sender: "user" | "ai" | "admin"; text: string; timestamp: string }[];
+  isSabotaged: boolean;
+  lastActive: number;
+}
+const activeChats: Record<string, ChatSession> = {};
+
+interface SystemNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: "info" | "success" | "warning";
+  timestamp: string;
+  read: boolean;
+  targetRole: "admin" | "user";
+  targetEmail?: string;
+}
+const globalNotifications: SystemNotification[] = [];
+
+export const pushNotification = (notif: Omit<SystemNotification, "id" | "timestamp" | "read">) => {
+  const newNotif: SystemNotification = {
+    ...notif,
+    id: "notif-" + Date.now() + Math.random().toString(36).substr(2, 5),
+    timestamp: new Date().toISOString(),
+    read: false
+  };
+  globalNotifications.push(newNotif);
+  if (globalNotifications.length > 200) globalNotifications.shift();
+};
+
 app.use(async (req, res, next) => {
   if (process.env.VERCEL && !isVercelSynced) {
     await syncFromSupabase();
@@ -638,6 +672,38 @@ app.post("/api/chat", async (req, res) => {
 
   // Retrieve the client-submitted questions or last message
   const lastMessage = messages[messages.length - 1]?.text || "Halo";
+  const userName = req.body.userName || "Tamu";
+  const sessionId = req.body.sessionId || "default";
+
+  // Track chat session
+  if (!activeChats[sessionId]) {
+    activeChats[sessionId] = {
+      sessionId,
+      userName,
+      messages: [],
+      isSabotaged: false,
+      lastActive: Date.now()
+    };
+    pushNotification({
+      title: "Chat Baru",
+      message: `${userName} memulai obrolan dengan AI.`,
+      type: "info",
+      targetRole: "admin"
+    });
+  }
+  
+  const session = activeChats[sessionId];
+  session.lastActive = Date.now();
+  session.messages.push({ sender: "user", text: lastMessage, timestamp: new Date().toISOString() });
+
+  // If admin has sabotaged, do not trigger AI. Tell client to wait for admin via polling
+  if (session.isSabotaged) {
+    return res.json({
+      text: "",
+      modelUsed: "Admin Handoff",
+      sabotaged: true
+    });
+  }
 
   try {
     const apiKey = process.env.GEMINI_API_KEY;
@@ -646,6 +712,7 @@ app.post("/api/chat", async (req, res) => {
       console.warn("GEMINI_API_KEY environment variable is not configured. Simulating AI response.");
 
       const textResponse = simulateTampaSeduhAI(lastMessage);
+      session.messages.push({ sender: "ai", text: textResponse, timestamp: new Date().toISOString() });
       return res.json({
         text: textResponse,
         modelUsed: "Simulated Local Model (No API Key)"
@@ -672,8 +739,11 @@ app.post("/api/chat", async (req, res) => {
     const result = await chat.sendMessage(lastMessage);
     const responseText = result.response.text();
 
+    const aiResponse = responseText || "Maaf kawan, saya sedang sedikit bingung. Bisa diulang pertanyaannya?";
+    session.messages.push({ sender: "ai", text: aiResponse, timestamp: new Date().toISOString() });
+
     res.json({
-      text: responseText || "Aduh, maaf jo, ada sedikit gangguan jaringan di kuala. Coba ketik ulang kembali?",
+      text: aiResponse,
       modelUsed: "gemini-1.5-flash"
     });
 
@@ -709,6 +779,76 @@ function simulateTampaSeduhAI(input: string): string {
 }
 
 // REST ENDPOINTS
+
+// 0. Notifications API
+app.get("/api/notifications", (req, res) => {
+  const role = req.query.role as string;
+  const email = req.query.email as string;
+  if (!role) return res.json([]);
+  
+  // Clean up old chats while we're at it (older than 1 hour)
+  const now = Date.now();
+  Object.keys(activeChats).forEach(id => {
+    if (now - activeChats[id].lastActive > 3600000) {
+      delete activeChats[id];
+    }
+  });
+
+  const relevant = globalNotifications.filter(n => {
+    if (n.read) return false;
+    if (n.targetRole !== role) return false;
+    if (n.targetEmail && n.targetEmail !== email) return false;
+    return true;
+  });
+
+  res.json(relevant);
+});
+
+app.post("/api/notifications/mark-read", (req, res) => {
+  const { ids } = req.body;
+  if (Array.isArray(ids)) {
+    globalNotifications.forEach(n => {
+      if (ids.includes(n.id)) n.read = true;
+    });
+  }
+  res.json({ success: true });
+});
+
+// 0.5 Chat Admin Handoff API
+app.get("/api/chat-admin/sessions", (req, res) => {
+  res.json(Object.values(activeChats));
+});
+
+app.post("/api/chat-admin/sabotage", (req, res) => {
+  const { sessionId, sabotage } = req.body;
+  if (activeChats[sessionId]) {
+    activeChats[sessionId].isSabotaged = sabotage;
+    res.json({ success: true, session: activeChats[sessionId] });
+  } else {
+    res.status(404).json({ error: "Session not found" });
+  }
+});
+
+app.post("/api/chat-admin/send", (req, res) => {
+  const { sessionId, text } = req.body;
+  if (activeChats[sessionId]) {
+    activeChats[sessionId].messages.push({ sender: "admin", text, timestamp: new Date().toISOString() });
+    activeChats[sessionId].lastActive = Date.now();
+    res.json({ success: true, session: activeChats[sessionId] });
+  } else {
+    res.status(404).json({ error: "Session not found" });
+  }
+});
+
+app.get("/api/chat-admin/poll/:sessionId", (req, res) => {
+  const session = activeChats[req.params.sessionId];
+  if (!session) return res.json({ messages: [], isSabotaged: false });
+  // Send back only admin messages for the client to receive if they are polling
+  res.json({ 
+    messages: session.messages,
+    isSabotaged: session.isSabotaged
+  });
+});
 
 app.get("/api/test-images-html", (req, res) => {
   res.sendFile(path.join(process.cwd(), "public", "test_images.html"));
@@ -1471,61 +1611,45 @@ app.post("/api/news", (req, res) => {
   res.status(201).json(newPost);
 });
 
-// 8. Financial Accounting API (Broken down into multiple ranges)
+// 8. Financial Accounting API (Real Data Aggregation)
 app.get("/api/finances", (req, res) => {
-  // Generate summaries for different tabs dynamically based on the current order list!
-  const completedOrders = orders.filter(o => o.status === "completed");
-  const baseOrderRevenue = completedOrders.reduce((sum, o) => sum + o.total, 0);
+  const completedOrders = orders.filter(o => o.status === "Selesai");
+  const totalRevenue = completedOrders.reduce((sum, o) => sum + o.total, 0);
+  const totalCosts = totalRevenue * 0.45; // Asumsi Modal 45% dari omset
+  const netProfit = totalRevenue - totalCosts;
+
+  // We will build dynamic buckets based on the actual dates of orders
+  // However, to keep the UI shape consistent, we can define standard labels
+  
+  // 1. Harian (Today)
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+  const todayOrders = completedOrders.filter(o => o.createdAt.startsWith(todayStr));
+  const dailyRev = todayOrders.reduce((sum, o) => sum + o.total, 0);
+
+  // 2. Mingguan (Last 7 days)
+  const weekRev = completedOrders.filter(o => {
+    const diff = (today.getTime() - new Date(o.createdAt).getTime()) / (1000 * 3600 * 24);
+    return diff <= 7;
+  }).reduce((sum, o) => sum + o.total, 0);
+
+  // Default empty shell
+  const createEmptyShell = (period: "Harian" | "Mingguan" | "Bulanan" | "6 Bulan" | "1 Tahun" | "Semua", label: string, rev: number) => ({
+    period,
+    labels: [label],
+    revenue: [rev],
+    costs: [rev * 0.45],
+    netProfit: rev - (rev * 0.45),
+    transactionsCount: completedOrders.length
+  });
 
   const finances: FinancialSummary[] = [
-    {
-      period: "Harian",
-      labels: ["08:00", "11:00", "14:00", "17:00", "20:00", "23:00"],
-      revenue: [120, 240, 180, 310, 450, 200],
-      costs: [80, 110, 90, 140, 210, 120],
-      netProfit: 710,
-      transactionsCount: 38
-    },
-    {
-      period: "Mingguan",
-      labels: ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"],
-      revenue: [1200, 1450, 1100, 1600, 2300, 3100, 2800],
-      costs: [700, 850, 680, 900, 1200, 1600, 1400],
-      netProfit: 6220,
-      transactionsCount: 220
-    },
-    {
-      period: "Bulanan",
-      labels: ["Minggu 1", "Minggu 2", "Minggu 3", "Minggu 4"],
-      revenue: [6200, 7400, 8100, 9500],
-      costs: [3500, 4100, 4300, 4900],
-      netProfit: 14400,
-      transactionsCount: 880
-    },
-    {
-      period: "6 Bulan",
-      labels: ["Januari", "Februari", "Maret", "April", "Mei", "Juni"],
-      revenue: [28000, 31000, 29000, 35000, 42000, 48000 + baseOrderRevenue],
-      costs: [16000, 18000, 17200, 20100, 23000, 25000],
-      netProfit: (28000 + 31000 + 29000 + 35000 + 42000 + 48000 + baseOrderRevenue) - 119300,
-      transactionsCount: 4200
-    },
-    {
-      period: "1 Tahun",
-      labels: ["Q1 2025", "Q2 2025", "Q3 2025", "Q4 2025", "Q1 2026", "Q2 2026"],
-      revenue: [92000, 105000, 112000, 124000, 131000, 145000 + baseOrderRevenue],
-      costs: [52000, 58000, 61000, 68000, 72000, 79000],
-      netProfit: 318000 + baseOrderRevenue,
-      transactionsCount: 24500
-    },
-    {
-      period: "Semua",
-      labels: ["Tahun 2024", "Tahun 2025", "Tahun 2026 YTD"],
-      revenue: [380000, 433000, 276000 + baseOrderRevenue],
-      costs: [210000, 239000, 151000],
-      netProfit: 489000 + baseOrderRevenue,
-      transactionsCount: 89300
-    }
+    createEmptyShell("Harian", "Hari Ini", dailyRev),
+    createEmptyShell("Mingguan", "7 Hari Terakhir", weekRev),
+    createEmptyShell("Bulanan", "Bulan Ini", totalRevenue), // simplifies month calculation
+    createEmptyShell("6 Bulan", "Semester Ini", totalRevenue),
+    createEmptyShell("1 Tahun", "Tahun Ini", totalRevenue),
+    createEmptyShell("Semua", "Semua Waktu", totalRevenue)
   ];
 
   res.json(finances);

@@ -17,6 +17,7 @@ const AiChatWidget = lazy(() => import("./components/AiChatWidget"));
 const CoffeeNews = lazy(() => import("./components/CoffeeNews"));
 const AdminDashboard = lazy(() => import("./components/AdminDashboard"));
 const CheckoutPage = lazy(() => import("./components/CheckoutPage"));
+const GlobalNotification = lazy(() => import("./components/GlobalNotification"));
 
 export default function App() {
   // Navigation & admin panel toggles
@@ -1806,6 +1807,10 @@ export default function App() {
       {/* Floating AI chat assistant */}
       <Suspense fallback={null}>
         <AiChatWidget />
+        <GlobalNotification 
+          userRole={isAdminMode ? "admin" : (currentUser ? "user" : null)} 
+          userEmail={currentUser?.email} 
+        />
       </Suspense>
 
       {/* User Login Dialog Modal */}

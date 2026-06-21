@@ -10,9 +10,10 @@ interface Message {
   timestamp: Date;
 }
 
-export default function AiChatWidget() {
+export default function AiChatWidget({ userName = "Tamu Rahasia" }: { userName?: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isWidgetVisible, setIsWidgetVisible] = useState(true);
+  const [sessionId] = useState(() => "chat-" + Date.now() + "-" + Math.random().toString(36).substr(2, 6));
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "model",
@@ -41,6 +42,64 @@ export default function AiChatWidget() {
     }
   }, [messages, isOpen]);
 
+  // Polling to catch admin handoff messages
+  useEffect(() => {
+    if (!isOpen) return;
+    const poll = async () => {
+      try {
+        const res = await fetch(getApiUrl(`/api/chat-admin/poll/${sessionId}`));
+        if (res.ok) {
+          const data = await res.json();
+          if (data.messages && data.messages.length > messages.length - 1) { // -1 for initial welcome msg
+            // If the server has more messages (e.g. from admin), sync them!
+            // To prevent overwriting our own immediate messages, we only append new ones from admin
+            // Simple sync: if server length > our length (ignoring initial welcome message), replace
+            const serverMsgs = data.messages.map((m: any) => ({
+              role: m.sender === "user" ? "user" : "model",
+              text: m.text,
+              timestamp: new Date(m.timestamp)
+            }));
+            
+            // Reconstruct full messages including welcome message
+            const initialWelcome = messages[0];
+            setMessages([initialWelcome, ...serverMsgs]);
+          }
+        }
+      } catch (err) {}
+    };
+    const interval = setInterval(poll, 3000);
+    return () => clearInterval(interval);
+  }, [isOpen, sessionId, messages.length]);
+
+  // Listen for admin chat triggers from outside
+  useEffect(() => {
+    const handleTrigger = async () => {
+      setIsWidgetVisible(true);
+      setIsOpen(true);
+      
+      // Send a ping message first to ensure session is created if it hasn't been
+      await fetch(getApiUrl("/api/chat"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [{ role: "user", text: "Halo Admin!" }], sessionId, userName })
+      }).catch(() => {});
+
+      // Sabotage session automatically to connect to admin
+      await fetch(getApiUrl("/api/chat-admin/sabotage"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, sabotage: true })
+      });
+      setMessages((prev) => [...prev, {
+        role: "model",
+        text: "Memanggil Admin Tampa Seduh... Pesan Anda akan langsung dibalas oleh tim kami.",
+        timestamp: new Date()
+      }]);
+    };
+    window.addEventListener('trigger-admin-chat', handleTrigger);
+    return () => window.removeEventListener('trigger-admin-chat', handleTrigger);
+  }, [sessionId, userName]);
+
   const handleSend = async (textToSend: string) => {
     if (!textToSend.trim() || isLoading) return;
 
@@ -63,7 +122,11 @@ export default function AiChatWidget() {
       const response = await fetch(getApiUrl("/api/chat"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: chatHistory })
+        body: JSON.stringify({ 
+          messages: chatHistory, 
+          sessionId, 
+          userName 
+        })
       });
 
       if (!response.ok) {
@@ -72,14 +135,16 @@ export default function AiChatWidget() {
 
       const data = await response.json();
       
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "model",
-          text: data.text,
-          timestamp: new Date()
-        }
-      ]);
+      if (!data.sabotaged) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "model",
+            text: data.text,
+            timestamp: new Date()
+          }
+        ]);
+      }
     } catch (error) {
       setMessages((prev) => [
         ...prev,

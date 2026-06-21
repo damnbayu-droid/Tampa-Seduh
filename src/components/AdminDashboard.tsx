@@ -30,6 +30,24 @@ type ActiveTab =
   | "news";
 
 export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMode, onLogoutAdmin }: AdminDashboardProps) {
+  // Local fast toggle for dark mode to prevent full App re-render delay
+  const [isDark, setIsDark] = useState(
+    typeof window !== "undefined" ? document.documentElement.classList.contains("dark") : darkMode
+  );
+  
+  const handleToggleDark = () => {
+    const nextDark = !isDark;
+    setIsDark(nextDark);
+    if (nextDark) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+    // Update global state asynchronously to prevent blocking UI
+    setTimeout(() => {
+      setDarkMode(nextDark);
+    }, 50);
+  };
   const [activeTab, setActiveTab] = useState<ActiveTab>("overview");
   
   // Data State fetched from server
@@ -41,6 +59,9 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   const [emailsList, setEmailsList] = useState<EmailLog[]>([]);
   const [newsList, setNewsList] = useState<BlogNews[]>([]);
   const [finances, setFinances] = useState<FinancialSummary[]>([]);
+  const [chatSessions, setChatSessions] = useState<any[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [adminChatInput, setAdminChatInput] = useState("");
   
   // AI Master State
   const [aiConfig, setAiConfig] = useState({ systemPrompt: "", temperature: 0.7 });
@@ -99,9 +120,13 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
       if (nRes.ok) setNewsList(await nRes.json());
       if (fRes.ok) setFinances(await fRes.json());
       if (aiRes.ok) setAiConfig(await aiRes.json());
+      
+      const chatsRes = await fetch(getApiUrl("/api/chat-admin/sessions"));
+      if (chatsRes.ok) setChatSessions(await chatsRes.json());
+      
+      setLoading(false);
     } catch (err) {
       console.error("Gagal menjemput data admin:", err);
-    } finally {
       setLoading(false);
     }
   };
@@ -109,6 +134,18 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   useEffect(() => {
     fetchAllData();
   }, [refreshKey]);
+
+  useEffect(() => {
+    if (activeTab === "chat") {
+      const interval = setInterval(async () => {
+        try {
+          const res = await fetch(getApiUrl("/api/chat-admin/sessions"));
+          if (res.ok) setChatSessions(await res.json());
+        } catch {}
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [activeTab]);
 
   // Actions
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -412,10 +449,10 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
             </div>
           </div>
           <button 
-            onClick={() => setDarkMode(!darkMode)}
+            onClick={handleToggleDark}
             className="p-1.5 hover:bg-white/10 rounded-lg text-amber-200 transition-colors"
           >
-            {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
+            {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
           </button>
         </div>
 
@@ -482,11 +519,11 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
             <p className="text-xs text-zinc-500">Terminal monitoring penjualan dan konten kedai Tampa Seduh</p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex gap-2">
             <button
-              onClick={() => setRefreshKey(p => p + 1)}
-              className="p-2 border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-xl transition-all cursor-pointer flex items-center gap-1"
-              title="Refresh Databases"
+              onClick={fetchAllData}
+              disabled={loading}
+              className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-zinc-800 text-amber-950 dark:text-amber-100 rounded-xl border border-zinc-200 dark:border-zinc-700 shadow-sm text-xs font-bold hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors cursor-pointer disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               <span className="text-xs font-bold">Sinkronkan</span>
@@ -924,7 +961,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                             setIsMenuOpen(false);
                             setEditingMenu(null);
                           }}
-                          className="px-4 py-2 text-xs bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-805 rounded-xl cursor-pointer"
+                          className="px-4 py-2 text-xs bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-405 rounded-xl cursor-pointer"
                         >
                           Batal
                         </button>
@@ -1506,35 +1543,118 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                 <div className="space-y-6">
                   <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-sm space-y-4">
                     <div className="flex justify-between items-center border-b pb-3 border-zinc-100 dark:border-zinc-800">
-                      <h3 className="font-serif font-bold text-lg text-amber-950 dark:text-amber-50">Salinan Interaksi Chat Konsumen</h3>
-                      <span className="text-xs bg-amber-900/5 text-amber-900 dark:text-amber-300 font-bold px-2 py-0.5 rounded-full">Monitoring Live</span>
+                      <h3 className="font-serif font-bold text-lg text-amber-950 dark:text-amber-50">Sistem Live Chat & Handoff</h3>
+                      <span className="text-xs bg-amber-900/5 text-amber-900 dark:text-amber-300 font-bold px-2 py-0.5 rounded-full">Real-time Sabotage</span>
                     </div>
 
-                    <div className="space-y-3">
-                      <div className="p-4 bg-zinc-50 dark:bg-zinc-800/40 rounded-xl space-y-2 text-xs">
-                        <div className="flex justify-between font-bold">
-                          <span className="text-amber-800 dark:text-amber-300 font-mono">User (Andika)</span>
-                          <span className="text-zinc-400">19:42 WITA</span>
-                        </div>
-                        <p className="text-zinc-700 dark:text-zinc-300">"Apakah kedai Tampa Seduh buka sampai malam minggu?"</p>
-                        <div className="flex justify-between font-bold border-t border-zinc-200/50 dark:border-zinc-800 pt-2 mt-2">
-                          <span className="text-emerald-600 dark:text-emerald-400 font-mono">Gemini AI response:</span>
-                          <span className="text-zinc-400">19:42 WITA</span>
-                        </div>
-                        <p className="text-zinc-700 dark:text-zinc-300">"Iya kawan! Tampa Seduh buka sampai jam 23.00 WITA setiap hari, termasuk hari libur. Silakan singgah kawan!"</p>
+                    <div className="flex flex-col md:flex-row gap-6">
+                      {/* Session List */}
+                      <div className="w-full md:w-1/3 border-r border-zinc-100 dark:border-zinc-800 pr-0 md:pr-4 space-y-2">
+                        <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3">Sesi Aktif</h4>
+                        {chatSessions.length === 0 ? (
+                          <p className="text-xs text-zinc-400">Belum ada obrolan aktif saat ini.</p>
+                        ) : (
+                          chatSessions.map((session: any) => (
+                            <button
+                              key={session.sessionId}
+                              onClick={() => setSelectedSessionId(session.sessionId)}
+                              className={`w-full text-left p-3 rounded-xl transition-all border text-xs cursor-pointer ${
+                                selectedSessionId === session.sessionId
+                                  ? "bg-amber-50 dark:bg-amber-900/20 border-amber-500/50"
+                                  : "bg-zinc-50 dark:bg-zinc-800/40 border-zinc-200 dark:border-zinc-700/50 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                              }`}
+                            >
+                              <div className="flex justify-between font-bold">
+                                <span className="truncate text-amber-900 dark:text-amber-300">{session.userName}</span>
+                                {session.isSabotaged && <span className="text-red-500 text-[10px]">HANDOFF</span>}
+                              </div>
+                              <div className="text-[10px] text-zinc-500 mt-1 truncate">
+                                {session.messages[session.messages.length - 1]?.text}
+                              </div>
+                            </button>
+                          ))
+                        )}
                       </div>
 
-                      <div className="p-4 bg-zinc-50 dark:bg-zinc-800/40 rounded-xl space-y-2 text-xs">
-                        <div className="flex justify-between font-bold">
-                          <span className="text-amber-800 dark:text-amber-300 font-mono">User (Siti)</span>
-                          <span className="text-zinc-400">22:05 WITA</span>
-                        </div>
-                        <p className="text-zinc-700 dark:text-zinc-300">"Minta info menu jahe dong kawan."</p>
-                        <div className="flex justify-between font-bold border-t border-zinc-200/50 dark:border-zinc-800 pt-2 mt-2">
-                          <span className="text-emerald-600 dark:text-emerald-400 font-mono">Gemini AI response:</span>
-                          <span className="text-zinc-400">22:05 WITA</span>
-                        </div>
-                        <p className="text-zinc-700 dark:text-zinc-300">"Boleh sekali jo kawan! Kita punya Saraba, minuman hangat khas jahe merah kental manis rempah aromatik, murni dicampur susu kental manis dan gula kelapa alami. Minuman andalan Boltim agar tubuh bugar kembali!"</p>
+                      {/* Chat Window */}
+                      <div className="w-full md:w-2/3 flex flex-col h-[500px]">
+                        {!selectedSessionId ? (
+                          <div className="flex-1 flex items-center justify-center text-zinc-400 text-sm">
+                            Pilih sesi obrolan untuk memantau atau mengambil alih.
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex justify-between items-center bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-t-xl border border-zinc-200 dark:border-zinc-700 border-b-0">
+                              <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">
+                                Berbincang dengan: {chatSessions.find(s => s.sessionId === selectedSessionId)?.userName}
+                              </span>
+                              <button
+                                onClick={async () => {
+                                  const sess = chatSessions.find(s => s.sessionId === selectedSessionId);
+                                  const sabotage = !sess?.isSabotaged;
+                                  await fetch(getApiUrl("/api/chat-admin/sabotage"), {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ sessionId: selectedSessionId, sabotage })
+                                  });
+                                  setRefreshKey(k => k + 1);
+                                }}
+                                className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                                  chatSessions.find(s => s.sessionId === selectedSessionId)?.isSabotaged
+                                    ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                                    : "bg-amber-900 text-amber-50 hover:bg-amber-800"
+                                }`}
+                              >
+                                {chatSessions.find(s => s.sessionId === selectedSessionId)?.isSabotaged ? "Hentikan Handoff (Kembali ke AI)" : "Ambil Alih Obrolan (Sabotase)"}
+                              </button>
+                            </div>
+                            
+                            <div className="flex-1 overflow-y-auto p-4 space-y-4 border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900/50">
+                              {chatSessions.find(s => s.sessionId === selectedSessionId)?.messages.map((m: any, idx: number) => (
+                                <div key={idx} className={`flex flex-col text-xs ${m.sender === "user" ? "items-start" : "items-end"}`}>
+                                  <div className={`flex items-center gap-2 mb-1 ${m.sender === "user" ? "" : "flex-row-reverse"}`}>
+                                    <span className={`font-bold ${
+                                      m.sender === "user" ? "text-amber-800 dark:text-amber-400" :
+                                      m.sender === "admin" ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"
+                                    }`}>
+                                      {m.sender === "user" ? "User" : m.sender === "admin" ? "Admin" : "AI Gemini"}
+                                    </span>
+                                    <span className="text-[9px] text-zinc-400">{new Date(m.timestamp).toLocaleTimeString()}</span>
+                                  </div>
+                                  <div className={`p-3 rounded-xl max-w-[80%] ${
+                                    m.sender === "user" ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 rounded-tl-none" :
+                                    m.sender === "admin" ? "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 text-red-900 dark:text-red-100 rounded-tr-none" :
+                                    "bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-900/50 text-emerald-900 dark:text-emerald-100 rounded-tr-none"
+                                  }`}>
+                                    <p className="whitespace-pre-wrap">{m.text}</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="p-3 border border-t-0 border-zinc-200 dark:border-zinc-700 rounded-b-xl flex gap-2">
+                              <input
+                                type="text"
+                                value={adminChatInput}
+                                onChange={(e) => setAdminChatInput(e.target.value)}
+                                disabled={!chatSessions.find(s => s.sessionId === selectedSessionId)?.isSabotaged}
+                                onKeyDown={async (e) => {
+                                  if (e.key === "Enter" && adminChatInput.trim()) {
+                                    await fetch(getApiUrl("/api/chat-admin/send"), {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ sessionId: selectedSessionId, text: adminChatInput })
+                                    });
+                                    setAdminChatInput("");
+                                    setRefreshKey(k => k + 1);
+                                  }
+                                }}
+                                placeholder={chatSessions.find(s => s.sessionId === selectedSessionId)?.isSabotaged ? "Ketik pesan sebagai Admin..." : "Ambil alih obrolan terlebih dahulu untuk mengetik."}
+                                className="flex-1 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 text-sm disabled:opacity-50"
+                              />
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1679,9 +1799,10 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => window.print()}
-                    className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-lg cursor-pointer transition-all"
+                    className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-lg cursor-pointer transition-all flex items-center gap-1.5"
                   >
-                    Cetak Invoice
+                    <Download className="w-3.5 h-3.5" />
+                    Download Invoice
                   </button>
                   <button
                     onClick={() => setSelectedInvoiceOrder(null)}
