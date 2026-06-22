@@ -1,4 +1,5 @@
 import express from "express";
+import type { Request, Response, NextFunction } from "express";
 import path from "path";
 import dotenv from "dotenv";
 import OpenAI from "openai";
@@ -6,6 +7,7 @@ import { Resend } from "resend";
 import { createClient } from "@supabase/supabase-js";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import bcrypt from "bcryptjs";
 import { MenuItem, CoffeePackage, Order, AuditLog, User, BlogNews, EmailLog, FinancialSummary } from "./src/types.js";
 
 dotenv.config();
@@ -22,6 +24,22 @@ const supabaseUrl = process.env.SUPABASE_URL || "https://dummy.supabase.co";
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "dummy_key";
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+// ===================================================================
+// WAJIB: SUPABASE_SERVICE_ROLE_KEY harus tersedia
+// Server TIDAK AKAN START jika key tidak dikonfigurasi di production
+// Ini mencegah backend berjalan dengan hak akses anon yang tidak aman
+// ===================================================================
+if (!supabaseServiceKey && process.env.NODE_ENV === "production") {
+  console.error("\n[FATAL] SUPABASE_SERVICE_ROLE_KEY tidak dikonfigurasi!");
+  console.error("Server tidak dapat berjalan tanpa Service Role Key di production.");
+  console.error("Tambahkan SUPABASE_SERVICE_ROLE_KEY ke environment variables Vercel.\n");
+  process.exit(1);
+}
+
+if (!supabaseServiceKey) {
+  console.warn("[WARNING] SUPABASE_SERVICE_ROLE_KEY tidak tersedia. Menggunakan ANON_KEY (development mode only).");
+}
+
 // Gunakan DummyWS agar Vercel Serverless tidak crash akibat module "ws" native
 class DummyWS {
     constructor() {}
@@ -29,6 +47,8 @@ class DummyWS {
     close() {}
 }
 
+// Backend client SELALU menggunakan Service Role Key
+// Service Role Key bypass RLS — HANYA untuk backend, TIDAK PERNAH dikirim ke frontend
 const supabase = createClient(supabaseUrl, supabaseServiceKey || supabaseAnonKey, {
   auth: { persistSession: false },
   realtime: {
@@ -57,6 +77,55 @@ async function ensureBuktiBayarBucket() {
   }
 }
 ensureBuktiBayarBucket();
+
+// ===================================================================
+// MIDDLEWARE: requireAdmin — Proteksi semua admin endpoint
+// Verifikasi JWT Supabase dari header Authorization: Bearer <token>
+// kemudian pastikan user adalah admin berdasarkan email atau role
+// ===================================================================
+
+async function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  try {
+    const authHeader = req.headers["authorization"];
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Unauthorized: Token tidak ditemukan kawan. Silakan login terlebih dahulu." });
+    }
+
+    const token = authHeader.slice(7); // Hapus "Bearer "
+
+    // Verifikasi token via Supabase Auth
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+
+    if (error || !user) {
+      return res.status(401).json({ error: "Unauthorized: Token tidak valid atau sudah kadaluarsa kawan." });
+    }
+
+    // Cek apakah email cocok dengan admin email dari .env
+    const adminEmail = process.env.ADMIN_EMAIL || "tampaseduh@gmail.com";
+    if (user.email === adminEmail) {
+      // Admin email dari .env — langsung diizinkan
+      (req as any).adminUser = user;
+      return next();
+    }
+
+    // Cek role dari tabel users (untuk admin lain yang mungkin ada di masa depan)
+    const { data: profile, error: profileError } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (profileError || !profile || profile.role !== "admin") {
+      return res.status(403).json({ error: "Forbidden: Kamu tidak memiliki akses admin kawan." });
+    }
+
+    (req as any).adminUser = user;
+    return next();
+  } catch (err: any) {
+    console.error("[requireAdmin] Error:", err.message);
+    return res.status(500).json({ error: "Internal server error saat verifikasi admin." });
+  }
+}
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
@@ -96,7 +165,220 @@ const authLimiter = rateLimit({
 // Apply general rate limiter to all API routes
 app.use("/api/", apiLimiter);
 
-// Helper: Sync with Supabase if tables exist
+// ===================================================================
+// REAL PROFIT ENGINE V1
+// Menghitung HPP aktual dari Recipe & Ingredient database
+// Formula:
+//   HPP per item = SUM(recipe_item.quantity_used × ingredient.cost_per_unit)
+//   Revenue aktual = SUM(order_item.price × order_item.quantity) [dalam satuan rupiah]
+//   Gross Profit = Revenue - HPP
+//   Margin % = (Gross Profit / Revenue) × 100
+// ===================================================================
+
+interface ProfitItemBreakdown {
+  name: string;
+  quantity: number;
+  unit_revenue: number;    // Harga jual per item (dalam ribuan IDR, sesuai order)
+  unit_hpp: number;        // HPP per item dari recipe (dalam rupiah)
+  total_revenue: number;
+  total_hpp: number;
+  gross_profit: number;
+  matched_recipe: string | null;  // Nama recipe yang di-match
+}
+
+interface ProfitResult {
+  order_id: string;
+  revenue: number;
+  hpp: number;
+  gross_profit: number;
+  margin_percentage: number;
+  item_breakdown: ProfitItemBreakdown[];
+}
+
+// Core: Hitung HPP aktual untuk sebuah order berdasarkan recipe data
+async function calculateOrderProfit(orderId: string): Promise<ProfitResult | null> {
+  // 1. Ambil order
+  const order = orders.find(o => o.id === orderId);
+  if (!order) return null;
+
+  // 2. Ambil semua recipes dengan HPP (dari Supabase langsung)
+  const { data: recipesRaw, error: recipeErr } = await supabase
+    .from("recipes")
+    .select("id, name, selling_price");
+
+  if (recipeErr || !recipesRaw) {
+    console.error("[ProfitEngine] Gagal ambil recipes:", recipeErr?.message);
+    return null;
+  }
+
+  // 3. Ambil recipe_items dengan ingredient cost
+  const { data: recipeItemsRaw, error: riErr } = await supabase
+    .from("recipe_items")
+    .select(`
+      recipe_id,
+      quantity_used,
+      ingredient:ingredients(cost_per_unit)
+    `);
+
+  if (riErr) {
+    console.error("[ProfitEngine] Gagal ambil recipe_items:", riErr.message);
+    return null;
+  }
+
+  // 4. Ambil package_recipes dan package_items untuk order paket
+  const { data: packageRecipesRaw } = await supabase
+    .from("package_recipes")
+    .select("id, package_name, selling_price");
+
+  const { data: packageItemsRaw } = await supabase
+    .from("package_items")
+    .select("package_id, recipe_id, quantity");
+
+  // 5. Build map: recipe_id → totalHpp (dalam rupiah)
+  const recipeHppMap = new Map<string, number>();
+  for (const recipe of (recipesRaw || [])) {
+    const items = (recipeItemsRaw || []).filter(ri => ri.recipe_id === recipe.id);
+    const totalHpp = items.reduce((sum, ri) => {
+      const costPerUnit = (ri.ingredient as any)?.cost_per_unit || 0;
+      return sum + (costPerUnit * ri.quantity_used);
+    }, 0);
+    recipeHppMap.set(recipe.id, totalHpp);
+  }
+
+  // 6. Build map: recipe name (lowercase) → { id, hpp }
+  const recipeByName = new Map<string, { id: string; hpp: number }>();
+  for (const recipe of (recipesRaw || [])) {
+    const hpp = recipeHppMap.get(recipe.id) || 0;
+    recipeByName.set(recipe.name.toLowerCase().trim(), { id: recipe.id, hpp });
+  }
+
+  // 7. Build map: package name (lowercase) → { id, hpp }
+  const packageByName = new Map<string, { id: string; hpp: number }>();
+  for (const pack of (packageRecipesRaw || [])) {
+    const packItems = (packageItemsRaw || []).filter(pi => pi.package_id === pack.id);
+    const packHpp = packItems.reduce((sum, pi) => {
+      const recHpp = recipeHppMap.get(pi.recipe_id) || 0;
+      return sum + (recHpp * pi.quantity);
+    }, 0);
+    packageByName.set(pack.package_name.toLowerCase().trim(), { id: pack.id, hpp: packHpp });
+  }
+
+  // 8. Hitung profit per item
+  const breakdown: ProfitItemBreakdown[] = [];
+  let totalRevenue = 0;
+  let totalHpp = 0;
+
+  for (const item of order.items) {
+    // Revenue per item: price dalam sistem adalah ribuan IDR, konversi ke rupiah
+    // Cek apakah harga sudah dalam ribuan atau rupiah
+    // Dari codebase: priceReg: 15 berarti 15K = Rp 15.000
+    const unitRevenue = item.price;       // Dalam ribuan IDR (misal: 15 = Rp 15.000)
+    const totalItemRevenue = unitRevenue * item.quantity;
+
+    // Match nama item ke recipe (fuzzy match: lowercase comparison)
+    const itemNameLower = item.name.toLowerCase().trim();
+
+    // Coba match ke recipe dulu
+    let matchedRecipe: string | null = null;
+    let unitHpp = 0;
+
+    // Direct match
+    if (recipeByName.has(itemNameLower)) {
+      const rec = recipeByName.get(itemNameLower)!;
+      unitHpp = rec.hpp / 1000; // Konversi dari rupiah ke ribuan IDR untuk konsistensi
+      matchedRecipe = item.name;
+    } else if (packageByName.has(itemNameLower)) {
+      // Match ke package
+      const pack = packageByName.get(itemNameLower)!;
+      unitHpp = pack.hpp / 1000;
+      matchedRecipe = item.name + " (package)";
+    } else {
+      // Partial match: cari recipe yang namanya mengandung kata kunci item
+      for (const [rName, rData] of recipeByName.entries()) {
+        if (rName.includes(itemNameLower) || itemNameLower.includes(rName)) {
+          unitHpp = rData.hpp / 1000;
+          matchedRecipe = rName;
+          break;
+        }
+      }
+      // Coba partial match ke package
+      if (!matchedRecipe) {
+        for (const [pName, pData] of packageByName.entries()) {
+          if (pName.includes(itemNameLower) || itemNameLower.includes(pName)) {
+            unitHpp = pData.hpp / 1000;
+            matchedRecipe = pName + " (package)";
+            break;
+          }
+        }
+      }
+    }
+
+    const totalItemHpp = unitHpp * item.quantity;
+
+    breakdown.push({
+      name: item.name,
+      quantity: item.quantity,
+      unit_revenue: unitRevenue,
+      unit_hpp: unitHpp,
+      total_revenue: totalItemRevenue,
+      total_hpp: totalItemHpp,
+      gross_profit: totalItemRevenue - totalItemHpp,
+      matched_recipe: matchedRecipe
+    });
+
+    totalRevenue += totalItemRevenue;
+    totalHpp += totalItemHpp;
+  }
+
+  const grossProfit = totalRevenue - totalHpp;
+  const margin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
+
+  return {
+    order_id: orderId,
+    revenue: Math.round(totalRevenue * 100) / 100,
+    hpp: Math.round(totalHpp * 100) / 100,
+    gross_profit: Math.round(grossProfit * 100) / 100,
+    margin_percentage: Math.round(margin * 100) / 100,
+    item_breakdown: breakdown
+  };
+}
+
+// Simpan hasil profit ke database (UPSERT — tidak duplikat)
+async function saveOrderProfit(profit: ProfitResult): Promise<void> {
+  const { error } = await supabase
+    .from("order_profit")
+    .upsert({
+      order_id: profit.order_id,
+      revenue: profit.revenue,
+      hpp: profit.hpp,
+      gross_profit: profit.gross_profit,
+      margin_percentage: profit.margin_percentage,
+      item_breakdown: profit.item_breakdown,
+      calculated_at: new Date().toISOString()
+    }, { onConflict: "order_id" });
+
+  if (error) {
+    console.error("[ProfitEngine] Gagal menyimpan profit:", error.message);
+    throw error;
+  }
+}
+
+// Trigger kalkulasi profit — dipanggil otomatis saat order selesai
+async function triggerProfitCalculation(orderId: string): Promise<void> {
+  try {
+    const profit = await calculateOrderProfit(orderId);
+    if (!profit) {
+      console.warn(`[ProfitEngine] Order ${orderId} tidak ditemukan atau gagal dihitung.`);
+      return;
+    }
+    await saveOrderProfit(profit);
+    console.log(`[ProfitEngine] ✅ Profit order ${orderId} tersimpan: Revenue=${profit.revenue}K, HPP=${profit.hpp}K, Margin=${profit.margin_percentage}%`);
+  } catch (err: any) {
+    console.error(`[ProfitEngine] ❌ Error saat kalkulasi profit order ${orderId}:`, err.message);
+  }
+}
+
+
 async function syncFromSupabase() {
   if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === "https://dummy.supabase.co") {
     console.warn("Supabase credentials not configured. Running in pure in-memory mode.");
@@ -217,6 +499,25 @@ async function syncFromSupabase() {
     if (!aiRes.error && aiRes.data && aiRes.data.length > 0) {
       aiSettings.systemPrompt = aiRes.data[0].system_prompt;
       aiSettings.temperature = aiRes.data[0].temperature;
+    }
+
+    // Real Profit Engine V1: Crawl historical completed orders
+    const { data: existingProfits, error: profitFetchErr } = await supabase
+      .from("order_profit")
+      .select("order_id");
+    
+    if (!profitFetchErr && existingProfits) {
+      const existingIds = new Set(existingProfits.map((p: any) => p.order_id));
+      const completedOrders = orders.filter(o => o.status === "completed");
+      for (const order of completedOrders) {
+        if (!existingIds.has(order.id)) {
+          console.log(`[ProfitEngine] Auto-calculating profit for historical order: ${order.id}`);
+          const profit = await calculateOrderProfit(order.id);
+          if (profit) {
+            await saveOrderProfit(profit);
+          }
+        }
+      }
     }
 
     console.log("Berhasil menyinkronkan seluruh data dari Supabase secara paralel.");
@@ -824,11 +1125,11 @@ app.post("/api/notifications/mark-read", (req, res) => {
 });
 
 // 0.5 Chat Admin Handoff API
-app.get("/api/chat-admin/sessions", (req, res) => {
+app.get("/api/chat-admin/sessions", requireAdmin, (req, res) => {
   res.json(Object.values(activeChats));
 });
 
-app.post("/api/chat-admin/sabotage", (req, res) => {
+app.post("/api/chat-admin/sabotage", requireAdmin, (req, res) => {
   const { sessionId, sabotage } = req.body;
   if (activeChats[sessionId]) {
     activeChats[sessionId].isSabotaged = sabotage;
@@ -838,7 +1139,7 @@ app.post("/api/chat-admin/sabotage", (req, res) => {
   }
 });
 
-app.post("/api/chat-admin/send", (req, res) => {
+app.post("/api/chat-admin/send", requireAdmin, (req, res) => {
   const { sessionId, text } = req.body;
   if (activeChats[sessionId]) {
     activeChats[sessionId].messages.push({ sender: "admin", text, timestamp: new Date().toISOString() });
@@ -868,7 +1169,7 @@ app.get("/api/menu", (req, res) => {
   res.json(menuItems);
 });
 
-app.post("/api/menu", (req, res) => {
+app.post("/api/menu", requireAdmin, (req, res) => {
   const newItem: MenuItem = {
     ...req.body,
     id: "m" + (menuItems.length + 1)
@@ -904,7 +1205,7 @@ app.post("/api/menu", (req, res) => {
   res.status(201).json(newItem);
 });
 
-app.put("/api/menu/:id", (req, res) => {
+app.put("/api/menu/:id", requireAdmin, (req, res) => {
   const { id } = req.params;
   const idx = menuItems.findIndex(m => m.id === id);
   if (idx !== -1) {
@@ -941,7 +1242,7 @@ app.put("/api/menu/:id", (req, res) => {
   }
 });
 
-app.put("/api/users/:id/block", (req, res) => {
+app.put("/api/users/:id/block", requireAdmin, (req, res) => {
   const { id } = req.params;
   const { isBlocked } = req.body;
   const idx = registeredUsers.findIndex(u => u.id === id);
@@ -965,7 +1266,7 @@ app.put("/api/users/:id/block", (req, res) => {
   }
 });
 
-app.put("/api/users/:id/approve-membership", (req, res) => {
+app.put("/api/users/:id/approve-membership", requireAdmin, (req, res) => {
   const { id } = req.params;
   const { approve } = req.body;
   const idx = registeredUsers.findIndex(u => u.id === id);
@@ -996,7 +1297,7 @@ app.put("/api/users/:id/approve-membership", (req, res) => {
   }
 });
 
-app.delete("/api/menu/:id", (req, res) => {
+app.delete("/api/menu/:id", requireAdmin, (req, res) => {
   const { id } = req.params;
   const idx = menuItems.findIndex(m => m.id === id);
   if (idx !== -1) {
@@ -1031,7 +1332,7 @@ app.get("/api/packages", (req, res) => {
   res.json(coffeePackages);
 });
 
-app.post("/api/packages", (req, res) => {
+app.post("/api/packages", requireAdmin, (req, res) => {
   const newPack: CoffeePackage = {
     ...req.body,
     id: "p" + (coffeePackages.length + 1)
@@ -1044,7 +1345,7 @@ app.post("/api/packages", (req, res) => {
   res.status(201).json(newPack);
 });
 
-app.put("/api/packages/:id", (req, res) => {
+app.put("/api/packages/:id", requireAdmin, (req, res) => {
   const { id } = req.params;
   const idx = coffeePackages.findIndex(p => p.id === id);
   if (idx !== -1) {
@@ -1059,7 +1360,7 @@ app.put("/api/packages/:id", (req, res) => {
   }
 });
 
-app.delete("/api/packages/:id", (req, res) => {
+app.delete("/api/packages/:id", requireAdmin, (req, res) => {
   const { id } = req.params;
   coffeePackages = coffeePackages.filter(p => p.id !== id);
 
@@ -1265,7 +1566,7 @@ app.post("/api/orders", async (req, res) => {
   res.status(201).json(newOrder);
 });
 
-app.put("/api/orders/:id/status", (req, res) => {
+app.put("/api/orders/:id/status", requireAdmin, (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
   const idx = orders.findIndex(o => o.id === id);
@@ -1283,6 +1584,11 @@ app.put("/api/orders/:id/status", (req, res) => {
 
     writeSupabase('orders', 'update', { id }, { status });
     writeSupabase('audit_logs', 'insert', {}, newAuditLogObj);
+
+    // Hitung profit otomatis jika status diubah menjadi selesai (completed)
+    if (status === "completed") {
+      triggerProfitCalculation(id).catch(err => console.error("[ProfitEngine] Error triggering calculation:", err));
+    }
 
     res.json(orders[idx]);
   } else {
@@ -1367,6 +1673,9 @@ Balas HANYA dengan format JSON tanpa markdown:
       };
       auditLogs.unshift(newAuditLogObj);
       writeSupabase('audit_logs', 'insert', {}, newAuditLogObj);
+
+      // Hitung profit otomatis
+      triggerProfitCalculation(id).catch(err => console.error("[ProfitEngine] Error triggering calculation:", err));
     }
 
     return analysisResult;
@@ -1377,7 +1686,7 @@ Balas HANYA dengan format JSON tanpa markdown:
 }
 
 // Endpoint Verifikasi Pembayaran dengan AI Gemini Vision (Manual Trigger)
-app.post("/api/orders/:id/verify-payment", async (req, res) => {
+app.post("/api/orders/:id/verify-payment", requireAdmin, async (req, res) => {
   const result = await verifyPaymentAsync(req.params.id);
   if (result.error) {
     if (result.error === "Order not found") return res.status(404).json(result);
@@ -1466,35 +1775,52 @@ app.post("/api/upload", async (req, res) => {
 });
 
 // 4. Logs API
-app.get("/api/logs", (req, res) => {
+app.get("/api/logs", requireAdmin, (req, res) => {
   res.json(auditLogs);
 });
 
 // 5. Users API
-app.get("/api/users", (req, res) => {
+app.get("/api/users", requireAdmin, (req, res) => {
   res.json(registeredUsers);
 });
 
+// ===================================================================
+// /api/users/sync — Digunakan oleh Supabase OAuth callback (Google Login)
+// HARDENED: Hanya field aman yang diizinkan. Role selalu "customer".
+// Endpoint ini TIDAK bisa dipakai untuk membuat admin atau mengubah role.
+// ===================================================================
 app.post("/api/users/sync", (req, res) => {
-  const newUser = req.body;
-  if (!newUser || !newUser.id) return res.status(400).json({ error: "Invalid user data" });
-  
-  const existingIdx = registeredUsers.findIndex(u => u.id === newUser.id || u.email === newUser.email);
+  const body = req.body;
+  if (!body || !body.id) return res.status(400).json({ error: "ID user wajib dikirim kawan" });
+
+  // Whitelist field yang diizinkan — role, is_member, status DIABAIKAN
+  const safeData = {
+    id: body.id,
+    email: body.email || "",
+    name: body.name || body.email?.split("@")[0] || "User",
+    avatarUrl: body.avatarUrl || body.avatar_url || undefined,
+    role: "customer" as const,   // Selalu customer — tidak bisa di-override
+    isMember: false,
+    ordersCount: 0,
+    lastActive: "Baru saja",
+    isBlocked: false
+  };
+
+  const existingIdx = registeredUsers.findIndex(u => u.id === safeData.id || u.email === safeData.email);
   if (existingIdx !== -1) {
-    registeredUsers[existingIdx] = { ...registeredUsers[existingIdx], ...newUser, lastActive: "Baru saja" };
+    // Update hanya field yang diizinkan, PERTAHANKAN role dan isMember yang sudah ada
+    registeredUsers[existingIdx].name = safeData.name;
+    registeredUsers[existingIdx].email = safeData.email;
+    if (safeData.avatarUrl) registeredUsers[existingIdx].avatarUrl = safeData.avatarUrl;
+    registeredUsers[existingIdx].lastActive = "Baru saja";
+    // TIDAK update: role, isMember, isBlocked
   } else {
-    registeredUsers.push({
-      ...newUser,
-      ordersCount: newUser.orders_count || 0,
-      isMember: newUser.is_member || false,
-      lastActive: "Baru saja",
-      isBlocked: false
-    });
+    registeredUsers.push(safeData);
   }
   res.json({ success: true });
 });
 
-app.put("/api/users/:id/password", (req, res) => {
+app.put("/api/users/:id/password", requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { password } = req.body;
@@ -1502,10 +1828,13 @@ app.put("/api/users/:id/password", (req, res) => {
       return res.status(400).json({ error: "Password baru wajib diisi kawan" });
     }
 
+    // Hash password baru dengan bcrypt sebelum menyimpan
+    const hashedPassword = await bcrypt.hash(password, 12);
+
     const idx = registeredUsers.findIndex(u => u.id === id);
     if (idx !== -1) {
-      registeredUsers[idx].password = password;
-      writeSupabase("users", "update", { id }, { password });
+      registeredUsers[idx].password = hashedPassword;
+      writeSupabase("users", "update", { id }, { password: hashedPassword });
       return res.json({ success: true, user: registeredUsers[idx] });
     } else {
       return res.status(404).json({ error: "User tidak ditemukan" });
@@ -1517,14 +1846,19 @@ app.put("/api/users/:id/password", (req, res) => {
 });
 
 // Auth API
-app.post("/api/auth/login", authLimiter, (req, res) => {
+// ===================================================================
+// /api/auth/login — Login dengan Lazy Bcrypt Migration
+// Strategi: user lama (plain text) auto-upgrade ke bcrypt saat login
+// Tidak memaksa reset password — migrasi terjadi secara bertahap
+// ===================================================================
+app.post("/api/auth/login", authLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
       return res.status(400).json({ error: "Email dan password wajib diisi kawan" });
     }
 
-    // 1. Cek Admin dari .env
+    // 1. Cek Admin dari .env (plain text comparison untuk admin env credentials)
     const adminEmail = process.env.ADMIN_EMAIL || "tampaseduh@gmail.com";
     const adminPass = process.env.ADMIN_PASSWORD || "Kotabunan*98";
     if (email === adminEmail && password === adminPass) {
@@ -1541,8 +1875,8 @@ app.post("/api/auth/login", authLimiter, (req, res) => {
         };
         registeredUsers.push(adminUser);
       } else {
-        // Make sure role is admin even if synced from Supabase
         adminUser.role = "admin";
+        adminUser.lastActive = "Baru saja";
       }
       return res.json({ success: true, user: adminUser });
     }
@@ -1553,7 +1887,31 @@ app.post("/api/auth/login", authLimiter, (req, res) => {
       return res.status(401).json({ error: "Akun tidak ditemukan kawan. Silakan daftar dulu." });
     }
 
-    if (user.password !== password) {
+    // 3. Lazy Bcrypt Migration
+    // Deteksi apakah password sudah berupa bcrypt hash atau masih plain text
+    const storedPassword = user.password || "";
+    const isBcryptHash = storedPassword.startsWith("$2a$") || storedPassword.startsWith("$2b$");
+
+    let passwordValid = false;
+
+    if (isBcryptHash) {
+      // Password sudah di-hash: gunakan bcrypt.compare
+      passwordValid = await bcrypt.compare(password, storedPassword);
+    } else {
+      // Password masih plain text: verifikasi lama
+      passwordValid = (storedPassword === password);
+
+      if (passwordValid) {
+        // Auto-upgrade ke bcrypt setelah login berhasil (lazy migration)
+        const newHash = await bcrypt.hash(password, 12);
+        user.password = newHash;
+        // Update di Supabase secara non-blocking
+        writeSupabase("users", "update", { id: user.id }, { password: newHash });
+        console.log(`[Security] Password user ${user.email} di-upgrade ke bcrypt hash.`);
+      }
+    }
+
+    if (!passwordValid) {
       return res.status(401).json({ error: "Password salah kawan, coba ingat kembali." });
     }
 
@@ -1568,7 +1926,11 @@ app.post("/api/auth/login", authLimiter, (req, res) => {
 });
 
 
-app.post("/api/auth/register", authLimiter, (req, res) => {
+// ===================================================================
+// /api/auth/register — Registrasi dengan bcrypt hash langsung
+// Password TIDAK PERNAH disimpan dalam bentuk plain text
+// ===================================================================
+app.post("/api/auth/register", authLimiter, async (req, res) => {
   try {
     const { name, email, password, whatsapp } = req.body;
     if (!name || !email || !password || !whatsapp) {
@@ -1586,11 +1948,15 @@ app.post("/api/auth/register", authLimiter, (req, res) => {
       return res.status(400).json({ error: "Email sudah terdaftar kawan. Silakan login langsung." });
     }
 
+    // Hash password sebelum disimpan — TIDAK pernah simpan plain text
+    const hashedPassword = await bcrypt.hash(password, 12);
+
     const newUser: User = {
       id: "u-" + (registeredUsers.length + 1) + "-" + Math.floor(Math.random() * 1000),
       name,
       email,
-      password,
+      whatsapp,
+      password: hashedPassword,
       role: "customer",
       isMember: false,
       ordersCount: 0,
@@ -1604,7 +1970,8 @@ app.post("/api/auth/register", authLimiter, (req, res) => {
       id: newUser.id,
       name: newUser.name,
       email: newUser.email,
-      password: newUser.password,
+      whatsapp: newUser.whatsapp,
+      password: newUser.password, // Already hashed
       role: newUser.role,
       is_member: false,
       orders_count: 0,
@@ -1739,7 +2106,7 @@ app.post("/api/auth/google-sync", (req, res) => {
 });
 
 // 6. Emails API
-app.get("/api/emails", (req, res) => {
+app.get("/api/emails", requireAdmin, (req, res) => {
   res.json(emailLogs);
 });
 
@@ -1748,7 +2115,7 @@ app.get("/api/news", (req, res) => {
   res.json(blogNews);
 });
 
-app.post("/api/news", (req, res) => {
+app.post("/api/news", requireAdmin, (req, res) => {
   const newPost: BlogNews = {
     ...req.body,
     id: "news-" + (blogNews.length + 1),
@@ -1773,7 +2140,7 @@ app.post("/api/news", (req, res) => {
 });
 
 // 8. Financial Accounting API (Real Data Aggregation)
-app.get("/api/finances", (req, res) => {
+app.get("/api/finances", requireAdmin, (req, res) => {
   const completedOrders = orders.filter(o => o.status === "completed");
   const totalRevenue = completedOrders.reduce((sum, o) => sum + o.total, 0);
   const totalCosts = totalRevenue * 0.45; // Asumsi Modal 45% dari omset
@@ -1816,12 +2183,162 @@ app.get("/api/finances", (req, res) => {
   res.json(finances);
 });
 
+// ===================================================================
+// Real Profit Engine V1 API Endpoints
+// ===================================================================
+
+app.get("/api/profit/order/:id", requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { data, error } = await supabase
+      .from("order_profit")
+      .select("*")
+      .eq("order_id", id)
+      .maybeSingle();
+
+    if (error) {
+      return res.status(500).json({ error: "Gagal mengambil data profit: " + error.message });
+    }
+    if (!data) {
+      return res.status(404).json({ error: "Data profit tidak ditemukan untuk order " + id });
+    }
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/profit/recalculate/:id", requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const profit = await calculateOrderProfit(id);
+    if (!profit) {
+      return res.status(404).json({ error: "Order tidak ditemukan atau gagal menghitung profit." });
+    }
+    await saveOrderProfit(profit);
+    res.json({ success: true, message: `Profit untuk order ${id} berhasil dihitung ulang.`, data: profit });
+  } catch (err: any) {
+    res.status(500).json({ error: "Gagal menghitung ulang profit: " + err.message });
+  }
+});
+
+app.get("/api/profit/dashboard", requireAdmin, async (req, res) => {
+  try {
+    const { data: profits, error } = await supabase
+      .from("order_profit")
+      .select("*");
+
+    if (error || !profits) {
+      return res.status(500).json({ error: "Gagal memuat data profit: " + error?.message });
+    }
+
+    const calculateStats = (filteredProfits: any[]) => {
+      const revenue = filteredProfits.reduce((sum, p) => sum + (Number(p.revenue) || 0), 0);
+      const hpp = filteredProfits.reduce((sum, p) => sum + (Number(p.hpp) || 0), 0);
+      const gross_profit = filteredProfits.reduce((sum, p) => sum + (Number(p.gross_profit) || 0), 0);
+      const margin = revenue > 0 ? (gross_profit / revenue) * 100 : 0;
+      return {
+        revenue: Math.round(revenue * 100) / 100,
+        hpp: Math.round(hpp * 100) / 100,
+        gross_profit: Math.round(gross_profit * 100) / 100,
+        margin: Math.round(margin * 100) / 100,
+        orders_count: filteredProfits.length
+      };
+    };
+
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+
+    const orderMap = new Map(orders.map(o => [o.id, o]));
+
+    const todayProfits: any[] = [];
+    const last7dProfits: any[] = [];
+    const last30dProfits: any[] = [];
+    const allTimeProfits: any[] = [];
+
+    const itemStatsMap = new Map<string, { total_profit: number; total_rev: number; total_hpp: number; total_qty: number }>();
+
+    for (const p of profits) {
+      const order = orderMap.get(p.order_id);
+      const orderDateStr = order ? order.createdAt : p.created_at || new Date().toISOString();
+      const orderDate = new Date(orderDateStr);
+      const diffMs = today.getTime() - orderDate.getTime();
+      const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+      allTimeProfits.push(p);
+
+      if (orderDateStr.startsWith(todayStr)) {
+        todayProfits.push(p);
+      }
+      
+      if (diffDays <= 7) {
+        last7dProfits.push(p);
+      }
+
+      if (diffDays <= 30) {
+        last30dProfits.push(p);
+      }
+
+      const items = Array.isArray(p.item_breakdown) ? p.item_breakdown : [];
+      for (const item of items) {
+        const name = item.name || "Unknown Item";
+        const qty = Number(item.quantity) || 0;
+        const rev = Number(item.total_revenue) || 0;
+        const hpp = Number(item.total_hpp) || 0;
+        const profit = Number(item.gross_profit) || 0;
+
+        const current = itemStatsMap.get(name) || { total_profit: 0, total_rev: 0, total_hpp: 0, total_qty: 0 };
+        current.total_profit += profit;
+        current.total_rev += rev;
+        current.total_hpp += hpp;
+        current.total_qty += qty;
+        itemStatsMap.set(name, current);
+      }
+    }
+
+    const todayStats = calculateStats(todayProfits);
+    const last7dStats = calculateStats(last7dProfits);
+    const last30dStats = calculateStats(last30dProfits);
+    const allTimeStats = calculateStats(allTimeProfits);
+
+    const itemStatsList = Array.from(itemStatsMap.entries()).map(([name, stats]) => {
+      const avg_margin = stats.total_rev > 0 ? (stats.total_profit / stats.total_rev) * 100 : 0;
+      return {
+        name,
+        total_profit: Math.round(stats.total_profit * 100) / 100,
+        avg_margin: Math.round(avg_margin * 100) / 100,
+        total_qty: stats.total_qty
+      };
+    });
+
+    const top_profitable = [...itemStatsList]
+      .sort((a, b) => b.total_profit - a.total_profit)
+      .slice(0, 5);
+
+    const lowest_margin = [...itemStatsList]
+      .filter(item => item.total_qty > 0)
+      .sort((a, b) => a.avg_margin - b.avg_margin)
+      .slice(0, 5);
+
+    res.json({
+      today: todayStats,
+      last_7d: last7dStats,
+      last_30d: last30dStats,
+      all_time: allTimeStats,
+      top_profitable,
+      lowest_margin
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: "Terjadi kesalahan internal server: " + err.message });
+  }
+});
+
 // 9. AI Master Configuration endpoints
-app.get("/api/ai-config", (req, res) => {
+app.get("/api/ai-config", requireAdmin, (req, res) => {
   res.json(aiSettings);
 });
 
-app.post("/api/ai-config", (req, res) => {
+app.post("/api/ai-config", requireAdmin, (req, res) => {
   const { systemPrompt, temperature } = req.body;
   if (systemPrompt) aiSettings.systemPrompt = systemPrompt;
   if (temperature !== undefined) aiSettings.temperature = parseFloat(temperature);

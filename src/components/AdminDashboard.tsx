@@ -4,10 +4,45 @@ import {
   Sparkles, FileClock, Wallet, Mail, BookOpen, Plus, Trash2, Edit2, CheckCircle, RefreshCw, Moon, Sun, ArrowLeft, X, Lock, Receipt, Download, PanelLeftOpen, PanelLeftClose, ImageIcon, Calculator
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { MenuItem, CoffeePackage, Order, AuditLog, User, BlogNews, EmailLog, FinancialSummary } from "../types";
+import { MenuItem, CoffeePackage, Order, AuditLog, User, BlogNews, EmailLog, FinancialSummary, ProfitDashboard } from "../types";
 import { getApiUrl } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import AdminRecipeLab from "./AdminRecipeLab";
+
+// ===================================================================
+// fetchWithAuth — wrapper fetch yang menyertakan JWT Supabase
+// Digunakan untuk semua request ke admin endpoint yang dilindungi
+// requireAdmin middleware di backend.
+// ===================================================================
+async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
+    const headers: Record<string, string> = {
+      ...(options.headers as Record<string, string> || {}),
+    };
+
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    // Pastikan Content-Type tidak diset jika body adalah FormData
+    if (options.body && !(options.body instanceof FormData)) {
+      if (!headers["Content-Type"]) {
+        headers["Content-Type"] = "application/json";
+      }
+    }
+
+    return fetch(url, { ...options, headers });
+  } catch (err) {
+    console.error("[fetchWithAuth] Gagal mengambil session Supabase:", err);
+    // Fallback: kirim request tanpa token (akan ditolak oleh backend dengan 401)
+    return fetch(url, options);
+  }
+}
+
+
 
 interface AdminDashboardProps {
   onBackToStorefront: () => void;
@@ -62,6 +97,8 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   const [emailsList, setEmailsList] = useState<EmailLog[]>([]);
   const [newsList, setNewsList] = useState<BlogNews[]>([]);
   const [finances, setFinances] = useState<FinancialSummary[]>([]);
+  const [profitDashboard, setProfitDashboard] = useState<ProfitDashboard | null>(null);
+  const [selectedProfitPeriod, setSelectedProfitPeriod] = useState<"today" | "last_7d" | "last_30d" | "all_time">("last_30d");
   const [chatSessions, setChatSessions] = useState<any[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [adminChatInput, setAdminChatInput] = useState("");
@@ -118,17 +155,19 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      const [mRes, pRes, oRes, uRes, lRes, eRes, nRes, fRes, aiRes] = await Promise.all([
-        fetch(getApiUrl("/api/menu")),
-        fetch(getApiUrl("/api/packages")),
-        fetch(getApiUrl("/api/orders")),
-        fetch(getApiUrl("/api/users")),
-        fetch(getApiUrl("/api/logs")),
-        fetch(getApiUrl("/api/emails")),
-        fetch(getApiUrl("/api/news")),
-        fetch(getApiUrl("/api/finances")),
-        fetch(getApiUrl("/api/ai-config"))
+      const [mRes, pRes, oRes, uRes, lRes, eRes, nRes, fRes, aiRes, profitRes] = await Promise.all([
+        fetchWithAuth(getApiUrl("/api/menu")),
+        fetchWithAuth(getApiUrl("/api/packages")),
+        fetchWithAuth(getApiUrl("/api/orders")),
+        fetchWithAuth(getApiUrl("/api/users")),
+        fetchWithAuth(getApiUrl("/api/logs")),
+        fetchWithAuth(getApiUrl("/api/emails")),
+        fetchWithAuth(getApiUrl("/api/news")),
+        fetchWithAuth(getApiUrl("/api/finances")),
+        fetchWithAuth(getApiUrl("/api/ai-config")),
+        fetchWithAuth(getApiUrl("/api/profit/dashboard"))
       ]);
+
 
       if (mRes.ok) setMenuList(await mRes.json());
       if (pRes.ok) setPackages(await pRes.json());
@@ -139,8 +178,9 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
       if (nRes.ok) setNewsList(await nRes.json());
       if (fRes.ok) setFinances(await fRes.json());
       if (aiRes.ok) setAiConfig(await aiRes.json());
+      if (profitRes.ok) setProfitDashboard(await profitRes.json());
       
-      const chatsRes = await fetch(getApiUrl("/api/chat-admin/sessions"));
+      const chatsRes = await fetchWithAuth(getApiUrl("/api/chat-admin/sessions"));
       if (chatsRes.ok) setChatSessions(await chatsRes.json());
       
       setLoading(false);
@@ -158,7 +198,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
     if (activeTab === "aimaster") {
       const interval = setInterval(async () => {
         try {
-          const res = await fetch(getApiUrl("/api/chat-admin/sessions"));
+          const res = await fetchWithAuth(getApiUrl("/api/chat-admin/sessions"));
           if (res.ok) setChatSessions(await res.json());
         } catch {}
       }, 3000);
@@ -212,7 +252,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
           const webpData = canvas.toDataURL("image/webp", 0.85);
 
           // Upload to backend
-          const uploadRes = await fetch(getApiUrl("/api/upload"), {
+          const uploadRes = await fetchWithAuth(getApiUrl("/api/upload"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -255,7 +295,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
     e.preventDefault();
     if (!updatingUserPass) return;
     try {
-      const res = await fetch(getApiUrl(`/api/users/${updatingUserPass.id}/password`), {
+      const res = await fetchWithAuth(getApiUrl(`/api/users/${updatingUserPass.id}/password`), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password: newUserPassword })
@@ -282,7 +322,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
       const url = editingMenu ? `/api/menu/${editingMenu.id}` : "/api/menu";
       const method = editingMenu ? "PUT" : "POST";
       const body = editingMenu ? editingMenu : newMenu;
-      const res = await fetch(getApiUrl(url), {
+      const res = await fetchWithAuth(getApiUrl(url), {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body)
@@ -309,7 +349,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   const handleDeleteMenu = async (id: string) => {
     if (!confirm("Hapus menu kopi ini kawan?")) return;
     try {
-      const res = await fetch(getApiUrl(`/api/menu/${id}`), { method: "DELETE" });
+      const res = await fetchWithAuth(getApiUrl(`/api/menu/${id}`), { method: "DELETE" });
       if (res.ok) {
         setRefreshKey(p => p + 1);
       }
@@ -320,7 +360,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
 
   const handleToggleAvailability = async (item: MenuItem) => {
     try {
-      await fetch(getApiUrl(`/api/menu/${item.id}`), {
+      await fetchWithAuth(getApiUrl(`/api/menu/${item.id}`), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isAvailable: !item.isAvailable })
@@ -338,7 +378,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
       const url = editingPack ? `/api/packages/${editingPack.id}` : "/api/packages";
       const method = editingPack ? "PUT" : "POST";
       const body = editingPack ? { ...editingPack } : { ...newPack };
-      const res = await fetch(getApiUrl(url), {
+      const res = await fetchWithAuth(getApiUrl(url), {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body)
@@ -361,7 +401,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   const handleDeletePack = async (id: string) => {
     if (!confirm("Hapus paket hemat ini kawan?")) return;
     try {
-      const res = await fetch(getApiUrl(`/api/packages/${id}`), { method: "DELETE" });
+      const res = await fetchWithAuth(getApiUrl(`/api/packages/${id}`), { method: "DELETE" });
       if (res.ok) {
         setRefreshKey(p => p + 1);
       }
@@ -373,7 +413,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   // 2. Orders Action
   const handleUpdateOrderStatus = async (id: string, status: Order["status"]) => {
     try {
-      const res = await fetch(getApiUrl(`/api/orders/${id}/status`), {
+      const res = await fetchWithAuth(getApiUrl(`/api/orders/${id}/status`), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status })
@@ -389,7 +429,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   const handleToggleBlockUser = async (user: User) => {
     try {
       const isCurrentlyBlocked = user.isBlocked || user.lastActive === "BLOCKED";
-      const res = await fetch(getApiUrl(`/api/users/${user.id}/block`), {
+      const res = await fetchWithAuth(getApiUrl(`/api/users/${user.id}/block`), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isBlocked: !isCurrentlyBlocked })
@@ -408,7 +448,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
 
   const handleApproveMembership = async (user: User, approve: boolean) => {
     try {
-      const res = await fetch(getApiUrl(`/api/users/${user.id}/approve-membership`), {
+      const res = await fetchWithAuth(getApiUrl(`/api/users/${user.id}/approve-membership`), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ approve })
@@ -430,7 +470,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   const handleSaveAiPrompt = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch(getApiUrl("/api/ai-config"), {
+      const res = await fetchWithAuth(getApiUrl("/api/ai-config"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(aiConfig)
@@ -1514,6 +1554,188 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                           })}
                         </div>
                       </div>
+
+                      {/* REAL PROFIT ENGINE V1 SECTION */}
+                      <div className="border-t border-zinc-200/50 dark:border-zinc-800/80 pt-6">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                          <div>
+                            <h2 className="text-xl font-serif font-black text-amber-950 dark:text-amber-100 flex items-center gap-2">
+                              <Calculator className="w-5 h-5 text-amber-700 dark:text-amber-500" />
+                              Real Profit Engine <span className="text-xs bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-300 font-sans font-bold px-2 py-0.5 rounded-full border border-amber-250/20">V1 ACTIVE</span>
+                            </h2>
+                            <p className="text-xs text-zinc-500 mt-1">Dihitung dari resep & costing bahan baku riil untuk setiap pesanan selesai.</p>
+                          </div>
+                          
+                          {/* Period Selector for Real Profit */}
+                          <div className="flex bg-zinc-150 dark:bg-zinc-850 p-1 rounded-xl w-fit self-start md:self-auto border border-zinc-200/20">
+                            {([
+                              { key: "today", label: "Hari Ini" },
+                              { key: "last_7d", label: "7 Hari Terakhir" },
+                              { key: "last_30d", label: "30 Hari Terakhir" },
+                              { key: "all_time", label: "Semua Waktu" }
+                            ] as const).map((p) => (
+                              <button
+                                key={p.key}
+                                type="button"
+                                onClick={() => setSelectedProfitPeriod(p.key)}
+                                className={`text-xs py-1.5 px-3 rounded-lg font-bold cursor-pointer transition-all ${
+                                  selectedProfitPeriod === p.key
+                                    ? "bg-amber-900 text-amber-50 shadow"
+                                    : "text-zinc-500 hover:bg-zinc-200/50"
+                                }`}
+                              >
+                                {p.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {profitDashboard ? (
+                          <div className="space-y-6">
+                            {/* Selected Period Stats */}
+                            {(() => {
+                              const periodData = profitDashboard[selectedProfitPeriod];
+                              return (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                                  <div className="p-5 bg-gradient-to-br from-emerald-50 to-emerald-100/30 dark:from-emerald-950/10 dark:to-emerald-950/20 border border-emerald-100 dark:border-emerald-900/20 rounded-2xl shadow-sm">
+                                    <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-widest block">Omset Aktual (Revenue)</span>
+                                    <h4 className="text-2xl font-serif font-black text-emerald-950 dark:text-emerald-300 mt-2">
+                                      Rp {periodData.revenue.toLocaleString("id-ID")}.000
+                                    </h4>
+                                    <span className="text-[10px] text-zinc-500 mt-1 block font-medium">{periodData.orders_count} pesanan selesai</span>
+                                  </div>
+
+                                  <div className="p-5 bg-gradient-to-br from-red-50 to-red-100/30 dark:from-red-950/10 dark:to-red-950/20 border border-red-100 dark:border-red-900/20 rounded-2xl shadow-sm">
+                                    <span className="text-[10px] font-bold text-red-800 dark:text-red-400 uppercase tracking-widest block">HPP Aktual (Recipe Cost)</span>
+                                    <h4 className="text-2xl font-serif font-black text-red-950 dark:text-red-300 mt-2">
+                                      Rp {periodData.hpp.toLocaleString("id-ID")}.000
+                                    </h4>
+                                    <span className="text-[10px] text-zinc-500 mt-1 block font-medium">Berdasarkan HPP resep di lab</span>
+                                  </div>
+
+                                  <div className="p-5 bg-gradient-to-br from-amber-50 to-amber-100/30 dark:from-amber-950/10 dark:to-amber-950/20 border border-amber-100 dark:border-amber-900/20 rounded-2xl shadow-sm">
+                                    <span className="text-[10px] font-bold text-amber-800 dark:text-amber-400 uppercase tracking-widest block">Laba Kotor Aktual</span>
+                                    <h4 className="text-2xl font-serif font-black text-amber-950 dark:text-amber-300 mt-2">
+                                      Rp {periodData.gross_profit.toLocaleString("id-ID")}.000
+                                    </h4>
+                                    <span className="text-[10px] text-zinc-500 mt-1 block font-medium">Laba sebelum biaya operasional tetap</span>
+                                  </div>
+
+                                  <div className="p-5 bg-gradient-to-br from-zinc-50 to-zinc-100/50 dark:from-zinc-900/40 dark:to-zinc-900/60 border border-zinc-200/50 dark:border-zinc-800 rounded-2xl shadow-sm">
+                                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block">Margin Profit Aktual</span>
+                                    <h4 className="text-2xl font-serif font-black text-zinc-800 dark:text-zinc-250 mt-2">
+                                      {periodData.margin}%
+                                    </h4>
+                                    <div className="w-full bg-zinc-200 dark:bg-zinc-800 h-1.5 rounded-full mt-2 overflow-hidden">
+                                      <div className="bg-amber-700 h-full rounded-full" style={{ width: `${Math.min(periodData.margin, 100)}%` }} />
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
+                            {/* Top and Bottom Items Grid */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                              {/* Top profitable menu items */}
+                              <div className="p-5 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-sm space-y-4">
+                                <div className="flex items-center justify-between pb-2 border-b border-zinc-100 dark:border-zinc-800">
+                                  <h3 className="font-serif font-bold text-sm text-zinc-850 dark:text-zinc-100 flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                    5 Menu Paling Menguntungkan
+                                  </h3>
+                                  <span className="text-[10px] text-zinc-400">Diurutkan berdasarkan total profit</span>
+                                </div>
+
+                                {profitDashboard.top_profitable.length > 0 ? (
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full text-left border-collapse">
+                                      <thead>
+                                        <tr className="border-b border-zinc-100 dark:border-zinc-800 text-[10px] text-zinc-400 font-bold uppercase tracking-wider">
+                                          <th className="py-2 pb-3">Menu</th>
+                                          <th className="py-2 pb-3 text-center">Terjual</th>
+                                          <th className="py-2 pb-3 text-right">Profit Aktual</th>
+                                          <th className="py-2 pb-3 text-right">Margin %</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800/50">
+                                        {profitDashboard.top_profitable.map((item, i) => (
+                                          <tr key={i} className="text-xs hover:bg-zinc-50/50 dark:hover:bg-zinc-805/30 transition-colors">
+                                            <td className="py-2.5 font-bold text-zinc-700 dark:text-zinc-350">{item.name}</td>
+                                            <td className="py-2.5 text-center text-zinc-500 font-semibold">{item.total_qty}x</td>
+                                            <td className="py-2.5 text-right font-mono text-emerald-600 dark:text-emerald-400 font-bold">Rp {item.total_profit.toLocaleString("id-ID")}.000</td>
+                                            <td className="py-2.5 text-right font-mono font-bold text-zinc-650">{item.avg_margin}%</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                ) : (
+                                  <div className="py-8 text-center text-xs text-zinc-400">Belum ada data penjualan menu.</div>
+                                )}
+                              </div>
+
+                              {/* Lowest margin menu items */}
+                              <div className="p-5 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-sm space-y-4">
+                                <div className="flex items-center justify-between pb-2 border-b border-zinc-100 dark:border-zinc-800">
+                                  <h3 className="font-serif font-bold text-sm text-zinc-850 dark:text-zinc-100 flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-red-400"></span>
+                                    5 Menu dengan Margin Terendah
+                                  </h3>
+                                  <span className="text-[10px] text-zinc-400">Evaluasi penetapan harga menu</span>
+                                </div>
+
+                                {profitDashboard.lowest_margin.length > 0 ? (
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full text-left border-collapse">
+                                      <thead>
+                                        <tr className="border-b border-zinc-100 dark:border-zinc-800 text-[10px] text-zinc-400 font-bold uppercase tracking-wider">
+                                          <th className="py-2 pb-3">Menu</th>
+                                          <th className="py-2 pb-3 text-center">Terjual</th>
+                                          <th className="py-2 pb-3 text-right">Margin %</th>
+                                          <th className="py-2 pb-3 text-right">Aksi Rekomendasi</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800/50">
+                                        {profitDashboard.lowest_margin.map((item, i) => (
+                                          <tr key={i} className="text-xs hover:bg-zinc-50/50 dark:hover:bg-zinc-805/30 transition-colors">
+                                            <td className="py-2.5 font-bold text-zinc-700 dark:text-zinc-350">{item.name}</td>
+                                            <td className="py-2.5 text-center text-zinc-500 font-semibold">{item.total_qty}x</td>
+                                            <td className={`py-2.5 text-right font-mono font-bold ${
+                                              item.avg_margin < 20 
+                                                ? "text-red-650 dark:text-red-400" 
+                                                : item.avg_margin < 40 
+                                                  ? "text-amber-600 dark:text-amber-400" 
+                                                  : "text-zinc-650"
+                                            }`}>
+                                              {item.avg_margin}%
+                                            </td>
+                                            <td className="py-2.5 text-right">
+                                              <span className={`inline-block text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                                                item.avg_margin < 20
+                                                  ? "bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-405 border border-red-200/25"
+                                                  : "bg-amber-50 text-amber-700 dark:bg-amber-950/20 dark:text-amber-405 border border-amber-200/25"
+                                              }`}>
+                                                {item.avg_margin < 20 ? "Naikkan Harga / Resep Ekonomis" : "Pantau Costing"}
+                                              </span>
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                ) : (
+                                  <div className="py-8 text-center text-xs text-zinc-400">Belum ada data penjualan menu.</div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center py-10 bg-zinc-50 dark:bg-zinc-805/20 border border-dashed border-zinc-200/60 dark:border-zinc-800 rounded-2xl">
+                            <Calculator className="w-8 h-8 text-zinc-400 animate-pulse" />
+                            <span className="text-xs text-zinc-500 mt-2 font-medium">Menghitung analitik profit transaksi...</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1789,7 +2011,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                                 onClick={async () => {
                                   const sess = chatSessions.find(s => s.sessionId === selectedSessionId);
                                   const sabotage = !sess?.isSabotaged;
-                                  await fetch(getApiUrl("/api/chat-admin/sabotage"), {
+                                  await fetchWithAuth(getApiUrl("/api/chat-admin/sabotage"), {
                                     method: "POST",
                                     headers: { "Content-Type": "application/json" },
                                     body: JSON.stringify({ sessionId: selectedSessionId, sabotage })
@@ -1837,7 +2059,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                                 disabled={!chatSessions.find(s => s.sessionId === selectedSessionId)?.isSabotaged}
                                 onKeyDown={async (e) => {
                                   if (e.key === "Enter" && adminChatInput.trim()) {
-                                    await fetch(getApiUrl("/api/chat-admin/send"), {
+                                    await fetchWithAuth(getApiUrl("/api/chat-admin/send"), {
                                       method: "POST",
                                       headers: { "Content-Type": "application/json" },
                                       body: JSON.stringify({ sessionId: selectedSessionId, text: adminChatInput })
@@ -2110,7 +2332,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                           onClick={async () => {
                             setIsVerifyingProof(true);
                             try {
-                              const res = await fetch(getApiUrl(`/api/orders/${selectedInvoiceOrder.id}/verify-payment`), { method: "POST" });
+                              const res = await fetchWithAuth(getApiUrl(`/api/orders/${selectedInvoiceOrder.id}/verify-payment`), { method: "POST" });
                               const data = await res.json();
                               if (data.valid) {
                                 alert("SISTEM AI: Bukti transfer terdeteksi VALID/ASLI. Pesanan dapat dilanjutkan.");

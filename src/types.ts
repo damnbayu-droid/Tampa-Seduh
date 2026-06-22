@@ -172,3 +172,50 @@ export interface OverheadCost {
   created_at?: string;
 }
 
+export interface OrderProfit {
+  id: string;
+  order_id: string;
+  revenue: number;
+  hpp: number;
+  gross_profit: number;
+  margin_percentage: number;
+  item_breakdown: Array<{
+    name: string;
+    quantity: number;
+    unit_revenue: number;
+    unit_hpp: number;
+    total_revenue: number;
+    total_hpp: number;
+    gross_profit: number;
+    matched_recipe: string | null;
+  }>;
+  calculated_at: string;
+  created_at: string;
+}
+
+export interface ProfitDashboardPeriod {
+  revenue: number;
+  hpp: number;
+  gross_profit: number;
+  margin: number;
+  orders_count: number;
+}
+
+export interface ProfitDashboard {
+  today: ProfitDashboardPeriod;
+  last_7d: ProfitDashboardPeriod;
+  last_30d: ProfitDashboardPeriod;
+  all_time: ProfitDashboardPeriod;
+  top_profitable: Array<{
+    name: string;
+    total_profit: number;
+    avg_margin: number;
+    total_qty: number;
+  }>;
+  lowest_margin: Array<{
+    name: string;
+    avg_margin: number;
+    total_qty: number;
+  }>;
+}
+
