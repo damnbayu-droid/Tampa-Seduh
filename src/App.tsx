@@ -821,8 +821,9 @@ export default function App() {
       </section>
 
       {/* 3. Catalog Menu Section (Presenting Foto 2 & Foto 3 Menu Boards under Hero) */}
-      <section id="menu-section" className="py-20 bg-[#F9F7F2] dark:bg-zinc-950 text-stone-900 dark:text-stone-100 transition-colors duration-300">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
+      <section id="menu-section" className="py-20 relative text-stone-900 dark:text-stone-100 transition-colors duration-300" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1497935586351-b67a49e012bf?q=80&w=2000&auto=format&fit=crop')", backgroundSize: 'cover', backgroundAttachment: 'fixed', backgroundPosition: 'center' }}>
+        <div className="absolute inset-0 bg-[#F9F7F2]/90 dark:bg-zinc-950/90 backdrop-blur-[2px] z-0"></div>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16 relative z-10">
           
           <div className="text-center space-y-4">
             <span className="text-xs font-bold text-amber-500 uppercase tracking-widest bg-amber-100 dark:bg-amber-900/30 px-3 py-1 rounded-full">Daftar Menu Resmi Kedai</span>
@@ -876,8 +877,8 @@ export default function App() {
                   return (
                     <motion.div
                       key={item.id}
-                      whileHover={{ backgroundColor: "rgba(255,255,255,0.85)" }}
-                      className="bg-white dark:bg-zinc-900 p-5 sm:p-6 flex justify-between items-center relative overflow-hidden group transition-all"
+                      whileHover={{ scale: 1.02 }}
+                      className="bg-white dark:bg-zinc-900 p-5 sm:p-6 flex justify-between items-center relative overflow-hidden group transition-all duration-300 hover:shadow-[0_0_20px_rgba(139,94,60,0.3)] dark:hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] border border-transparent hover:border-amber-500/30"
                     >
                       {/* Left: Size + Prices */}
                       <div className="space-y-4 flex-1">
@@ -1024,8 +1025,8 @@ export default function App() {
                   return (
                     <motion.div
                       key={item.id}
-                      whileHover={{ backgroundColor: "rgba(255,255,255,0.85)" }}
-                      className="bg-white dark:bg-zinc-900 p-5 sm:p-6 flex justify-between items-center relative overflow-hidden group transition-all"
+                      whileHover={{ scale: 1.02 }}
+                      className="bg-white dark:bg-zinc-900 p-5 sm:p-6 flex justify-between items-center relative overflow-hidden group transition-all duration-300 hover:shadow-[0_0_20px_rgba(139,94,60,0.3)] dark:hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] border border-transparent hover:border-amber-500/30"
                     >
                       {/* Left: Size + Prices */}
                       <div className="space-y-4 flex-1">
@@ -1140,7 +1141,9 @@ export default function App() {
       </section>
 
       {/* 4.5 Coffee Packages Section */}
-      <section id="packages-section" className="py-20 border-t border-amber-900/5 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="packages-section" className="py-20 border-t border-amber-900/5 relative text-stone-900 dark:text-stone-100 transition-colors duration-300" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1559525839-b184a4d698c7?q=80&w=2000&auto=format&fit=crop')", backgroundSize: 'cover', backgroundAttachment: 'fixed', backgroundPosition: 'center' }}>
+        <div className="absolute inset-0 bg-[#F9F7F2]/90 dark:bg-zinc-950/90 backdrop-blur-[2px] z-0"></div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="text-center space-y-3 mb-12">
           <span className="text-xs font-bold text-amber-800 dark:text-amber-400 uppercase tracking-widest bg-amber-900/5 dark:bg-amber-400/10 px-3 py-1 rounded-full font-sans">Kombinasi Kopi Spesial Lebih Hemat</span>
           <h2 className="text-3xl sm:text-4xl font-serif font-bold text-amber-955 dark:text-amber-300 italic tracking-tight">Paket Kopi Tampa Seduh</h2>
@@ -1153,8 +1156,8 @@ export default function App() {
             return (
               <motion.div
                 key={pack.id}
-                whileHover={{ y: -8 }}
-                className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-md flex flex-col justify-between text-left relative"
+                whileHover={{ scale: 1.02 }}
+                className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-md flex flex-col justify-between text-left relative transition-all duration-300 hover:shadow-[0_0_20px_rgba(139,94,60,0.3)] dark:hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:border-amber-500/30"
               >
                 {pack.badge && (
                   <span className="absolute top-4 right-4 bg-amber-900 text-amber-100 dark:bg-amber-450 dark:text-amber-950 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full font-sans">
@@ -1251,6 +1254,7 @@ export default function App() {
               </motion.div>
             );
           })}
+        </div>
         </div>
       </section>
 
@@ -1892,7 +1896,7 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-650 cursor-pointer"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 cursor-pointer"
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -1969,7 +1973,7 @@ export default function App() {
                     setIsUserRegisterOpen(false);
                     setAuthError("");
                   }}
-                  className="text-zinc-400 hover:text-zinc-650 cursor-pointer"
+                  className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 cursor-pointer"
                   id="btn-close-user-register"
                 >
                   <X className="w-4 h-4" />
