@@ -1250,6 +1250,138 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                       </table>
                     </div>
                   </div>
+
+                  {/* ===== PANDUAN LENGKAP ADMIN DASHBOARD ===== */}
+                  <div className="bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-zinc-800 dark:to-zinc-800/50 border border-amber-200/70 dark:border-zinc-700 rounded-2xl p-5 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">📋</span>
+                      <div>
+                        <p className="text-sm font-black text-amber-950 dark:text-amber-100">Panduan Lengkap Admin Dashboard</p>
+                        <p className="text-[10px] text-zinc-500">Semua panel dan fungsinya — baca sekali, kelola seterusnya</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
+                      {[
+                        {
+                          icon: '📊', title: 'Overview (Tab Ini)',
+                          color: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800',
+                          items: [
+                            'Lihat total omset, jumlah pesanan, varian menu, dan total pelanggan',
+                            'Tabel pesanan terbaru + status real-time (Pending, Disiapkan, Diantar, Selesai)',
+                            'Update status pesanan langsung dari tabel ini',
+                          ]
+                        },
+                        {
+                          icon: '🛒', title: 'Pesanan (Orders)',
+                          color: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800',
+                          items: [
+                            'Lihat semua pesanan masuk secara lengkap',
+                            'Klik baris pesanan → detail item, alamat, WhatsApp customer',
+                            'Update status: Pending → Disiapkan → Diantar → Selesai',
+                            'Bukti bayar yang diupload customer bisa dilihat di sini',
+                            'Hapus pesanan jika diperlukan (tidak bisa di-undo)',
+                          ]
+                        },
+                        {
+                          icon: '☕', title: 'Menu (Daftar Kopi)',
+                          color: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
+                          items: [
+                            'Tambah produk baru: klik "Tambah Menu" → isi form',
+                            'Upload foto produk langsung dari form (otomatis WebP)',
+                            'Edit produk: klik ✏️ di kartu → modal muncul di tengah layar',
+                            'Toggle stok: klik "Ready/Habis" langsung di kartu',
+                            'Hapus produk: klik 🗑️ (permanen, hati-hati!)',
+                            'Setiap perubahan langsung tampil di website',
+                          ]
+                        },
+                        {
+                          icon: '🎁', title: 'Paket (Bundles)',
+                          color: 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800',
+                          items: [
+                            'Buat paket kombinasi dari produk yang sudah ada di Menu',
+                            'Centang produk yang masuk dalam paket',
+                            'Tambahkan badge (POPULER, HEMAT, dll) untuk promosi',
+                            'Edit paket: klik ✏️ → modal edit muncul di tengah layar',
+                            'Upload foto paket tersendiri untuk tampilan yang lebih menarik',
+                          ]
+                        },
+                        {
+                          icon: '📰', title: 'Kopi News (Blog)',
+                          color: 'bg-cyan-50 dark:bg-cyan-900/20 border-cyan-200 dark:border-cyan-800',
+                          items: [
+                            'Buat artikel tentang kopi, promo, event, dan cerita kedai',
+                            'Upload cover image artikel (auto WebP)',
+                            'Set status Draft (tidak tampil) atau Published (tampil di website)',
+                            'Edit artikel sudah ada: klik Edit di kartu artikel',
+                            'Artikel Published tampil di section "Kopi News & Budaya" di beranda',
+                          ]
+                        },
+                        {
+                          icon: '🖼️', title: 'Media (Foto & Pamflet)',
+                          color: 'bg-pink-50 dark:bg-pink-900/20 border-pink-200 dark:border-pink-800',
+                          items: [
+                            'Tab Galeri: upload foto suasana kedai → tampil di section Street Coffee Foto',
+                            'Tab Pamflet: upload brosur/iklan event → tampil di section Pamflet',
+                            'Tab Customer Emotions: moderasi foto yang diupload customer',
+                            '✅ Approve = foto tampil di website | ❌ Tolak = tersembunyi',
+                            'Semua foto dikonversi ke WebP otomatis oleh browser',
+                            'Badge merah muncul jika ada foto customer yang menunggu review',
+                          ]
+                        },
+                        {
+                          icon: '👥', title: 'Pelanggan (Customer Management)',
+                          color: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800',
+                          items: [
+                            'Lihat semua akun yang terdaftar di website',
+                            'Approve permohonan Member → customer dapat diskon ongkir 25%',
+                            'Blokir akun yang bermasalah (akun terblokir tidak bisa login)',
+                            'Reset password customer jika ada permintaan',
+                            'Lihat riwayat aktivitas dan total pesanan per customer',
+                          ]
+                        },
+                        {
+                          icon: '🤖', title: 'AI Chat (Gemini Assistant)',
+                          color: 'bg-violet-50 dark:bg-violet-900/20 border-violet-200 dark:border-violet-800',
+                          items: [
+                            'AI Barista bisa menjawab pertanyaan menu, harga, jam buka',
+                            'Data produk & harga diambil langsung dari Admin Dashboard',
+                            'Bisa menjawab dalam bahasa Kotabunan/Mongondow',
+                            'Jawaban ringkas dan natural — tanpa format ** atau simbol lebih',
+                            'Customer chat langsung di website tanpa perlu WhatsApp admin',
+                          ]
+                        },
+                      ].map(({ icon, title, color, items }) => (
+                        <div key={title} className={`p-3.5 rounded-xl border space-y-2 ${color}`}>
+                          <p className="font-black text-xs text-zinc-800 dark:text-zinc-200">{icon} {title}</p>
+                          <ul className="space-y-1 text-zinc-600 dark:text-zinc-400">
+                            {items.map((item, i) => (
+                              <li key={i} className="flex gap-1.5"><span className="opacity-40 shrink-0">›</span>{item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Order Flow Visual */}
+                    <div className="bg-white/70 dark:bg-zinc-900/60 rounded-xl p-4 space-y-2">
+                      <p className="text-xs font-black text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">🔄 Alur Pesanan dari Awal ke Selesai</p>
+                      <div className="flex flex-wrap gap-2 text-[10px]">
+                        {[
+                          { label: 'Customer Pesan', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300' },
+                          { label: '→', color: 'text-zinc-400' },
+                          { label: 'Pesanan Masuk (Pending)', color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' },
+                          { label: '→', color: 'text-zinc-400' },
+                          { label: 'Admin Update: Disiapkan', color: 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300' },
+                          { label: '→', color: 'text-zinc-400' },
+                          { label: 'Admin Update: Diantar', color: 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300' },
+                          { label: '→', color: 'text-zinc-400' },
+                          { label: 'Selesai ✅', color: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' },
+                        ].map((item, i) => (
+                          <span key={i} className={`font-bold px-2 py-0.5 rounded-full ${item.color}`}>{item.label}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 

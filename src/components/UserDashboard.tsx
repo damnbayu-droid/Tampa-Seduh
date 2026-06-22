@@ -548,7 +548,134 @@ export default function UserDashboard({
 
         </div>
       </main>
-      
+
+      {/* ===== PANDUAN LENGKAP USER DASHBOARD ===== */}
+      <section className={`border-t py-12 px-4 sm:px-6 lg:px-8 ${darkMode ? 'border-zinc-800 bg-zinc-950/50' : 'border-zinc-100 bg-amber-50/40'}`}>
+        <div className="max-w-6xl mx-auto space-y-6">
+          <div className="text-center space-y-1 mb-8">
+            <span className="text-[10px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-400">Bantuan Lengkap</span>
+            <h2 className="font-serif font-black text-2xl text-amber-950 dark:text-amber-100">📖 Panduan User Dashboard</h2>
+            <p className="text-xs text-zinc-500">Semua yang perlu kamu tahu sebagai pelanggan Tampa Seduh</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            {/* 1. Cara Daftar & Login */}
+            <div className={`p-5 rounded-2xl border space-y-3 ${darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-100'} shadow-sm`}>
+              <p className="text-xs font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 flex items-center gap-1.5">🔑 Cara Daftar & Login</p>
+              <ul className="text-xs text-zinc-600 dark:text-zinc-400 space-y-1.5 leading-relaxed">
+                <li>• <strong>Daftar:</strong> Klik Login → Daftar Gratis → isi Nama, Email, Password</li>
+                <li>• <strong>Login Email:</strong> Masuk dengan email + password yang didaftarkan</li>
+                <li>• <strong>Login Google:</strong> Klik "Masuk dengan Google" — otomatis buat akun baru</li>
+                <li>• <strong>Lupa Password:</strong> Klik "Lupa Password?" → ikuti instruksi via WhatsApp Admin</li>
+                <li>• <strong>Penting:</strong> Selalu gunakan <code className="bg-zinc-100 dark:bg-zinc-800 px-1 rounded">www.tampaseduh.com</code> bukan tanpa www</li>
+              </ul>
+            </div>
+
+            {/* 2. Order Flow */}
+            <div className={`p-5 rounded-2xl border space-y-3 ${darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-100'} shadow-sm`}>
+              <p className="text-xs font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 flex items-center gap-1.5">🛒 Alur Pemesanan</p>
+              <ol className="text-xs text-zinc-600 dark:text-zinc-400 space-y-1.5 leading-relaxed list-decimal pl-4">
+                <li>Pilih produk atau paket di halaman beranda</li>
+                <li>Klik foto produk → pilih ukuran R atau L → <strong>Tambah ke Keranjang</strong></li>
+                <li>Ulangi untuk produk lain — keranjang terakumulasi</li>
+                <li>Klik ikon 🛒 di navbar atau <em>"Lanjut Pesan"</em> untuk buka keranjang</li>
+                <li>Isi data: Nama, WhatsApp, Alamat, Metode Pengiriman</li>
+                <li>Pilih Pickup (ambil sendiri) atau Delivery (diantar)</li>
+                <li>Klik <strong>Konfirmasi Pesanan</strong> → pesanan terkirim ke Admin</li>
+                <li>Admin memproses → kamu dapat notifikasi via WhatsApp</li>
+              </ol>
+            </div>
+
+            {/* 3. Metode Pembayaran */}
+            <div className={`p-5 rounded-2xl border space-y-3 ${darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-100'} shadow-sm`}>
+              <p className="text-xs font-black uppercase tracking-widest text-green-600 dark:text-green-400 flex items-center gap-1.5">💳 Mekanisme Pembayaran</p>
+              <ul className="text-xs text-zinc-600 dark:text-zinc-400 space-y-1.5 leading-relaxed">
+                <li>• <strong>COD (Cash on Delivery):</strong> Bayar tunai saat kopi diantar atau diambil</li>
+                <li>• <strong>Transfer Bank / QRIS:</strong> Admin kirim nomor rekening / QR via WhatsApp</li>
+                <li>• <strong>Bukti Bayar:</strong> Upload foto bukti transfer di halaman checkout</li>
+                <li>• Admin verifikasi manual → pesanan diproses setelah konfirmasi</li>
+                <li>• Tidak ada auto-payment gateway — semua diverifikasi manusia</li>
+                <li>• <strong>Ongkir:</strong> Rp 10.000 flat, Member diskon 25% → Rp 7.500</li>
+              </ul>
+            </div>
+
+            {/* 4. Status Pesanan */}
+            <div className={`p-5 rounded-2xl border space-y-3 ${darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-100'} shadow-sm`}>
+              <p className="text-xs font-black uppercase tracking-widest text-purple-600 dark:text-purple-400 flex items-center gap-1.5">📦 Status Pesanan</p>
+              <div className="space-y-2 text-xs text-zinc-600 dark:text-zinc-400">
+                {[
+                  { status: 'Menunggu', color: 'bg-zinc-100 text-zinc-600', desc: 'Pesanan diterima, belum diproses' },
+                  { status: 'Disiapkan', color: 'bg-amber-100 text-amber-700', desc: 'Barista sedang meracik kopi' },
+                  { status: 'Diantar', color: 'bg-blue-100 text-blue-700', desc: 'Kurir sedang menuju alamatmu' },
+                  { status: 'Selesai', color: 'bg-green-100 text-green-700', desc: 'Pesanan sudah diterima' },
+                ].map(({ status, color, desc }) => (
+                  <div key={status} className="flex items-center gap-3">
+                    <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full shrink-0 ${color}`}>{status}</span>
+                    <span>{desc}</span>
+                  </div>
+                ))}
+                <p className="pt-1">Klik pada pesanan di Riwayat untuk melihat detail lengkap + cetak invoice.</p>
+              </div>
+            </div>
+
+            {/* 5. Member */}
+            <div className={`p-5 rounded-2xl border space-y-3 ${darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-100'} shadow-sm`}>
+              <p className="text-xs font-black uppercase tracking-widest text-amber-700 dark:text-amber-300 flex items-center gap-1.5">🎁 Program Member</p>
+              <ul className="text-xs text-zinc-600 dark:text-zinc-400 space-y-1.5 leading-relaxed">
+                <li>• <strong>Gratis 100%</strong> — tidak ada biaya pendaftaran</li>
+                <li>• Klik <em>"Gabung Member Sekarang"</em> di dashboard ini</li>
+                <li>• Admin menyetujui permohonan dalam 1×24 jam</li>
+                <li>• Setelah aktif: <strong>Diskon Ongkir 25%</strong> (Rp 10K → Rp 7.5K) berlaku otomatis</li>
+                <li>• Status Member terlihat di Member Card di kiri atas dashboard</li>
+              </ul>
+            </div>
+
+            {/* 6. Customer Emotions Upload */}
+            <div className={`p-5 rounded-2xl border space-y-3 ${darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-100'} shadow-sm`}>
+              <p className="text-xs font-black uppercase tracking-widest text-pink-600 dark:text-pink-400 flex items-center gap-1.5">📸 Customer Emotions — Upload Foto</p>
+              <ol className="text-xs text-zinc-600 dark:text-zinc-400 space-y-1.5 leading-relaxed list-decimal pl-4">
+                <li>Scroll ke section <strong>"Customer Emotions"</strong> di halaman beranda</li>
+                <li>Jika belum login: klik <em>"Login untuk Upload Foto"</em></li>
+                <li>Setelah login: isi caption lalu klik <strong>Upload Foto</strong></li>
+                <li>Foto otomatis dikonversi ke format WebP (lebih ringan)</li>
+                <li>Foto masuk status <em>Pending</em> di sistem kami</li>
+                <li>Admin meninjau → jika disetujui, foto tampil di website</li>
+                <li>Jika ditolak: foto tidak tampil tapi tetap tersimpan</li>
+              </ol>
+              <p className="text-[10px] text-zinc-400">⚠️ Upload konten yang sopan dan berkaitan dengan pengalaman di Tampa Seduh saja ya kawan!</p>
+            </div>
+
+            {/* 7. Profil & Keamanan */}
+            <div className={`p-5 rounded-2xl border space-y-3 ${darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-100'} shadow-sm`}>
+              <p className="text-xs font-black uppercase tracking-widest text-zinc-600 dark:text-zinc-400 flex items-center gap-1.5">👤 Profil & Keamanan Akun</p>
+              <ul className="text-xs text-zinc-600 dark:text-zinc-400 space-y-1.5 leading-relaxed">
+                <li>• Klik <em>"Edit Profil"</em> untuk mengubah Nama, WhatsApp, Alamat Default</li>
+                <li>• Password dienkripsi dengan bcrypt — tidak ada yang bisa melihatnya</li>
+                <li>• Untuk ganti password: isi kolom "Ganti Password" saat edit profil</li>
+                <li>• Alamat default tersimpan → tidak perlu isi ulang saat pesan</li>
+                <li>• Akun dibuat dengan Google tidak memiliki password email</li>
+              </ul>
+            </div>
+
+            {/* 8. Bantuan */}
+            <div className={`p-5 rounded-2xl border space-y-3 ${darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-100'} shadow-sm bg-gradient-to-br from-green-50 to-white dark:from-green-900/10 dark:to-zinc-900`}>
+              <p className="text-xs font-black uppercase tracking-widest text-green-700 dark:text-green-400 flex items-center gap-1.5">💬 Butuh Bantuan?</p>
+              <ul className="text-xs text-zinc-600 dark:text-zinc-400 space-y-1.5 leading-relaxed">
+                <li>• Chat Admin via WhatsApp: <strong>+62 856-9622-4448</strong></li>
+                <li>• Jam operasional: setiap hari, buka dari pagi sampai malam</li>
+                <li>• Untuk komplain, ubah alamat mendadak, atau konfirmasi pembayaran</li>
+                <li>• Respon dalam 5–15 menit pada jam aktif</li>
+              </ul>
+              <a href="https://wa.me/6285696224448?text=Halo%20Tampa%20Seduh,%20saya%20butuh%20bantuan" target="_blank" rel="noreferrer"
+                className="block w-full py-2.5 bg-green-500 hover:bg-green-600 text-white text-xs font-bold rounded-xl text-center transition-all">
+                💬 Chat WhatsApp Sekarang
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Styles for Shimmer animation */}
       <style>{`
         @keyframes shimmer {
