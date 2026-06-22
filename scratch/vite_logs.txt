@@ -4,3 +4,9 @@
   ➜  Local:   http://localhost:5173/
   ➜  Network: use --host to expose
 6:00:46 AM [vite] (client) page reload server.ts
+6:11:00 AM [vite] (client) hmr update /src/App.tsx, /src/index.css
+6:11:56 AM [vite] (client) hmr update /src/components/OrderPopup.tsx, /src/index.css
+6:12:33 AM [vite] (client) hmr update /src/index.css, /src/App.tsx
+6:12:47 AM [vite] (client) hmr update /src/components/OrderPopup.tsx, /src/index.css
+6:12:56 AM [vite] (client) hmr update /src/components/OrderPopup.tsx, /src/index.css
+12:34:10 PM [vite] (client) hmr update /src/index.css, /src/App.tsx

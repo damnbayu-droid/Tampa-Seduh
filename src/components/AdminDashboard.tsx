@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   BarChart3, MessageSquare, Users, Coffee, Layers, ShoppingBag,
-  Sparkles, FileClock, Wallet, Mail, BookOpen, Plus, Trash2, Edit2, CheckCircle, RefreshCw, Moon, Sun, ArrowLeft, X, Lock, Receipt, Download
+  Sparkles, FileClock, Wallet, Mail, BookOpen, Plus, Trash2, Edit2, CheckCircle, RefreshCw, Moon, Sun, ArrowLeft, X, Lock, Receipt, Download, PanelLeftOpen, PanelLeftClose
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { MenuItem, CoffeePackage, Order, AuditLog, User, BlogNews, EmailLog, FinancialSummary } from "../types";
@@ -72,6 +72,13 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   const [refreshKey, setRefreshKey] = useState(0);
   
   const [globalNotif, setGlobalNotif] = useState<{message: string, type: "success" | "error" | "info" | "loading"} | null>(null);
+  const [isSidebarShrunk, setIsSidebarShrunk] = useState(false);
+
+  useEffect(() => {
+    if (window.innerWidth < 768) {
+      setIsSidebarShrunk(true);
+    }
+  }, []);
   const showNotif = (message: string, type: "success" | "error" | "info" | "loading" = "info", ms: number = 3000) => {
     setGlobalNotif({ message, type });
     if (type !== "loading") {
@@ -476,26 +483,46 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   const activeFin = finances.find(f => f.period === financePeriod) || finances[2];
 
   return (
-    <div className="min-h-screen bg-stone-100 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 flex flex-col md:flex-row font-sans">
+    <div className="min-h-screen h-screen overflow-hidden bg-stone-100 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 flex flex-row font-sans w-full max-w-[100vw]">
       
       {/* Sidebar Navigation */}
-      <aside className="w-full md:w-64 bg-gradient-to-b from-amber-950 via-zinc-900 to-black text-amber-100 md:min-h-screen flex flex-col sticky top-0 z-30">
-        <div className="p-6 border-b border-amber-900/30 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-amber-900 rounded-lg">
-              <Coffee className="w-5 h-5 text-amber-400" />
-            </div>
-            <div>
-              <h1 className="font-serif font-bold text-lg tracking-wide text-amber-50 leading-none">Tampa Seduh</h1>
-              <span className="text-[10px] text-amber-400 font-sans tracking-widest uppercase">Admin Terminal</span>
-            </div>
+      <aside className={`bg-gradient-to-b from-amber-950 via-zinc-900 to-black text-amber-100 min-h-screen flex flex-col sticky top-0 z-30 transition-all duration-300 flex-shrink-0 ${isSidebarShrunk ? "w-20" : "w-64"}`}>
+        <div className="p-4 border-b border-amber-900/30 flex flex-col items-center justify-center gap-4">
+          <div className={`flex items-center ${isSidebarShrunk ? "justify-center" : "justify-between"} w-full`}>
+            {!isSidebarShrunk && (
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-amber-900 rounded-lg shrink-0">
+                  <Coffee className="w-5 h-5 text-amber-400" />
+                </div>
+                <div className="min-w-0">
+                  <h1 className="font-serif font-bold text-lg tracking-wide text-amber-50 leading-none truncate">Tampa Seduh</h1>
+                  <span className="text-[10px] text-amber-400 font-sans tracking-widest uppercase block truncate">Admin Terminal</span>
+                </div>
+              </div>
+            )}
+            {isSidebarShrunk && (
+              <div className="p-1.5 bg-amber-900 rounded-lg shrink-0 mx-auto">
+                <Coffee className="w-6 h-6 text-amber-400" />
+              </div>
+            )}
           </div>
-          <button 
-            onClick={handleToggleDark}
-            className="p-1.5 hover:bg-white/10 rounded-lg text-amber-200 transition-colors"
-          >
-            {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
-          </button>
+          
+          <div className={`flex items-center w-full ${isSidebarShrunk ? "justify-center flex-col gap-3" : "justify-between"}`}>
+            <button 
+              onClick={() => setIsSidebarShrunk(!isSidebarShrunk)}
+              className="p-1.5 bg-white/5 hover:bg-white/15 border border-white/10 rounded-lg text-amber-200 transition-all shadow-sm flex items-center justify-center"
+              title={isSidebarShrunk ? "Perluas Panel" : "Perkecil Panel"}
+            >
+              {isSidebarShrunk ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+            </button>
+            <button 
+              onClick={handleToggleDark}
+              className="p-1.5 bg-white/5 hover:bg-white/15 border border-white/10 rounded-lg text-amber-200 transition-all shadow-sm flex items-center justify-center"
+              title="Toggle Dark Mode"
+            >
+              {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
+            </button>
+          </div>
         </div>
 
         <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
@@ -506,21 +533,27 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id as ActiveTab)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group cursor-pointer ${
+                title={isSidebarShrunk ? item.label : undefined}
+                className={`w-full flex items-center ${isSidebarShrunk ? "justify-center" : "justify-between"} ${isSidebarShrunk ? "px-2 py-3" : "px-3.5 py-2.5"} rounded-xl text-sm font-medium transition-all duration-150 group cursor-pointer ${
                   isActive
                     ? "bg-amber-900 text-amber-50 shadow"
                     : "text-amber-200/80 hover:text-amber-100 hover:bg-white/5"
                 }`}
               >
-                <div className="flex items-center gap-2.5">
-                  <Icon className={`w-4 h-4 ${isActive ? "text-amber-300" : "text-amber-400 group-hover:text-amber-300"}`} />
-                  <span>{item.label}</span>
+                <div className={`flex items-center ${isSidebarShrunk ? "justify-center" : "gap-2.5"}`}>
+                  <div className="relative">
+                    <Icon className={`${isSidebarShrunk ? "w-6 h-6" : "w-4 h-4"} ${isActive ? "text-amber-300" : "text-amber-400 group-hover:text-amber-300"}`} />
+                    {isSidebarShrunk && item.badge && item.badge > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 w-3 h-3 rounded-full ring-2 ring-amber-950" />
+                    )}
+                  </div>
+                  {!isSidebarShrunk && <span className="truncate">{item.label}</span>}
                 </div>
-                {item.badge && item.badge > 0 ? (
-                  <span className="bg-red-500 text-white font-sans text-[10px] font-bold px-2 py-0.5 rounded-full ring-2 ring-amber-950">
+                {!isSidebarShrunk && item.badge && item.badge > 0 && (
+                  <span className="bg-red-500 text-white font-sans text-[10px] font-bold px-2 py-0.5 rounded-full ring-2 ring-amber-950 shrink-0">
                     {item.badge}
                   </span>
-                ) : null}
+                )}
               </button>
             );
           })}
@@ -529,10 +562,11 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
         <div className="p-4 border-t border-amber-900/30 space-y-2">
           <button
             onClick={onBackToStorefront}
-            className="w-full bg-amber-900/30 hover:bg-amber-900/60 text-amber-200 border border-amber-800/40 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            title={isSidebarShrunk ? "Kembali Ke Kedai" : undefined}
+            className="w-full bg-amber-900/30 hover:bg-amber-900/60 text-amber-200 border border-amber-800/40 py-2.5 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Kembali Ke Kedai
+            <ArrowLeft className={isSidebarShrunk ? "w-5 h-5" : "w-3.5 h-3.5 shrink-0"} />
+            {!isSidebarShrunk && <span className="truncate">Kembali Ke Kedai</span>}
           </button>
           
           <button
@@ -542,10 +576,11 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                 if (onLogoutAdmin) onLogoutAdmin();
               }
             }}
-            className="w-full bg-red-900/20 hover:bg-red-900/50 text-red-400 border border-red-900/30 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            title={isSidebarShrunk ? "Keluar (Logout)" : undefined}
+            className="w-full bg-red-900/20 hover:bg-red-900/50 text-red-400 border border-red-900/30 py-2.5 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
           >
-            <Lock className="w-3.5 h-3.5" />
-            Keluar (Logout)
+            <Lock className={isSidebarShrunk ? "w-5 h-5" : "w-3.5 h-3.5 shrink-0"} />
+            {!isSidebarShrunk && <span className="truncate">Keluar</span>}
           </button>
         </div>
       </aside>

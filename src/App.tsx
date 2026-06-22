@@ -580,25 +580,6 @@ export default function App() {
     );
   }
 
-  // Render User Dashboard if requested
-  if (showUserDashboard && currentUser) {
-    return (
-      <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-amber-600" /></div>}>
-        <UserDashboard 
-          currentUser={currentUser}
-          onBack={() => setShowUserDashboard(false)}
-          orders={userOrders}
-          onSubscribe={handleSubscribeMember}
-          isSubscribing={isSubscribing}
-          onLogout={handleUserLogout}
-          onUpdateProfile={handleUpdateProfile}
-          darkMode={darkMode}
-          setDarkMode={setDarkMode}
-        />
-      </Suspense>
-    );
-  }
-
   // Render Checkout Page if path matches '/checkout'
   if (currentPath === "/checkout") {
     return (
@@ -620,6 +601,26 @@ export default function App() {
       </Suspense>
     );
   }
+
+  // Render User Dashboard if requested
+  if (showUserDashboard && currentUser) {
+    return (
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-amber-600" /></div>}>
+        <UserDashboard 
+          currentUser={currentUser}
+          onBack={() => setShowUserDashboard(false)}
+          orders={userOrders}
+          onSubscribe={handleSubscribeMember}
+          isSubscribing={isSubscribing}
+          onLogout={handleUserLogout}
+          onUpdateProfile={handleUpdateProfile}
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+        />
+      </Suspense>
+    );
+  }
+
 
   return (
     <div className={`min-h-screen transition-colors duration-300 font-sans ${
