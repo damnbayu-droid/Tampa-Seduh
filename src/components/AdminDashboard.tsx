@@ -4,7 +4,7 @@ import {
   Sparkles, FileClock, Wallet, Mail, BookOpen, Plus, Trash2, Edit2, CheckCircle, RefreshCw, Moon, Sun, ArrowLeft, X, Lock, Receipt, Download, PanelLeftOpen, PanelLeftClose, ImageIcon, Calculator
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { MenuItem, CoffeePackage, Order, AuditLog, User, BlogNews, EmailLog, FinancialSummary, ProfitDashboard } from "../types";
+import { MenuItem, CoffeePackage, Order, AuditLog, User, BlogNews, EmailLog, FinancialSummary, ProfitDashboard, GalleryPhoto, Pamflet } from "../types";
 import { getApiUrl } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import AdminRecipeLab from "./AdminRecipeLab";
@@ -64,7 +64,8 @@ type ActiveTab =
   | "finances"
   | "emails"
   | "recipelab"
-  | "news";
+  | "news"
+  | "media";
 
 
 export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMode, onLogoutAdmin }: AdminDashboardProps) {
@@ -150,13 +151,21 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   });
   const [editingNews, setEditingNews] = useState<BlogNews | null>(null);
 
+  // Media Panel state
+  const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhoto[]>([]);
+  const [pamfletList, setPamfletList] = useState<Pamflet[]>([]);
+  const [mediaSubTab, setMediaSubTab] = useState<"gallery" | "pamflet">("gallery");
+  const [isUploadingGallery, setIsUploadingGallery] = useState(false);
+  const [isUploadingPamflet, setIsUploadingPamflet] = useState(false);
+  const [isUploadingEditNewsImg, setIsUploadingEditNewsImg] = useState(false);
+
   const [financePeriod, setFinancePeriod] = useState<"Harian" | "Mingguan" | "Bulanan" | "6 Bulan" | "1 Tahun" | "Semua">("Bulanan");
 
   // Fetch all core system databases
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      const [mRes, pRes, oRes, uRes, lRes, eRes, nRes, fRes, aiRes, profitRes] = await Promise.all([
+      const [mRes, pRes, oRes, uRes, lRes, eRes, nRes, fRes, aiRes, profitRes, galRes, pamRes] = await Promise.all([
         fetchWithAuth(getApiUrl("/api/menu")),
         fetchWithAuth(getApiUrl("/api/packages")),
         fetchWithAuth(getApiUrl("/api/orders")),
@@ -166,7 +175,9 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
         fetchWithAuth(getApiUrl("/api/news")),
         fetchWithAuth(getApiUrl("/api/finances")),
         fetchWithAuth(getApiUrl("/api/ai-config")),
-        fetchWithAuth(getApiUrl("/api/profit/dashboard"))
+        fetchWithAuth(getApiUrl("/api/profit/dashboard")),
+        fetch(getApiUrl("/api/gallery")),
+        fetch(getApiUrl("/api/pamflets"))
       ]);
 
 
@@ -180,6 +191,8 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
       if (fRes.ok) setFinances(await fRes.json());
       if (aiRes.ok) setAiConfig(await aiRes.json());
       if (profitRes.ok) setProfitDashboard(await profitRes.json());
+      if (galRes.ok) setGalleryPhotos(await galRes.json());
+      if (pamRes.ok) setPamfletList(await pamRes.json());
       
       const chatsRes = await fetchWithAuth(getApiUrl("/api/chat-admin/sessions"));
       if (chatsRes.ok) setChatSessions(await chatsRes.json());
@@ -492,26 +505,174 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
     if (!file) return;
     setIsUploadingNewsImage(true);
     try {
-      const ext = file.name.split('.').pop();
-      const uniqueName = `news-${Date.now()}-${Math.floor(Math.random() * 1000)}.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from("products")
-        .upload(uniqueName, file);
-      
-      if (uploadError) throw uploadError;
-      
-      const { data: publicUrlData } = supabase.storage
-        .from("products")
-        .getPublicUrl(uniqueName);
-        
-      setNewNews({ ...newNews, coverImage: publicUrlData.publicUrl });
+      await uploadImageAsWebP(file, (url) => {
+        setNewNews({ ...newNews, coverImage: url });
+      });
       showNotif("Gambar berita berhasil diunggah", "success");
     } catch (err: any) {
-      console.error(err);
       showNotif("Gagal unggah gambar", "error");
     } finally {
       setIsUploadingNewsImage(false);
     }
+  };
+
+  // Handler upload foto untuk editingNews (ganti foto artikel saat edit)
+  const handleUploadEditingNewsImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editingNews) return;
+    setIsUploadingEditNewsImg(true);
+    showNotif("Mengunggah foto artikel, mohon tunggu...", "loading");
+    try {
+      await uploadImageAsWebP(file, (url) => {
+        setEditingNews({ ...editingNews, coverImage: url });
+      });
+      showNotif("Foto artikel berhasil diperbarui!", "success");
+    } catch (err: any) {
+      showNotif("Gagal unggah foto", "error");
+    } finally {
+      setIsUploadingEditNewsImg(false);
+    }
+  };
+
+  // Handler upload foto Gallery Kolase
+  const handleUploadGallery = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingGallery(true);
+    showNotif("Mengunggah foto kolase...", "loading");
+    try {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = async () => {
+        const img = new Image();
+        img.src = reader.result as string;
+        img.onload = async () => {
+          const canvas = document.createElement('canvas');
+          const max = 1200;
+          const ratio = Math.min(max / img.width, max / img.height, 1);
+          canvas.width = Math.round(img.width * ratio);
+          canvas.height = Math.round(img.height * ratio);
+          const ctx2 = canvas.getContext('2d')!;
+          ctx2.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const webpData = canvas.toDataURL('image/webp', 0.88);
+          const res = await fetchWithAuth(getApiUrl('/api/gallery'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ base64Data: webpData, fileName: file.name.replace(/\.[^/.]+$/, '') + '.webp' })
+          });
+          if (!res.ok) throw new Error('Upload gagal');
+          const data = await res.json();
+          setGalleryPhotos(prev => [{ id: data.filename, url: data.url, filename: data.filename, created_at: new Date().toISOString() }, ...prev]);
+          showNotif('Foto kolase berhasil diunggah!', 'success');
+          setIsUploadingGallery(false);
+        };
+      };
+    } catch (err: any) {
+      showNotif('Gagal upload foto: ' + err.message, 'error');
+      setIsUploadingGallery(false);
+    }
+  };
+
+  // Handler delete Gallery
+  const handleDeleteGallery = async (filename: string) => {
+    if (!confirm('Hapus foto ini?')) return;
+    try {
+      const res = await fetchWithAuth(getApiUrl(`/api/gallery/${encodeURIComponent(filename)}`), { method: 'DELETE' });
+      if (!res.ok) throw new Error('Gagal hapus');
+      setGalleryPhotos(prev => prev.filter(p => p.filename !== filename));
+      showNotif('Foto dihapus', 'success');
+    } catch (err: any) {
+      showNotif('Gagal hapus foto: ' + err.message, 'error');
+    }
+  };
+
+  // Handler upload Pamflet
+  const handleUploadPamflet = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingPamflet(true);
+    showNotif('Mengunggah pamflet...', 'loading');
+    try {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = async () => {
+        const img = new Image();
+        img.src = reader.result as string;
+        img.onload = async () => {
+          const canvas = document.createElement('canvas');
+          const max = 1600;
+          const ratio = Math.min(max / img.width, max / img.height, 1);
+          canvas.width = Math.round(img.width * ratio);
+          canvas.height = Math.round(img.height * ratio);
+          const ctx2 = canvas.getContext('2d')!;
+          ctx2.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const webpData = canvas.toDataURL('image/webp', 0.92);
+          const res = await fetchWithAuth(getApiUrl('/api/pamflets'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ base64Data: webpData, fileName: file.name.replace(/\.[^/.]+$/, '') + '.webp' })
+          });
+          if (!res.ok) throw new Error('Upload gagal');
+          const data = await res.json();
+          setPamfletList(prev => [{ id: data.filename, url: data.url, filename: data.filename, created_at: new Date().toISOString() }, ...prev]);
+          showNotif('Pamflet berhasil diunggah!', 'success');
+          setIsUploadingPamflet(false);
+        };
+      };
+    } catch (err: any) {
+      showNotif('Gagal upload pamflet: ' + err.message, 'error');
+      setIsUploadingPamflet(false);
+    }
+  };
+
+  // Handler delete Pamflet
+  const handleDeletePamflet = async (filename: string) => {
+    if (!confirm('Hapus pamflet ini?')) return;
+    try {
+      const res = await fetchWithAuth(getApiUrl(`/api/pamflets/${encodeURIComponent(filename)}`), { method: 'DELETE' });
+      if (!res.ok) throw new Error('Gagal hapus');
+      setPamfletList(prev => prev.filter(p => p.filename !== filename));
+      showNotif('Pamflet dihapus', 'success');
+    } catch (err: any) {
+      showNotif('Gagal hapus pamflet: ' + err.message, 'error');
+    }
+  };
+
+  // Shared WebP upload helper
+  const uploadImageAsWebP = (file: File, onSuccess: (url: string) => void): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const img = new Image();
+        img.src = reader.result as string;
+        img.onload = async () => {
+          try {
+            const canvas = document.createElement('canvas');
+            const max = 1200;
+            const ratio = Math.min(max / img.width, max / img.height, 1);
+            canvas.width = Math.round(img.width * ratio);
+            canvas.height = Math.round(img.height * ratio);
+            const ctx2 = canvas.getContext('2d')!;
+            ctx2.drawImage(img, 0, 0, canvas.width, canvas.height);
+            const webpData = canvas.toDataURL('image/webp', 0.85);
+            const uploadRes = await fetchWithAuth(getApiUrl('/api/upload'), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ base64Data: webpData, fileName: file.name.replace(/\.[^/.]+$/, '') + '.webp', fileType: 'image/webp' })
+            });
+            if (!uploadRes.ok) throw new Error('Upload gagal');
+            const data = await uploadRes.json();
+            onSuccess(data.publicUrl);
+            resolve();
+          } catch (err) {
+            reject(err);
+          }
+        };
+        img.onerror = () => reject(new Error('Gagal load image'));
+      };
+      reader.onerror = () => reject(new Error('Gagal baca file'));
+    });
   };
 
   const handleAddNews = async (e: React.FormEvent) => {
@@ -598,6 +759,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
     { id: "finances", label: "Keuangan", icon: Wallet },
     { id: "recipelab", label: "Costing & Recipe Lab", icon: Calculator },
     { id: "news", label: "Kopi News", icon: BookOpen },
+    { id: "media", label: "Foto & Pamflet", icon: ImageIcon },
     { id: "users", label: "Pengguna", icon: Users },
     { id: "chat", label: "Chat Admin", icon: MessageSquare },
     { id: "aimaster", label: "AI Master", icon: Sparkles },
@@ -1918,13 +2080,28 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                               </select>
                             </div>
                             <div>
-                              <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Cover Foto (URL)</label>
-                              <input
-                                type="text"
-                                value={editingNews.coverImage}
-                                onChange={(e) => setEditingNews({ ...editingNews, coverImage: e.target.value })}
-                                className="w-full text-xs px-3 py-2 border dark:bg-zinc-800 dark:border-zinc-700 rounded-xl"
-                              />
+                              <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Cover Foto</label>
+                              <div className="flex flex-col gap-2">
+                                {editingNews.coverImage && (
+                                  <img src={editingNews.coverImage} alt="preview" className="w-full h-28 object-cover rounded-xl opacity-80" referrerPolicy="no-referrer" />
+                                )}
+                                <div className="flex gap-2">
+                                  <input
+                                    type="text"
+                                    value={editingNews.coverImage}
+                                    onChange={(e) => setEditingNews({ ...editingNews, coverImage: e.target.value })}
+                                    className="flex-1 text-xs px-3 py-2 border dark:bg-zinc-800 dark:border-zinc-700 rounded-xl"
+                                    placeholder="URL foto atau upload di bawah"
+                                  />
+                                </div>
+                                <input type="file" id="edit-news-img" accept="image/*" className="hidden"
+                                  onChange={handleUploadEditingNewsImage} disabled={isUploadingEditNewsImg} />
+                                <label htmlFor="edit-news-img"
+                                  className={`flex items-center justify-center gap-2 py-2 px-3 border-2 border-dashed border-amber-400/50 rounded-xl text-xs font-bold text-amber-700 dark:text-amber-400 cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-all ${isUploadingEditNewsImg ? 'opacity-50 pointer-events-none' : ''}`}>
+                                  <ImageIcon className="w-3.5 h-3.5" />
+                                  {isUploadingEditNewsImg ? 'Mengunggah...' : 'Ganti Foto (auto WebP)'}
+                                </label>
+                              </div>
                             </div>
                             <div>
                               <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Penulis</label>
@@ -1947,7 +2124,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                             />
                           </div>
                           {editingNews.coverImage && (
-                            <img src={editingNews.coverImage} alt="preview" className="w-full h-32 object-cover rounded-xl opacity-80" referrerPolicy="no-referrer" />
+                            <img src={editingNews.coverImage} alt="preview" className="hidden" />
                           )}
                           <div className="flex justify-end gap-2 text-xs pt-2 border-t dark:border-zinc-800">
                             <button type="button" onClick={() => setEditingNews(null)} className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 rounded-xl cursor-pointer">Batal</button>
@@ -2002,6 +2179,114 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                           </div>
                         </div>
                       ))
+                    )}
+                  </div>
+                </div>
+              )}
+              {/* Tab: Media — Foto Kolase & Pamflet */}
+              {activeTab === "media" && (
+                <div className="space-y-6">
+                  <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-sm">
+                    <div className="flex items-center justify-between mb-4 border-b pb-3 border-zinc-100 dark:border-zinc-800">
+                      <h3 className="font-serif font-bold text-lg text-amber-950 dark:text-amber-50">📸 Foto & Pamflet</h3>
+                      <div className="flex gap-2">
+                        <button onClick={() => setMediaSubTab("gallery")} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${mediaSubTab === "gallery" ? "bg-amber-900 text-amber-50" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300"}`}>
+                          🖼️ Foto Kolase
+                        </button>
+                        <button onClick={() => setMediaSubTab("pamflet")} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${mediaSubTab === "pamflet" ? "bg-amber-900 text-amber-50" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300"}`}>
+                          📋 Pamflet / Brosur
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Gallery Sub-Tab */}
+                    {mediaSubTab === "gallery" && (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-bold text-zinc-800 dark:text-zinc-200">Foto Kolase Street Coffee</p>
+                            <p className="text-xs text-zinc-400">Foto random kejadian di kedai, suasana, dan momen seru. Ditampilkan sebagai galeri swipe di halaman utama.</p>
+                          </div>
+                          <div>
+                            <input type="file" id="upload-gallery" accept="image/*" className="hidden" onChange={handleUploadGallery} disabled={isUploadingGallery} />
+                            <label htmlFor="upload-gallery"
+                              className={`flex items-center gap-2 px-4 py-2 bg-amber-900 hover:bg-amber-800 text-amber-50 text-xs font-bold rounded-xl cursor-pointer transition-all ${isUploadingGallery ? 'opacity-50 pointer-events-none' : ''}`}>
+                              <ImageIcon className="w-3.5 h-3.5" />
+                              {isUploadingGallery ? 'Mengunggah...' : 'Upload Foto'}
+                            </label>
+                          </div>
+                        </div>
+                        {galleryPhotos.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center py-12 bg-zinc-50 dark:bg-zinc-900/40 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl">
+                            <ImageIcon className="w-8 h-8 text-zinc-300 mb-2" />
+                            <p className="text-sm text-zinc-400 font-medium">Belum ada foto. Upload foto pertama!</p>
+                            <p className="text-xs text-zinc-400 mt-1">Foto akan otomatis dikonversi ke WebP</p>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                            {galleryPhotos.map((photo) => (
+                              <div key={photo.id} className="relative group rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 aspect-square">
+                                <img src={photo.url} alt={photo.caption || photo.filename} className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                  <button onClick={() => handleDeleteGallery(photo.filename)}
+                                    className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-full cursor-pointer transition-all">
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                                <div className="absolute bottom-0 left-0 right-0 p-1.5 bg-black/50 text-white text-[9px] truncate">
+                                  {photo.filename.replace(/^gallery-\d+-/, '').replace(/_/g, ' ')}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <p className="text-[10px] text-zinc-400 text-center">{galleryPhotos.length} foto tersimpan • Klik foto untuk opsi hapus</p>
+                      </div>
+                    )}
+
+                    {/* Pamflet Sub-Tab */}
+                    {mediaSubTab === "pamflet" && (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-bold text-zinc-800 dark:text-zinc-200">Pamflet / Brosur / Pemberitahuan</p>
+                            <p className="text-xs text-zinc-400">Brosur event, promo, dan pengumuman dalam bentuk gambar. Ditampilkan sebagai carousel swipe di halaman utama.</p>
+                          </div>
+                          <div>
+                            <input type="file" id="upload-pamflet" accept="image/*" className="hidden" onChange={handleUploadPamflet} disabled={isUploadingPamflet} />
+                            <label htmlFor="upload-pamflet"
+                              className={`flex items-center gap-2 px-4 py-2 bg-amber-900 hover:bg-amber-800 text-amber-50 text-xs font-bold rounded-xl cursor-pointer transition-all ${isUploadingPamflet ? 'opacity-50 pointer-events-none' : ''}`}>
+                              <ImageIcon className="w-3.5 h-3.5" />
+                              {isUploadingPamflet ? 'Mengunggah...' : 'Upload Pamflet'}
+                            </label>
+                          </div>
+                        </div>
+                        {pamfletList.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center py-12 bg-zinc-50 dark:bg-zinc-900/40 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl">
+                            <ImageIcon className="w-8 h-8 text-zinc-300 mb-2" />
+                            <p className="text-sm text-zinc-400 font-medium">Belum ada pamflet. Upload pamflet pertama!</p>
+                            <p className="text-xs text-zinc-400 mt-1">Format: JPG/PNG/WebP, auto dikonversi ke WebP</p>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                            {pamfletList.map((pam) => (
+                              <div key={pam.id} className="relative group rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
+                                <img src={pam.url} alt={pam.title || pam.filename} className="w-full object-cover" style={{ aspectRatio: '9/16', objectFit: 'cover' }} />
+                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                  <button onClick={() => handleDeletePamflet(pam.filename)}
+                                    className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-full cursor-pointer transition-all">
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                                <div className="p-2 text-xs text-zinc-500 dark:text-zinc-400 truncate">
+                                  {pam.filename.replace(/^pamflet-\d+-/, '').replace(/_/g, ' ')}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <p className="text-[10px] text-zinc-400 text-center">{pamfletList.length} pamflet tersimpan • Klik hover untuk opsi hapus</p>
+                      </div>
                     )}
                   </div>
                 </div>

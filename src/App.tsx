@@ -6,7 +6,7 @@ import {
   Eye, EyeOff, Loader2, Instagram, BookOpen
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { MenuItem, CoffeePackage, CartItem, User } from "./types";
+import { MenuItem, CoffeePackage, CartItem, User, GalleryPhoto, Pamflet } from "./types";
 import { supabase } from "./lib/supabase";
 
 const CoffeeBean = ({ className }: { className?: string }) => (
@@ -60,8 +60,14 @@ export default function App() {
   // Render Error Debugging State
   const [renderError, setRenderError] = useState<string | null>(null);
 
-  // Image Zoom/Lightbox State
-  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+  // Image Zoom/Lightbox State — full product detail modal
+  const [zoomedItem, setZoomedItem] = useState<MenuItem | null>(null);
+
+  // Media Gallery & Pamflet State
+  const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhoto[]>([]);
+  const [pamfletList, setPamfletList] = useState<Pamflet[]>([]);
+  const [galleryIndex, setGalleryIndex] = useState(0);
+  const [pamfletIndex, setPamfletIndex] = useState(0);
   useEffect(() => {
     const handleError = (e: ErrorEvent) => setRenderError(e.message);
     window.addEventListener('error', handleError);
@@ -193,8 +199,23 @@ export default function App() {
     }
   };
 
+  // Fetch gallery and pamflets for frontend display
+  const loadMediaData = async () => {
+    try {
+      const [galRes, pamRes] = await Promise.all([
+        fetch(getApiUrl("/api/gallery")),
+        fetch(getApiUrl("/api/pamflets"))
+      ]);
+      if (galRes.ok) setGalleryPhotos(await galRes.json());
+      if (pamRes.ok) setPamfletList(await pamRes.json());
+    } catch (err) {
+      console.warn("Gagal load media:", err);
+    }
+  };
+
   useEffect(() => {
     loadShopData();
+    loadMediaData();
   }, [isAdminMode]);
 
   useEffect(() => {
@@ -969,7 +990,7 @@ export default function App() {
                         <img 
                           src={item.image} 
                           alt={item.name}
-                          onClick={(e) => { e.stopPropagation(); setZoomedImage(item.image); }}
+                          onClick={(e) => { e.stopPropagation(); setZoomedItem(item); }}
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300 cursor-pointer"
                           referrerPolicy="no-referrer"
                         />
@@ -1117,7 +1138,7 @@ export default function App() {
                         <img 
                           src={item.image} 
                           alt={item.name}
-                          onClick={(e) => { e.stopPropagation(); setZoomedImage(item.image); }}
+                          onClick={(e) => { e.stopPropagation(); setZoomedItem(item); }}
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300 cursor-pointer"
                           referrerPolicy="no-referrer"
                         />
@@ -1189,7 +1210,7 @@ export default function App() {
                       {item.description && <p className="text-xs text-zinc-400 line-clamp-2">{item.description}</p>}
                     </div>
                     <div className="relative w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0 ml-4 rounded-full overflow-hidden bg-stone-100 border-2 border-[#E8E2D9] dark:border-zinc-800">
-                      <img src={item.image} alt={item.name} onClick={(e) => { e.stopPropagation(); setZoomedImage(item.image); }}
+                      <img src={item.image} alt={item.name} onClick={(e) => { e.stopPropagation(); setZoomedItem(item); }}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300 cursor-pointer" referrerPolicy="no-referrer" />
                       {!item.isAvailable && <div className="absolute inset-0 bg-black/60 flex items-center justify-center"><span className="text-[10px] text-white font-black uppercase bg-red-600 px-1.5 py-0.5 rounded">HABIS</span></div>}
                     </div>
@@ -1575,6 +1596,94 @@ export default function App() {
       </section>
 
 
+
+      {/* === SECTION PAMFLET / BROSUR === */}
+      {pamfletList.length > 0 && (
+        <section className="py-16 bg-gradient-to-br from-amber-950 via-zinc-900 to-black text-amber-50 border-t border-amber-900/30">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-[0.35em] text-amber-400 opacity-80 block mb-1">PEMBERITAHUAN & EVENT</span>
+                <h2 className="text-3xl sm:text-5xl font-serif font-black tracking-tight text-amber-50 leading-none">Pamflet & Brosur</h2>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setPamfletIndex(i => (i - 1 + pamfletList.length) % pamfletList.length)}
+                  className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-amber-200 transition-all cursor-pointer border border-white/10">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <button onClick={() => setPamfletIndex(i => (i + 1) % pamfletList.length)}
+                  className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-amber-200 transition-all cursor-pointer border border-white/10">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                </button>
+              </div>
+            </div>
+            <div className="relative overflow-hidden rounded-2xl">
+              <div className="flex transition-transform duration-500 ease-in-out" style={{ transform: `translateX(-${pamfletIndex * 100}%)` }}>
+                {pamfletList.map((pam, idx) => (
+                  <div key={pam.id} className="min-w-full flex justify-center">
+                    <img src={pam.url} alt={pam.title || `Pamflet ${idx + 1}`}
+                      className="max-h-[70vh] w-auto object-contain rounded-2xl shadow-2xl mx-auto"
+                      loading="lazy" />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="flex justify-center gap-1.5 mt-4">
+              {pamfletList.map((_, idx) => (
+                <button key={idx} onClick={() => setPamfletIndex(idx)}
+                  className={`w-2 h-2 rounded-full transition-all cursor-pointer ${idx === pamfletIndex ? 'bg-amber-400 w-5' : 'bg-white/30'}`} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* === SECTION FOTO KOLASE STREET COFFEE === */}
+      {galleryPhotos.length > 0 && (
+        <section className="py-16 bg-stone-100 dark:bg-zinc-950 border-t border-amber-900/5">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-[0.35em] text-[#8B5E3C] dark:text-amber-400 opacity-80 block mb-1">MOMEN SERU DI KEDAI</span>
+                <h2 className="text-3xl sm:text-5xl font-serif font-black tracking-tight text-[#2D1B0D] dark:text-amber-50 leading-none">Street Foto Kolase</h2>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setGalleryIndex(i => (i - 1 + galleryPhotos.length) % galleryPhotos.length)}
+                  className="p-2 rounded-full bg-amber-900/10 hover:bg-amber-900/20 dark:bg-white/10 dark:hover:bg-white/20 text-amber-800 dark:text-amber-200 transition-all cursor-pointer border border-amber-900/10">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <button onClick={() => setGalleryIndex(i => (i + 1) % galleryPhotos.length)}
+                  className="p-2 rounded-full bg-amber-900/10 hover:bg-amber-900/20 dark:bg-white/10 dark:hover:bg-white/20 text-amber-800 dark:text-amber-200 transition-all cursor-pointer border border-amber-900/10">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                </button>
+              </div>
+            </div>
+            {/* Mosaic grid + swipe carousel hybrid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+              {galleryPhotos.slice(galleryIndex, galleryIndex + 8).concat(
+                galleryIndex + 8 > galleryPhotos.length
+                  ? galleryPhotos.slice(0, (galleryIndex + 8) % galleryPhotos.length)
+                  : []
+              ).map((photo, idx) => (
+                <motion.div key={photo.id + idx}
+                  initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: idx * 0.05 }}
+                  className={`rounded-2xl overflow-hidden bg-zinc-200 dark:bg-zinc-800 ${idx === 0 ? 'col-span-2 row-span-2 aspect-square' : 'aspect-square'}`}>
+                  <img src={photo.url} alt={photo.caption || `Foto ${idx + 1}`}
+                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300 cursor-pointer"
+                    loading="lazy" />
+                </motion.div>
+              ))}
+            </div>
+            <div className="flex justify-center gap-1.5 mt-4">
+              {Array.from({ length: Math.ceil(galleryPhotos.length / 8) }).map((_, idx) => (
+                <button key={idx} onClick={() => setGalleryIndex(idx * 8)}
+                  className={`w-2 h-2 rounded-full transition-all cursor-pointer ${Math.floor(galleryIndex / 8) === idx ? 'bg-amber-800 dark:bg-amber-400 w-5' : 'bg-amber-900/20 dark:bg-white/20'}`} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* 5. Coffee News Blog section on frontpage */}
       <Suspense fallback={null}>
@@ -2138,36 +2247,76 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Modern Image Lightbox Modal */}
+      {/* Product Detail Modal — Foto + Keterangan Produk */}
       <AnimatePresence>
-        {zoomedImage && (
+        {zoomedItem && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            onClick={() => setZoomedImage(null)}
-            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 sm:p-8 cursor-zoom-out"
+            onClick={() => setZoomedItem(null)}
+            className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/85 backdrop-blur-sm p-0 sm:p-6 cursor-zoom-out"
           >
             <motion.div
-              initial={{ scale: 0.8, opacity: 0, y: 20 }}
+              initial={{ scale: 0.95, opacity: 0, y: 40 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.8, opacity: 0, y: 20 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="relative max-w-4xl max-h-[90vh] w-full rounded-2xl overflow-hidden shadow-2xl"
-              onClick={(e) => e.stopPropagation()} // Prevent click from closing when clicking image itself
+              exit={{ scale: 0.95, opacity: 0, y: 40 }}
+              transition={{ type: "spring", damping: 28, stiffness: 280 }}
+              className="relative w-full sm:max-w-md bg-amber-50 dark:bg-zinc-900 rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
             >
-              <img 
-                src={zoomedImage} 
-                alt="Zoomed Product" 
-                className="w-full h-full object-contain max-h-[90vh]"
-              />
-              <button
-                onClick={() => setZoomedImage(null)}
-                className="absolute top-4 right-4 bg-black/50 hover:bg-black/80 text-white p-2 rounded-full transition-colors backdrop-blur-md"
-              >
-                <X className="w-6 h-6" />
-              </button>
+              {/* Photo */}
+              <div className="relative w-full" style={{ maxHeight: '55vh' }}>
+                <img
+                  src={zoomedItem.image}
+                  alt={zoomedItem.name}
+                  className="w-full object-cover"
+                  style={{ maxHeight: '55vh', objectFit: 'cover' }}
+                  referrerPolicy="no-referrer"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                <button
+                  onClick={() => setZoomedItem(null)}
+                  className="absolute top-4 right-4 bg-black/40 hover:bg-black/70 text-white p-2 rounded-full transition-colors backdrop-blur-md cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+                {!zoomedItem.isAvailable && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <span className="text-white font-black uppercase tracking-wider bg-red-600 px-4 py-2 rounded-xl text-sm">HABIS</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Product Details */}
+              <div className="p-5 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-serif font-black text-xl text-amber-950 dark:text-amber-50 leading-tight">{zoomedItem.name}</h3>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400 bg-amber-900/8 dark:bg-amber-400/10 px-2 py-0.5 rounded-full mt-1 inline-block">
+                      {zoomedItem.menuCategory === 'hot' ? '☕ Minuman Panas' : zoomedItem.menuCategory === 'snack' ? '🍪 Camilan' : '🧊 Minuman Dingin'}
+                    </span>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-amber-900 dark:text-amber-400 font-black font-mono text-lg">
+                      {zoomedItem.priceReg}K
+                    </div>
+                    {zoomedItem.priceLarge && (
+                      <div className="text-xs text-zinc-400 font-mono">Large: {zoomedItem.priceLarge}K</div>
+                    )}
+                  </div>
+                </div>
+                {zoomedItem.description && (
+                  <p className="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed">{zoomedItem.description}</p>
+                )}
+                <button
+                  onClick={() => { setZoomedItem(null); setIsOrderPopupOpen(true); }}
+                  className="w-full py-3 bg-gradient-to-r from-amber-900 to-amber-950 text-amber-50 font-bold rounded-xl text-sm uppercase tracking-wider cursor-pointer hover:from-amber-800 hover:to-amber-900 transition-all shadow"
+                >
+                  Pesan Sekarang
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}

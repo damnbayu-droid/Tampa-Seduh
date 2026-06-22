@@ -220,3 +220,20 @@ export interface ProfitDashboard {
   }>;
 }
 
+export interface GalleryPhoto {
+  id: string;
+  url: string;
+  caption?: string;
+  filename: string;
+  created_at: string;
+}
+
+export interface Pamflet {
+  id: string;
+  url: string;
+  title?: string;
+  filename: string;
+  created_at: string;
+}
+
+

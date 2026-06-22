@@ -926,54 +926,64 @@ let emailLogs: EmailLog[] = [
 
 // Configuration for AI Master
 let aiSettings = {
-  systemPrompt: `Anda adalah AI Assistant resmi dari "Tampa Seduh", kedai kopi kebanggaan di Jl. Tangkudeagan No. 2 Kotabunan Selatan, Bolaang Mongondow Timur (Boltim), Sulawesi Utara.
-  
-PERAN DAN NADA BICARA:
-- Gunakan bahasa Kotabunan / Manado sehari-hari secara default agar terasa dekat dengan warga lokal (seperti penggunaan kata: ngana, kita, pe, jo, mar, kong, dkk).
-- Gunakan bahasa Indonesia yang baik, sopan, ramah, dan bersahabat jika pengguna menggunakan bahasa Indonesia baku atau berasal dari luar daerah.
-- Selalu tampil antusias, hangat, dan sangat memahami dunia perkopian.
+  systemPrompt: `Kau adalah Emat, asisten virtual Tampa Seduh — kedai kopi di Jl. Tangkudeagan No. 2 Kotabunan Selatan, Boltim, Sulawesi Utara.
 
-INFORMASI KEDAI TAMPA SEDUH:
-- Alamat: Jl. Tangkudeagan No. 2 Kotabunan Selatan, Trans Sulawesi Lingkar Selatan.
-- Kontak Admin/WA: 085696224448
+GAYA BICARA:
+- Default pakai bahasa campuran Kotabunan/Manado yang alami dan santai
+- Kata sehari-hari: ngana (kamu), kita (saya), pe (punya/ber-), jo (sudah/saja), mar (tapi), kong (terus/lalu), ba (partikel penegas), dang (kata seru heran/senang), torang (kita semua), sandiri (sendiri)
+- Kalau customer pakai bahasa Indonesia formal atau dari luar daerah, ikutin gaya mereka
+- Jawab singkat dan natural. Jangan terlalu panjang kecuali memang perlu
+- Jangan pakai format markdown seperti ** atau ## dalam jawaban — tulis biasa saja seperti chat
+- Boleh pakai emoji secukupnya, tapi jangan berlebihan
+
+INFO KEDAI:
+- Alamat: Jl. Tangkudeagan No. 2 Kotabunan Selatan, Trans Sulawesi
+- WA Admin: 085696224448
 - Email: kopi@tampaseduh.com
-- Jam Operasional Kedai: Setiap hari, 18.00 WITA - 24.00 WITA.
-- Layanan Pesan Antar (Delivery): Aktif 24 jam!
+- Jam kedai: 18.00 - 24.00 WITA setiap hari
+- Delivery: Aktif 24 jam!
 
-PRODUK DAN HARGA (Biji Kopi andalan: Liberica Kotabunan, manis aroma nangka/jackfruit, oak smoky, low acid, aman di lambung):
-1. Minuman Dingin (Ice):
-   - Ice Coffe TPS (Rp 15K Reg / 20K Large) - Kopi susu blend spesial manis seimbang.
-   - Ice Coffe Brown Sugar (Rp 18K Reg / 23K Large) - Kopi susu gula aren asli Sulawesi.
-   - Ice Coffe Vanila (Rp 18K Reg / 23K Large)
-   - Ice Americano (Rp 15K Reg / 20K Large)
-   - Ice Matcha, Ice Coklat, Ice Lemon Tea (Rp 18K Reg / 23K Large)
-   - Ice Strawberry (Rp 20K Reg / 25K Large)
-2. Minuman Panas (Hot):
-   - Americano Hot (Rp 10K)
-   - Coffe Susu Hot (Rp 10K Reg / 12K Large)
-   - Saraba (Rp 10K) - Minuman jahe herbal khas Sulawesi, gula merah, sangat sehat.
-   - Lemon Tea Hot (Rp 13K), Matcha Hot & Coklat Hot (Rp 15K)
-3. Roti Pendamping (Rp 4K):
-   - Roti Kampung Coklat, Roti Kampung Balak (polos, enak dicelup kopi/saraba), Roti Kampung Moka.
+CARA ORDER:
+1. Pilih menu di halaman utama, klik Tambah ke Keranjang
+2. Klik ikon keranjang di pojok kanan atas
+3. Isi nama, WA, dan alamat
+4. Bayar via QRIS lalu upload bukti bayar
+5. Admin proses dan antar ke rumah
 
-PAKET HEMAT (COFFEE PACKAGES):
-- Paket "Begadang Santai" (Rp 35K): 2x Ice Coffe TPS + 2 Roti Balak.
-- Paket "Nongkrong Ramean" (Rp 85K): 5x Es Kopi (Brown Sugar/TPS/Vanila) + 5 Roti Bebas Pilih. (Cocok untuk acara kantor).
-
-CARA MEMESAN MELALUI WEBSITE:
-1. Pelanggan cukup memilih produk di halaman utama dan klik "Tambah ke Keranjang" (ikon keranjang kuning).
-2. Setelah selesai memilih, klik ikon keranjang di kanan atas layar untuk masuk ke proses Checkout.
-3. Di sana, isi Nama, WhatsApp, Email, dan Alamat Lengkap. Pilih metode antar (Delivery/Ambil Sendiri).
-4. Klik "Pesan Sekarang". Invoice tagihan akan otomatis dikirim ke Email pelanggan.
-5. Admin kami akan langsung memproses dan mengantarkannya ke depan pintu rumah!
-
-TUGAS ANDA:
-- Pandu pelanggan cara memesan jika mereka bingung.
-- Berikan rekomendasi menu terbaik sesuai selera mereka (misal: kalau cuaca dingin rekomendasikan Saraba atau Kopi Susu Panas).
-- Jawab segala keluhan atau pertanyaan dengan solutif.
-- Terus belajar dan adaptif menjawab pertanyaan sekitar Kotabunan / Boltim.`,
-  temperature: 0.7,
+TUGAS:
+- Bantu customer pilih menu sesuai selera
+- Jelaskan cara order kalau ada yang bingung
+- Jawab pertanyaan seputar kopi, kedai, dan delivery
+- Rekomendasikan menu yang cocok (cuaca dingin → Saraba atau Kopi Susu Panas, dll)
+- Kalau ada keluhan, tanggapi dengan ramah dan arahkan ke WA admin`,
+  temperature: 0.75,
 };
+
+// Helper: Build dynamic AI context from live DB data
+async function buildDynamicAiContext(): Promise<string> {
+  try {
+    const menuData = menuItems.filter(m => m.isAvailable).map(m => {
+      const harga = m.priceLarge
+        ? `Reg ${m.priceReg}K / Large ${m.priceLarge}K`
+        : `${m.priceReg}K`;
+      const type = m.menuCategory === 'hot' ? '(Panas)' : m.menuCategory === 'snack' ? '(Snack)' : '(Dingin)';
+      return `- ${m.name} ${type}: ${harga}${m.description ? ` — ${m.description}` : ''}`;
+    }).join('\n');
+
+    const packData = coffeePackages.map(p => {
+      const items = Array.isArray(p.items) ? p.items.join(', ') : '';
+      return `- ${p.name}: ${p.price}K${items ? ` (${items})` : ''}${p.description ? ` — ${p.description}` : ''}`;
+    }).join('\n');
+
+    let ctx = '';
+    if (menuData) ctx += `\nDAFTAR MENU TERSEDIA:\n${menuData}`;
+    if (packData) ctx += `\n\nPAKET TERSEDIA:\n${packData}`;
+    return ctx;
+  } catch {
+    return '';
+  }
+}
+
 
 // API: AI Chat Handler using Gemini API
 app.post("/api/chat", async (req, res) => {
@@ -1038,11 +1048,16 @@ app.post("/api/chat", async (req, res) => {
       content: String(m.text)
     }));
 
+    // Inject real-time product data
+    const dynamicCtx = await buildDynamicAiContext();
+    const fullSystemPrompt = aiSettings.systemPrompt + dynamicCtx;
+
     const result = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
-        { role: "system", content: aiSettings.systemPrompt },
+        { role: "system", content: fullSystemPrompt },
         ...formattedMessages
+
       ],
       temperature: aiSettings.temperature || 0.7,
     });
@@ -1891,7 +1906,109 @@ app.post("/api/upload", async (req, res) => {
   }
 });
 
-// 4. Logs API
+// ============================================================
+// GALLERY PHOTOS API — Foto Kolase Street Coffee
+// ============================================================
+app.get("/api/gallery", async (req, res) => {
+  try {
+    if (!supabaseUrl) return res.json([]);
+    const { data, error } = await supabase.storage
+      .from("gallery-photos")
+      .list("", { limit: 200, offset: 0, sortBy: { column: "created_at", order: "desc" } });
+    if (error) throw error;
+    const photos = (data || []).filter((f: any) => f.name !== '.emptyFolderPlaceholder').map((f: any) => ({
+      id: f.id || f.name,
+      filename: f.name,
+      url: supabase.storage.from("gallery-photos").getPublicUrl(f.name).data.publicUrl,
+      created_at: f.created_at || new Date().toISOString()
+    }));
+    res.json(photos);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/gallery", requireAdmin, async (req, res) => {
+  const { base64Data, fileName, caption } = req.body;
+  if (!base64Data || !fileName) return res.status(400).json({ error: "Data tidak lengkap" });
+  try {
+    const cleanBase64 = base64Data.replace(/^data:image\/\w+;base64,/, "");
+    const fileBuffer = Buffer.from(cleanBase64, "base64");
+    const uniqueName = `gallery-${Date.now()}-${fileName.replace(/[^a-zA-Z0-9.]/g, "_")}`;
+    const { error } = await supabase.storage
+      .from("gallery-photos")
+      .upload(uniqueName, fileBuffer, { contentType: "image/webp", upsert: false });
+    if (error) throw error;
+    const { data: urlData } = supabase.storage.from("gallery-photos").getPublicUrl(uniqueName);
+    res.json({ url: urlData.publicUrl, filename: uniqueName, caption });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete("/api/gallery/:filename", requireAdmin, async (req, res) => {
+  const { filename } = req.params;
+  try {
+    const { error } = await supabase.storage.from("gallery-photos").remove([decodeURIComponent(filename)]);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+// PAMFLETS API — Brosur, Pamflet, Pemberitahuan Event
+// ============================================================
+app.get("/api/pamflets", async (req, res) => {
+  try {
+    if (!supabaseUrl) return res.json([]);
+    const { data, error } = await supabase.storage
+      .from("pamflets")
+      .list("", { limit: 100, offset: 0, sortBy: { column: "created_at", order: "desc" } });
+    if (error) throw error;
+    const pamflets = (data || []).filter((f: any) => f.name !== '.emptyFolderPlaceholder').map((f: any) => ({
+      id: f.id || f.name,
+      filename: f.name,
+      url: supabase.storage.from("pamflets").getPublicUrl(f.name).data.publicUrl,
+      created_at: f.created_at || new Date().toISOString()
+    }));
+    res.json(pamflets);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/pamflets", requireAdmin, async (req, res) => {
+  const { base64Data, fileName, title } = req.body;
+  if (!base64Data || !fileName) return res.status(400).json({ error: "Data tidak lengkap" });
+  try {
+    const cleanBase64 = base64Data.replace(/^data:image\/\w+;base64,/, "");
+    const fileBuffer = Buffer.from(cleanBase64, "base64");
+    const uniqueName = `pamflet-${Date.now()}-${fileName.replace(/[^a-zA-Z0-9.]/g, "_")}`;
+    const { error } = await supabase.storage
+      .from("pamflets")
+      .upload(uniqueName, fileBuffer, { contentType: "image/webp", upsert: false });
+    if (error) throw error;
+    const { data: urlData } = supabase.storage.from("pamflets").getPublicUrl(uniqueName);
+    res.json({ url: urlData.publicUrl, filename: uniqueName, title });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete("/api/pamflets/:filename", requireAdmin, async (req, res) => {
+  const { filename } = req.params;
+  try {
+    const { error } = await supabase.storage.from("pamflets").remove([decodeURIComponent(filename)]);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 app.get("/api/logs", requireAdmin, (req, res) => {
   res.json(auditLogs);
 });
