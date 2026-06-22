@@ -1,5 +1,6 @@
 # LAPORAN AUDIT TEKNIS DAN BISNIS LENGKAP: WEBSITE TAMPA SEDUH
 *Tanggal Audit: 22 Juni 2026*  
+*Terakhir Diperbarui: 23 Juni 2026*  
 *Auditor: Antigravity AI Coding Assistant*  
 *Bahasa Dokumen: Bahasa Indonesia*  
 
@@ -69,22 +70,27 @@ Database di-host di Supabase PostgreSQL dengan konfigurasi Row Level Security (R
 ---
 
 ### Status Pengembangan Saat Ini
-Aplikasi saat ini berada pada fase **BETA (Siap Produksi)**. Seluruh fitur utama e-commerce, manajemen admin, takeover obrolan pelanggan, pengiriman email otomatis, verifikasi transfer AI, serta Modul Baru **Costing & Recipe Lab (HPP)** telah berhasil diimplementasikan, diuji kegunaannya, dan dapat dibangun tanpa eror kompiler TypeScript (`npm run build` sukses).
+Aplikasi saat ini berada pada fase **LIVE PRODUCTION**. Seluruh fitur utama e-commerce, manajemen admin, takeover obrolan pelanggan, pengiriman email otomatis (invoice + welcome + admin notifikasi), verifikasi transfer AI, serta Modul **Costing & Recipe Lab (HPP)** dan **Real Profit Engine V1** telah berhasil diimplementasikan. Build produksi TypeScript lulus tanpa error (`npm run build` sukses).
 
 #### Fitur yang Sudah Selesai:
-1. **Storefront Interaktif**: Menampilkan daftar menu kopi reguler/besar (panas/dingin) dan paket promo dengan efek visual modern.
+1. **Storefront Interaktif**: Menampilkan daftar menu kopi reguler/besar (panas/dingin/snack) dan paket promo dengan efek visual modern.
 2. **Floating Cart**: Keranjang belanja melayang dengan animasi interaktif berbasis Framer Motion.
 3. **Autentikasi Ganda**: Pendaftaran/masuk akun menggunakan Email/Password secara lokal, serta integrasi Google OAuth melalui Supabase.
 4. **Checkout Terpadu**: Pilihan pengiriman COD di area Kotabunan/Tutuyan/Panang/Paret atau ambil sendiri (*Pickup*).
 5. **Diskon Ongkir Member**: Pemotongan otomatis ongkos kirim sebesar 25% bagi pelanggan yang akun keanggotaannya disetujui admin.
 6. **User Dashboard**: Memungkinkan pelanggan mengubah profil, password, melihat histori transaksi, serta mencetak dokumen invoice.
-7. **Admin Dashboard (13 Modul Aktif)**: Termasuk pengelolaan menu, paket, visualisasi keuangan nyata, CMS berita, kontrol status pengguna (block/unblock), manajemen log email, chat takeover, dan pengaturan prompt AI.
+7. **Admin Dashboard (14 Modul Aktif)**: Termasuk pengelolaan menu, paket, visualisasi keuangan real (format Rupiah standar), CMS berita, kontrol status pengguna (block/unblock), manajemen log email, chat takeover, dan pengaturan prompt AI.
 8. **Modul Costing & Recipe Lab (HPP)**: Sistem pelacakan bahan baku, penghitungan HPP resep menu, HPP paket, lab analitis margin profit, dan biaya operasional overhead bulanan.
+9. **Halaman Invoice Publik (`/invoice/:orderId`)**: Pelanggan menerima link invoice via email, dapat melihat live status 4 tahap, dan download PDF.
+10. **Real Profit Engine V1**: Kalkulasi HPP & gross profit aktual otomatis saat status order berubah menjadi *Completed*, tersimpan di tabel `order_profit`.
+11. **Sistem Email Otomatis (Resend API)**: Welcome email (registrasi), invoice email (order masuk), admin notifikasi (setiap order baru).
+12. **Tiga Sifat Penyajian Menu**: Dingin ❄️, Panas ☕, dan Snack 🍪 — muncul sebagai section terpisah di storefront.
 
 #### Fitur yang Belum Selesai / Placeholder:
 1. **Sistem POS (Point of Sales) Cabang**: Pengoperasian kasir kas offline langsung di kedai fisik belum terintegrasi (transaksi saat ini 100% diasumsikan masuk via checkout website).
 2. **Dynamic Inventory Deduction**: Pengurangan stok bahan baku secara otomatis di tabel `ingredients` sesaat setelah order diselesaikan (*Completed*) belum aktif di tingkat database (HPP resep saat ini murni bersifat analitis).
 3. **Multi-Cabang Fisik**: Data menu dan transaksi masih terpusat di satu cabang database utama. Pilihan cabang belum tersedia di halaman depan toko.
+4. **Visualisasi Grafik Keuangan (Recharts)**: Panel keuangan masih menggunakan tabel dan hitungan, belum menggunakan library grafik interaktif.
 
 ---
 
@@ -106,6 +112,20 @@ Tampa-Seduh/
 ├── server.ts             # Kode utama backend server Express.js full-stack
 ├── deployment_guide.md   # Panduan teknis deployment serverless ke Vercel
 ├── Laporan_Website_Tampa_Seduh.md   # Dokumen audit teknis dan bisnis ini
+├── Security_Hardening_Audit_Report.md # Laporan audit keamanan Phase 1 + 2B update
+├── schema.sql            # DDL inisialisasi database dan seed data awal
+├── rls.sql               # Konfigurasi Row Level Security dasar
+├── storage_rls.sql       # RLS bucket penyimpanan Bukti Bayar
+├── fix_menu_rls.sql      # Fix RLS tabel menu & packages untuk backend
+├── fix_supabase_security.sql # Fix RLS audit_logs, email_logs, orders
+├── schema_migration.sql  # Migrasi: membership_status, chat_sessions, chat_messages
+├── add_is_blocked.sql    # Migrasi: kolom is_blocked di tabel users
+├── recipe_lab_migration.sql # Tabel ingredients, recipes, recipe_items, overhead_costs
+├── security_hardening_rls.sql # Trigger keamanan (SKIP — tidak diapply)
+├── migration_menu_category.sql # Migrasi: kolom menu_category (hot/cold/snack)
+│
+├── scratch/
+│   └── create_order_profit_table.sql # Tabel order_profit untuk Real Profit Engine V1
 │
 ├── api/                  # Entri backend untuk Vercel Serverless Function
 │   └── index.ts          # Mengimpor Express app dari server.ts dan mengekspornya ke Vercel
@@ -135,6 +155,7 @@ Tampa-Seduh/
 │       ├── CheckoutPage.tsx     # Halaman formulir pemesanan dan unggah bukti bayar
 │       ├── CoffeeNews.tsx       # Modul pembaca berita dan artikel blog kopi
 │       ├── GlobalNotification.tsx # Komponen notifikasi mengambang real-time
+│       ├── InvoicePage.tsx      # Halaman invoice publik dengan live status tracker (BARU)
 │       ├── OrderPopup.tsx       # Dialog konfirmasi pesanan masuk (admin)
 │       └── UserDashboard.tsx    # Portal personal pelanggan (history & invoice)
 ```
@@ -143,7 +164,7 @@ Tampa-Seduh/
 
 ## BAGIAN 3 - DATABASE SUPABASE
 
-Database Tampa Seduh menggunakan PostgreSQL yang dikelola melalui platform Supabase. RLS (*Row Level Security*) diaktifkan di seluruh tabel utama untuk mematuhi regulasi keamanan. Berikut adalah audit detail terhadap 16 tabel yang menyusun sistem database Tampa Seduh:
+Database Tampa Seduh menggunakan PostgreSQL yang dikelola melalui platform Supabase. RLS (*Row Level Security*) diaktifkan di seluruh tabel utama. Per 23 Juni 2026 total terdapat **18 tabel aktif** yang menyusun sistem database Tampa Seduh:
 
 ### 1. Tabel-Tabel Operasional E-Commerce & Log
 
@@ -791,6 +812,28 @@ Berikut adalah peta jalan pengembangan lanjutan website Tampa Seduh yang disusun
 10. **Visualisasi Keuangan Menggunakan Library Chart**
     * *Deskripsi*: Mengganti bagan CSS manual dengan pustaka visualisasi grafik interaktif (Recharts) di modul Keuangan.
     * *Kesulitan*: Mudah.
+11. **Dynamic Inventory Deduction**
+    * *Deskripsi*: Pengurangan stok bahan baku (`ingredients`) secara otomatis setiap kali order berstatus *Completed*, untuk tracking inventaris real-time.
+    * *Kesulitan*: Sedang.
 
 ---
-*Dokumen laporan audit ini disusun secara independen berdasarkan data riil codebase Tampa Seduh per tanggal 22 Juni 2026. Laporan ini siap diserahkan kepada Pemilik Proyek, Emat Ambarak (CEO) dan Bayu Damopolii Manoppo (Co-Founder).*
+
+## BAGIAN PENUTUP — STATUS UPDATE 23 JUNI 2026
+
+### Milestone Yang Telah Dicapai (Phase 2A & 2B)
+
+| Tanggal | Milestone | Status |
+| :--- | :--- | :--- |
+| 22 Jun 2026 | Security Hardening Audit Phase 1 selesai | ✅ |
+| 22 Jun 2026 | Real Profit Engine V1 diimplementasikan | ✅ |
+| 23 Jun 2026 | Halaman Invoice Publik + Live Status Tracker | ✅ |
+| 23 Jun 2026 | Sistem Email Otomatis (Welcome, Invoice, Admin) | ✅ |
+| 23 Jun 2026 | Sifat Penyajian Snack ditambahkan | ✅ |
+| 23 Jun 2026 | Fix Kopi News RLS — POST via API endpoint | ✅ |
+| 23 Jun 2026 | Format Rupiah Panel Keuangan diperbaiki | ✅ |
+| 23 Jun 2026 | Database: 10 file SQL migration selesai diapply | ✅ |
+| 23 Jun 2026 | Security: REVOKE `check_user_columns_policy` dari anon | ✅ |
+| 23 Jun 2026 | Build TypeScript lulus tanpa error | ✅ |
+
+---
+*Dokumen laporan audit ini disusun secara independen berdasarkan data riil codebase Tampa Seduh per tanggal 22 Juni 2026, dan diperbarui pada 23 Juni 2026. Laporan ini siap diserahkan kepada Pemilik Proyek, Emat Ambarak (CEO) dan Bayu Damopolii Manoppo (Co-Founder).*
