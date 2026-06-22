@@ -107,3 +107,68 @@ export interface BlogNews {
   coverImage: string;
   category: "Petani" | "Biji Kopi" | "Tips Seduh" | "Kabar Kedai";
 }
+
+// Costing & Recipe Lab interfaces
+export interface Ingredient {
+  id: string;
+  name: string;
+  category: 'Coffee Beans' | 'Milk' | 'Syrup' | 'Sugar' | 'Packaging' | 'Bread' | 'Food' | 'Other' | string;
+  purchase_quantity: number;
+  purchase_unit: string;
+  purchase_price: number;
+  cost_per_unit?: number;
+  supplier?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Recipe {
+  id: string;
+  name: string;
+  category: string;
+  description?: string;
+  selling_price: number;
+  status: boolean;
+  created_at?: string;
+  updated_at?: string;
+  // Dynamic UI properties
+  recipe_items?: RecipeItem[];
+  totalHpp?: number;
+}
+
+export interface RecipeItem {
+  id: string;
+  recipe_id: string;
+  ingredient_id: string;
+  quantity_used: number;
+  unit: string;
+  created_at?: string;
+  ingredient?: Ingredient; // joined relations
+}
+
+export interface PackageRecipe {
+  id: string;
+  package_name: string;
+  selling_price: number;
+  status: boolean;
+  created_at?: string;
+  // Dynamic UI properties
+  package_items?: PackageItem[];
+  totalHpp?: number;
+}
+
+export interface PackageItem {
+  id: string;
+  package_id: string;
+  recipe_id: string;
+  quantity: number;
+  recipe?: Recipe; // joined relations
+}
+
+export interface OverheadCost {
+  id: string;
+  name: string;
+  monthly_cost: number;
+  created_at?: string;
+}
+

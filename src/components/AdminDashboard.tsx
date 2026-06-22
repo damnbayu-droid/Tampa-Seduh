@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
 import {
   BarChart3, MessageSquare, Users, Coffee, Layers, ShoppingBag,
-  Sparkles, FileClock, Wallet, Mail, BookOpen, Plus, Trash2, Edit2, CheckCircle, RefreshCw, Moon, Sun, ArrowLeft, X, Lock, Receipt, Download, PanelLeftOpen, PanelLeftClose, ImageIcon
+  Sparkles, FileClock, Wallet, Mail, BookOpen, Plus, Trash2, Edit2, CheckCircle, RefreshCw, Moon, Sun, ArrowLeft, X, Lock, Receipt, Download, PanelLeftOpen, PanelLeftClose, ImageIcon, Calculator
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { MenuItem, CoffeePackage, Order, AuditLog, User, BlogNews, EmailLog, FinancialSummary } from "../types";
 import { getApiUrl } from "../lib/api";
 import { supabase } from "../lib/supabase";
+import AdminRecipeLab from "./AdminRecipeLab";
 
 interface AdminDashboardProps {
   onBackToStorefront: () => void;
@@ -27,7 +28,9 @@ type ActiveTab =
   | "logs"
   | "finances"
   | "emails"
+  | "recipelab"
   | "news";
+
 
 export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMode, onLogoutAdmin }: AdminDashboardProps) {
   // Local fast toggle for dark mode to prevent full App re-render delay
@@ -517,6 +520,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
     { id: "menu", label: "Daftar Menu", icon: Coffee },
     { id: "packages", label: "Daftar Paket", icon: Layers },
     { id: "finances", label: "Keuangan", icon: Wallet },
+    { id: "recipelab", label: "Costing & Recipe Lab", icon: Calculator },
     { id: "news", label: "Kopi News", icon: BookOpen },
     { id: "users", label: "Pengguna", icon: Users },
     { id: "chat", label: "Chat Admin", icon: MessageSquare },
@@ -1967,6 +1971,11 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                     </div>
                   </div>
                 </div>
+              )}
+
+              {/* Tab: Costing & Recipe Lab */}
+              {activeTab === "recipelab" && (
+                <AdminRecipeLab showNotif={showNotif} />
               )}
             </>
           )}
