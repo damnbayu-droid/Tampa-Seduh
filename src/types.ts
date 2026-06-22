@@ -4,6 +4,7 @@ export interface MenuItem {
   priceReg: number; // in thousand IDR, e.g., 15 for 15K
   priceLarge?: number; // large size, optional for hot drinks
   isHot: boolean;
+  menuCategory?: "hot" | "cold" | "snack"; // Sifat penyajian: Panas, Dingin, Snack
   isAvailable: boolean;
   image: string;
   description: string;

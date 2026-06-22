@@ -132,7 +132,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   // Forms states
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [newMenu, setNewMenu] = useState<Omit<MenuItem, "id">>({
-    name: "", priceReg: 12, priceLarge: 17, isHot: false, isAvailable: true,
+    name: "", priceReg: 12, priceLarge: 17, isHot: false, menuCategory: "cold", isAvailable: true,
     image: "https://images.unsplash.com/photo-1541167760496-1628856ab772?w=500",
     description: ""
   });
@@ -331,7 +331,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
         setIsMenuOpen(false);
         setEditingMenu(null);
         setNewMenu({
-          name: "", priceReg: 12, priceLarge: 17, isHot: false, isAvailable: true,
+          name: "", priceReg: 12, priceLarge: 17, isHot: false, menuCategory: "cold", isAvailable: true,
           image: "https://images.unsplash.com/photo-1541167760496-1628856ab772?w=500",
           description: ""
         });
@@ -516,15 +516,23 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   const handleAddNews = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const { error } = await supabase.from("blog_news").insert({
-        title: newNews.title,
-        content: newNews.content,
-        author: newNews.author,
-        cover_image: newNews.coverImage,
-        category: newNews.category
+      // Gunakan API endpoint (bukan direct Supabase) agar melewati service role key
+      // dan tidak terblokir oleh Row Level Security (RLS)
+      const res = await fetchWithAuth(getApiUrl("/api/news"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: newNews.title,
+          content: newNews.content,
+          author: newNews.author,
+          coverImage: newNews.coverImage,
+          category: newNews.category
+        })
       });
-      if (error) throw error;
-      
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Gagal menambahkan berita");
+      }
       showNotif("Berita berhasil ditambahkan!", "success");
       setIsNewsOpen(false);
       setNewNews({
@@ -542,8 +550,8 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   const handleDeleteNews = async (id: string) => {
     if (!confirm("Hapus berita ini?")) return;
     try {
-      const { error } = await supabase.from("blog_news").delete().eq("id", id);
-      if (error) throw error;
+      const res = await fetchWithAuth(getApiUrl(`/api/news/${id}`), { method: "DELETE" });
+      if (!res.ok) throw new Error("Gagal menghapus berita");
       showNotif("Berita berhasil dihapus!", "success");
       setRefreshKey(p => p + 1);
     } catch (err: any) {
@@ -736,7 +744,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                     <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-sm flex flex-col justify-between">
                       <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-0.5">Ringkasan Omset</span>
                       <div className="mt-2 flex items-baseline gap-2">
-                        <span className="text-3xl font-serif font-black text-amber-950 dark:text-amber-300">Rp {orderList.filter(o => o.status === "completed").reduce((sum, o) => sum + o.total, 0)}.000</span>
+                        <span className="text-3xl font-serif font-black text-amber-950 dark:text-amber-300">Rp {new Intl.NumberFormat('id-ID').format(orderList.filter(o => o.status === "completed").reduce((sum, o) => sum + o.total, 0) * 1000)}</span>
                       </div>
                       <p className="text-[10px] text-zinc-450 mt-1">Total pendapatan dihitung otomatis</p>
                     </div>
@@ -793,7 +801,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                                 </span>
                               </div>
                               <div className="text-right">
-                                <span className="font-mono font-bold block text-amber-800 dark:text-amber-300">Rp {order.total}K</span>
+                                <span className="font-mono font-bold block text-amber-800 dark:text-amber-300">Rp {order.total}.000</span>
                                 <button
                                   onClick={() => handleUpdateOrderStatus(order.id, "preparing")}
                                   className="mt-1 text-[11px] bg-amber-900 hover:bg-amber-800 text-amber-50 px-2 py-1 rounded-lg cursor-pointer"
@@ -896,7 +904,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                                 </ul>
                               </td>
                               <td className="p-4 text-xs max-w-xs overflow-hidden text-ellipsis">{order.address}</td>
-                              <td className="p-4 font-mono font-bold text-amber-900 dark:text-amber-300">Rp {order.total}.000</td>
+                              <td className="p-4 font-mono font-bold text-amber-900 dark:text-amber-300">Rp {new Intl.NumberFormat('id-ID').format(order.total * 1000)}</td>
                               <td className="p-4">
                                 <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider ${
                                   order.status === "completed" ? "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300" :
@@ -1116,16 +1124,18 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                         <div>
                           <label className="block text-xs font-bold text-zinc-450 uppercase mb-1">Sifat Penyajian</label>
                           <select
-                            value={editingMenu ? (editingMenu.isHot ? "true" : "false") : (newMenu.isHot ? "true" : "false")}
+                            value={editingMenu ? ((editingMenu as any).menuCategory || (editingMenu.isHot ? "hot" : "cold")) : ((newMenu as any).menuCategory || "cold")}
                             onChange={(e) => {
-                              const val = e.target.value === "true";
-                              if (editingMenu) setEditingMenu({ ...editingMenu, isHot: val });
-                              else setNewMenu({ ...newMenu, isHot: val });
+                              const val = e.target.value as "hot" | "cold" | "snack";
+                              const isHot = val === "hot";
+                              if (editingMenu) setEditingMenu({ ...editingMenu, isHot, menuCategory: val } as any);
+                              else setNewMenu({ ...newMenu, isHot, menuCategory: val } as any);
                             }}
                             className="w-full text-xs px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border rounded-xl"
                           >
-                            <option value="false">Ice Drink (Dingin)</option>
-                            <option value="true">Hot Drink (Hangat)</option>
+                            <option value="cold">🧊 Ice Drink (Dingin)</option>
+                            <option value="hot">☕ Hot Drink (Hangat)</option>
+                            <option value="snack">🍪 Snack / Makanan</option>
                           </select>
                         </div>
                         <div>
@@ -1189,9 +1199,9 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                         <div className="relative aspect-[16/10]">
                           <img src={item.image} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                           <div className={`absolute top-2.5 right-2.5 text-[9px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
-                            item.isHot ? 'bg-amber-700 text-white' : 'bg-blue-600 text-white'
+                            item.isHot ? 'bg-amber-700 text-white' : (item as any).menuCategory === 'snack' ? 'bg-green-700 text-white' : 'bg-blue-600 text-white'
                           }`}>
-                            {item.isHot ? "Panas" : "Dingin"}
+                            {(item as any).menuCategory === 'snack' ? '🍪 Snack' : item.isHot ? '☕ Panas' : '🧊 Dingin'}
                           </div>
                         </div>
 
@@ -1500,7 +1510,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                         <div className="p-6 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 rounded-2xl">
                           <span className="text-xs font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-widest block">Pendapatan Kotor (Sales)</span>
                           <h4 className="text-3xl font-serif font-black text-emerald-950 dark:text-emerald-300 mt-2">
-                            Rp {activeFin.revenue.reduce((a, b) => a + b, 0)}.000
+                            Rp {new Intl.NumberFormat('id-ID').format(activeFin.revenue.reduce((a, b) => a + b, 0) * 1000)}
                           </h4>
                           <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium block mt-1">Dihitung otomatis per periode {financePeriod}</span>
                         </div>
@@ -1508,7 +1518,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                         <div className="p-6 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 rounded-2xl">
                           <span className="text-xs font-bold text-red-800 dark:text-red-400 uppercase tracking-widest block">Biaya Operasional & Bahan</span>
                           <h4 className="text-3xl font-serif font-black text-red-950 dark:text-red-300 mt-2">
-                            Rp {activeFin.costs.reduce((a, b) => a + b, 0)}.000
+                            Rp {new Intl.NumberFormat('id-ID').format(activeFin.costs.reduce((a, b) => a + b, 0) * 1000)}
                           </h4>
                           <span className="text-[10px] text-red-650 dark:text-red-400 font-medium block mt-1">Susu, biji kopi, gaji barista, listrik, sewa</span>
                         </div>
@@ -1516,7 +1526,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                         <div className="p-6 bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 rounded-2xl">
                           <span className="text-xs font-bold text-amber-800 dark:text-amber-400 uppercase tracking-widest block">Laba Bersih Usaha (Net Profit)</span>
                           <h4 className="text-3xl font-serif font-black text-amber-950 dark:text-amber-300 mt-2">
-                            Rp {activeFin.revenue.reduce((a, b) => a + b, 0) - activeFin.costs.reduce((a, b) => a + b, 0)}.000
+                            Rp {new Intl.NumberFormat('id-ID').format((activeFin.revenue.reduce((a, b) => a + b, 0) - activeFin.costs.reduce((a, b) => a + b, 0)) * 1000)}
                           </h4>
                           <span className="text-[10px] text-amber-650 dark:text-amber-400 font-semibold block mt-1">Keuntungan bersih pemilik/kedai</span>
                         </div>

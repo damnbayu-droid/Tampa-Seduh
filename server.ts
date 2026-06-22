@@ -1191,6 +1191,7 @@ app.post("/api/menu", requireAdmin, (req, res) => {
     price_reg: newItem.priceReg,
     price_large: newItem.priceLarge || null,
     is_hot: newItem.isHot,
+    menu_category: (newItem as any).menuCategory || (newItem.isHot ? 'hot' : 'cold'),
     is_available: newItem.isAvailable,
     image: newItem.image,
     description: newItem.description
@@ -1225,6 +1226,7 @@ app.put("/api/menu/:id", requireAdmin, (req, res) => {
       price_reg: menuItems[idx].priceReg,
       price_large: menuItems[idx].priceLarge || null,
       is_hot: menuItems[idx].isHot,
+      menu_category: (menuItems[idx] as any).menuCategory || (menuItems[idx].isHot ? 'hot' : 'cold'),
       is_available: menuItems[idx].isAvailable,
       image: menuItems[idx].image,
       description: menuItems[idx].description
@@ -1473,44 +1475,159 @@ app.post("/api/orders", async (req, res) => {
   let emailStatus: "Delivered" | "Sent" | "Failed" | "Pending" | "Skipped (No API Key)" | "Skipped (No Email)" = "Pending";
   let emailBody = `Terima kasih kawan ${customerName}! Barista kami sedang mempersiapkan pesanan Anda senilai Rp ${finalTotal}.000.`;
 
-  if (email && email !== "-" && resendApiKey) {
+  // Format harga ke Rupiah standar (e.g., 56000 → Rp 56.000)
+  const formatRupiah = (val: number) => {
+    return new Intl.NumberFormat('id-ID').format(val * 1000);
+  };
+
+  // URL publik invoice
+  const baseUrl = process.env.BASE_URL || 'https://tampaseduh.com';
+  const invoiceUrl = `${baseUrl}/invoice/${newOrder.id}`;
+
+  if (email && email !== "-" && resendApiKey && resendApiKey !== "dummy_resend_key_123456789") {
     try {
-      const itemsHtml = items.map((i: any) => `<li>${i.name} (${i.size || 'Regular'}) x${i.quantity} - Rp ${i.price * i.quantity}.000</li>`).join('');
+      const itemsHtml = items.map((i: any) => `
+        <tr>
+          <td style="padding: 8px 0; border-bottom: 1px solid #f3ede3;">${i.name} <span style="color:#8B5E3C;font-size:12px">(${i.size || 'Regular'})</span></td>
+          <td style="padding: 8px 0; border-bottom: 1px solid #f3ede3; text-align:center;">x${i.quantity}</td>
+          <td style="padding: 8px 0; border-bottom: 1px solid #f3ede3; text-align:right;">Rp ${formatRupiah(i.price * i.quantity)}</td>
+        </tr>`).join('');
+
+      const statusSteps = [
+        { label: 'Diterima', done: true },
+        { label: 'Seduh / Proses', done: false },
+        { label: 'Diantar', done: false },
+        { label: 'Selesai', done: false }
+      ];
+      const progressHtml = statusSteps.map((s, i) => `
+        <div style="display:inline-block; text-align:center; margin: 0 8px;">
+          <div style="width:28px;height:28px;border-radius:50%;background:${s.done ? '#8B5E3C' : '#e5d9cc'};color:${s.done ? '#fff' : '#8B5E3C'};line-height:28px;font-weight:bold;margin:0 auto;">${i+1}</div>
+          <div style="font-size:11px;margin-top:4px;color:${s.done ? '#8B5E3C' : '#999'};">${s.label}</div>
+        </div>`).join('<span style="color:#c9b8a4;font-size:18px;vertical-align:middle;">›</span>');
+
       const invoiceHtml = `
-        <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-          <h2 style="color: #8B5E3C; text-align: center;">INVOICE TAMPA SEDUH</h2>
-          <p>Halo <strong>${customerName}</strong>,</p>
-          <p>Terima kasih telah memesan kopi di Tampa Seduh! Berikut adalah detail pesanan Anda (Order #${newOrder.id}):</p>
-          <ul>
-            ${itemsHtml}
-          </ul>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
-          <p><strong>Subtotal:</strong> Rp ${finalSubtotal}.000</p>
-          <p><strong>Ongkir:</strong> Rp ${finalShippingCost}.000</p>
-          <p><strong>Diskon Member:</strong> -Rp ${shippingDiscount}.000</p>
-          <h3><strong>Total Tagihan:</strong> Rp ${finalTotal}.000</h3>
-          <p><strong>Metode Pengantaran:</strong> ${deliveryMethod}</p>
-          <p><strong>Alamat:</strong> ${address}</p>
-          ${notes ? `<p><strong>Catatan:</strong> ${notes}</p>` : ''}
-          <br/>
-          <p>Pesanan Anda sedang kami proses kawan!</p>
-          <p style="font-size: 12px; color: #888; text-align: center; margin-top: 30px;">Tampa Seduh Street Coffee, Kotabunan Selatan</p>
-        </div>
+        <!DOCTYPE html>
+        <html lang="id">
+        <head><meta charset="UTF-8"><title>Invoice Tampa Seduh</title></head>
+        <body style="margin:0;padding:0;background:#faf7f2;font-family:'Segoe UI',Arial,sans-serif;">
+          <div style="max-width:600px;margin:24px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(139,94,60,0.08);">
+            <!-- Header -->
+            <div style="background:linear-gradient(135deg,#5c3317,#8B5E3C);padding:32px 32px 24px;text-align:center;">
+              <h1 style="margin:0;color:#fff;font-size:26px;font-weight:700;letter-spacing:1px;">☕ Tampa Seduh</h1>
+              <p style="margin:6px 0 0;color:#f5e6d5;font-size:13px;">Street Coffee · Kotabunan Selatan</p>
+            </div>
+
+            <!-- Body -->
+            <div style="padding:32px;">
+              <p style="font-size:15px;color:#4a3728;">Halo, <strong>${customerName}</strong> 👋</p>
+              <p style="font-size:14px;color:#6b5344;margin-top:4px;">Terima kasih sudah pesan kopi! Berikut detail pesanan kamu.</p>
+
+              <!-- Order Info -->
+              <div style="background:#faf7f2;border-radius:12px;padding:16px 20px;margin:20px 0;">
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                  <span style="font-size:13px;color:#8B5E3C;font-weight:600;">No. Order</span>
+                  <span style="font-size:13px;font-weight:700;color:#3d2b1f;">${newOrder.id}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                  <span style="font-size:13px;color:#8B5E3C;font-weight:600;">Metode</span>
+                  <span style="font-size:13px;color:#3d2b1f;">${deliveryMethod === 'delivery' ? '🛵 Delivery' : '🏪 Pickup'}</span>
+                </div>
+                ${address ? `<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:13px;color:#8B5E3C;font-weight:600;">Alamat</span><span style="font-size:13px;color:#3d2b1f;max-width:260px;text-align:right;">${address}</span></div>` : ''}
+                ${notes ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #e8d5c4;"><span style="font-size:12px;color:#8B5E3C;">📝 Catatan: ${notes}</span></div>` : ''}
+              </div>
+
+              <!-- Items Table -->
+              <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
+                <thead>
+                  <tr style="border-bottom:2px solid #8B5E3C;">
+                    <th style="text-align:left;font-size:12px;color:#8B5E3C;padding-bottom:8px;">ITEM</th>
+                    <th style="text-align:center;font-size:12px;color:#8B5E3C;padding-bottom:8px;">QTY</th>
+                    <th style="text-align:right;font-size:12px;color:#8B5E3C;padding-bottom:8px;">HARGA</th>
+                  </tr>
+                </thead>
+                <tbody style="font-size:14px;color:#3d2b1f;">${itemsHtml}</tbody>
+              </table>
+
+              <!-- Totals -->
+              <div style="background:#faf7f2;border-radius:12px;padding:16px 20px;">
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                  <span style="font-size:13px;color:#6b5344;">Subtotal</span>
+                  <span style="font-size:13px;">Rp ${formatRupiah(finalSubtotal)}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                  <span style="font-size:13px;color:#6b5344;">Ongkos Kirim</span>
+                  <span style="font-size:13px;">Rp ${formatRupiah(finalShippingCost)}</span>
+                </div>
+                ${shippingDiscount > 0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="font-size:13px;color:#22a05c;">Diskon Member ✓</span><span style="font-size:13px;color:#22a05c;">-Rp ${formatRupiah(shippingDiscount)}</span></div>` : ''}
+                <div style="display:flex;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:2px solid #8B5E3C;">
+                  <span style="font-size:16px;font-weight:700;color:#3d2b1f;">Total</span>
+                  <span style="font-size:18px;font-weight:700;color:#8B5E3C;">Rp ${formatRupiah(finalTotal)}</span>
+                </div>
+              </div>
+
+              <!-- Progress Tracker -->
+              <div style="margin:28px 0 16px;text-align:center;">
+                <p style="font-size:13px;font-weight:600;color:#8B5E3C;margin-bottom:14px;">Status Pesanan</p>
+                ${progressHtml}
+              </div>
+
+              <!-- Invoice Link -->
+              <div style="text-align:center;margin:24px 0;">
+                <a href="${invoiceUrl}" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#5c3317,#8B5E3C);color:#fff;text-decoration:none;border-radius:12px;font-size:14px;font-weight:700;">
+                  🧾 Lihat Invoice &amp; Pantau Status
+                </a>
+                <p style="font-size:11px;color:#999;margin-top:8px;">Invoice bisa didownload sebagai PDF</p>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div style="background:#3d2b1f;padding:20px 32px;text-align:center;">
+              <p style="color:#c9b8a4;font-size:12px;margin:0;">Tampa Seduh Street Coffee · Kotabunan Selatan · WA: 0819-xxxx-xxxx</p>
+              <p style="color:#8B5E3C;font-size:11px;margin:6px 0 0;">Terima kasih sudah memilih Tampa Seduh! ☕</p>
+            </div>
+          </div>
+        </body>
+        </html>
       `;
 
       await resend.emails.send({
         from: 'TAMPA SEDUH Street Coffee <kopi@tampaseduh.com>',
         to: [email],
-        subject: `Invoice Pesanan #${newOrder.id} - Tampa Seduh`,
+        subject: `☕ Invoice Pesanan #${newOrder.id} - Tampa Seduh`,
         html: invoiceHtml
       });
       emailStatus = "Delivered";
+
+      // Kirim notifikasi ke admin juga
+      const adminEmail = process.env.ADMIN_EMAIL || 'tampaseduh@gmail.com';
+      const adminItemList = items.map((i: any) => `• ${i.name} x${i.quantity} = Rp ${formatRupiah(i.price * i.quantity)}`).join('\n');
+      resend.emails.send({
+        from: 'TAMPA SEDUH System <kopi@tampaseduh.com>',
+        to: [adminEmail],
+        subject: `🔔 Order Baru #${newOrder.id} dari ${customerName}`,
+        html: `
+          <div style="font-family:sans-serif;max-width:500px;margin:auto;padding:24px;background:#fff;border-radius:12px;border:1px solid #e5d9cc;">
+            <h2 style="color:#8B5E3C;margin-top:0;">🔔 Order Baru Masuk!</h2>
+            <p><strong>ID:</strong> ${newOrder.id}</p>
+            <p><strong>Pelanggan:</strong> ${customerName}</p>
+            <p><strong>WA:</strong> ${whatsapp}</p>
+            <p><strong>Email:</strong> ${email}</p>
+            <p><strong>Alamat:</strong> ${address}</p>
+            <p><strong>Metode:</strong> ${deliveryMethod}</p>
+            <p><strong>Item:</strong></p>
+            <pre style="background:#faf7f2;padding:12px;border-radius:8px;font-size:13px;">${adminItemList}</pre>
+            <p style="font-size:18px;font-weight:700;color:#8B5E3C;">Total: Rp ${formatRupiah(finalTotal)}</p>
+            ${notes ? `<p><strong>Catatan:</strong> ${notes}</p>` : ''}
+          </div>
+        `
+      }).catch((e: any) => console.warn('[Admin notif] Gagal kirim:', e.message));
+
     } catch (err: any) {
       console.error("Resend Error:", err);
       emailStatus = "Failed";
       emailBody += ` (Error: ${err.message})`;
     }
-  } else if (!resendApiKey) {
+  } else if (!resendApiKey || resendApiKey === "dummy_resend_key_123456789") {
     console.warn("Resend API Key tidak ditemukan, email tidak dikirim.");
     emailStatus = "Skipped (No API Key)";
   } else {
@@ -1978,6 +2095,38 @@ app.post("/api/auth/register", authLimiter, async (req, res) => {
       last_active: "Baru saja"
     });
 
+    // Kirim email selamat datang ke user baru
+    if (resendApiKey && resendApiKey !== "dummy_resend_key_123456789") {
+      resend.emails.send({
+        from: 'TAMPA SEDUH Street Coffee <kopi@tampaseduh.com>',
+        to: [email],
+        subject: '☕ Selamat Datang di Tampa Seduh!',
+        html: `
+          <div style="max-width:600px;margin:24px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(139,94,60,0.08);font-family:'Segoe UI',Arial,sans-serif;">
+            <div style="background:linear-gradient(135deg,#5c3317,#8B5E3C);padding:40px 32px;text-align:center;">
+              <h1 style="margin:0;color:#fff;font-size:28px;font-weight:700;">☕ Tampa Seduh</h1>
+              <p style="margin:8px 0 0;color:#f5e6d5;font-size:14px;">Street Coffee · Kotabunan Selatan</p>
+            </div>
+            <div style="padding:36px 32px;">
+              <h2 style="color:#3d2b1f;margin-top:0;">Halo, <span style="color:#8B5E3C;">${name}</span>! 👋</h2>
+              <p style="color:#6b5344;font-size:15px;line-height:1.6;">Akun Tampa Seduh kamu sudah berhasil dibuat. Sekarang kamu bisa pesan kopi favorit langsung dari rumah!</p>
+              <div style="background:#faf7f2;border-radius:12px;padding:20px 24px;margin:24px 0;">
+                <p style="margin:0 0 8px;font-size:13px;color:#8B5E3C;font-weight:600;">DETAIL AKUN</p>
+                <p style="margin:4px 0;font-size:14px;color:#3d2b1f;"><strong>Nama:</strong> ${name}</p>
+                <p style="margin:4px 0;font-size:14px;color:#3d2b1f;"><strong>Email:</strong> ${email}</p>
+                <p style="margin:4px 0;font-size:14px;color:#3d2b1f;"><strong>WA:</strong> ${whatsapp}</p>
+              </div>
+              <p style="color:#6b5344;font-size:14px;">💡 <strong>Tip:</strong> Upgrade ke Member Tampa Seduh dan nikmati diskon ongkos kirim setiap pesanan!</p>
+            </div>
+            <div style="background:#3d2b1f;padding:20px 32px;text-align:center;">
+              <p style="color:#c9b8a4;font-size:12px;margin:0;">Tampa Seduh Street Coffee · Kotabunan Selatan</p>
+              <p style="color:#8B5E3C;font-size:11px;margin:6px 0 0;">Selamat menikmati kopi! ☕</p>
+            </div>
+          </div>
+        `
+      }).catch((e: any) => console.warn('[Welcome email] Gagal kirim:', e.message));
+    }
+
     return res.status(201).json({ success: true, user: newUser });
   } catch (err: any) {
     console.error("Register error:", err.message);
@@ -2139,48 +2288,102 @@ app.post("/api/news", requireAdmin, (req, res) => {
   res.status(201).json(newPost);
 });
 
+app.delete("/api/news/:id", requireAdmin, (req, res) => {
+  const { id } = req.params;
+  const idx = blogNews.findIndex((n) => n.id === id);
+  if (idx !== -1) {
+    blogNews.splice(idx, 1);
+    writeSupabase('blog_news', 'delete', { id }, {});
+    res.json({ success: true });
+  } else {
+    res.status(404).json({ error: "Berita tidak ditemukan" });
+  }
+});
+
 // 8. Financial Accounting API (Real Data Aggregation)
 app.get("/api/finances", requireAdmin, (req, res) => {
   const completedOrders = orders.filter(o => o.status === "completed");
-  const totalRevenue = completedOrders.reduce((sum, o) => sum + o.total, 0);
-  const totalCosts = totalRevenue * 0.45; // Asumsi Modal 45% dari omset
-  const netProfit = totalRevenue - totalCosts;
+  const now = new Date();
 
-  // We will build dynamic buckets based on the actual dates of orders
-  // However, to keep the UI shape consistent, we can define standard labels
-  
-  // 1. Harian (Today)
-  const today = new Date();
-  const todayStr = today.toISOString().split('T')[0];
-  const todayOrders = completedOrders.filter(o => o.createdAt.startsWith(todayStr));
-  const dailyRev = todayOrders.reduce((sum, o) => sum + o.total, 0);
-
-  // 2. Mingguan (Last 7 days)
-  const weekRev = completedOrders.filter(o => {
-    const diff = (today.getTime() - new Date(o.createdAt).getTime()) / (1000 * 3600 * 24);
-    return diff <= 7;
-  }).reduce((sum, o) => sum + o.total, 0);
-
-  // Default empty shell
-  const createEmptyShell = (period: "Harian" | "Mingguan" | "Bulanan" | "6 Bulan" | "1 Tahun" | "Semua", label: string, rev: number) => ({
-    period,
-    labels: [label],
-    revenue: [rev],
-    costs: [rev * 0.45],
-    netProfit: rev - (rev * 0.45),
-    transactionsCount: completedOrders.length
+  // Helper: filter berdasarkan rentang waktu dengan aman
+  const filterByDays = (dayCount: number) => completedOrders.filter(o => {
+    const orderDate = new Date(o.createdAt);
+    const diffMs = now.getTime() - orderDate.getTime();
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+    return diffDays <= dayCount;
   });
 
+  // Harian: Hari ini saja (00:00 - 23:59)
+  const todayStr = now.toISOString().split('T')[0];
+  const todayOrders = completedOrders.filter(o => o.createdAt.startsWith(todayStr));
+
+  // Mingguan: 7 hari terakhir
+  const weekOrders = filterByDays(7);
+
+  // Bulanan: 30 hari terakhir
+  const monthOrders = filterByDays(30);
+
+  // 6 Bulan: 180 hari terakhir
+  const sixMonthOrders = filterByDays(180);
+
+  // 1 Tahun: 365 hari terakhir
+  const yearOrders = filterByDays(365);
+
+  // Semua waktu
+  const allOrders = completedOrders;
+
+  // Buat summary dari kumpulan order
+  // Nilai total dalam unit ribuan (e.g., 56 = Rp 56.000)
+  // HPP = 45% dari revenue (fallback jika tidak ada profit engine data)
+  const buildSummary = (period: "Harian" | "Mingguan" | "Bulanan" | "6 Bulan" | "1 Tahun" | "Semua", label: string, subset: typeof completedOrders) => {
+    const rev = subset.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+    const hpp = Math.round(rev * 0.45 * 100) / 100;
+    const netProfit = Math.round((rev - hpp) * 100) / 100;
+    return {
+      period,
+      labels: [label],
+      revenue: [rev],
+      costs: [hpp],
+      netProfit,
+      transactionsCount: subset.length
+    };
+  };
+
   const finances: FinancialSummary[] = [
-    createEmptyShell("Harian", "Hari Ini", dailyRev),
-    createEmptyShell("Mingguan", "7 Hari Terakhir", weekRev),
-    createEmptyShell("Bulanan", "Bulan Ini", totalRevenue), // simplifies month calculation
-    createEmptyShell("6 Bulan", "Semester Ini", totalRevenue),
-    createEmptyShell("1 Tahun", "Tahun Ini", totalRevenue),
-    createEmptyShell("Semua", "Semua Waktu", totalRevenue)
+    buildSummary("Harian", "Hari Ini", todayOrders),
+    buildSummary("Mingguan", "7 Hari Terakhir", weekOrders),
+    buildSummary("Bulanan", "30 Hari Terakhir", monthOrders),
+    buildSummary("6 Bulan", "180 Hari Terakhir", sixMonthOrders),
+    buildSummary("1 Tahun", "365 Hari Terakhir", yearOrders),
+    buildSummary("Semua", "Semua Waktu", allOrders)
   ];
 
   res.json(finances);
+});
+
+// 8.1 Public Invoice Endpoint — dapat diakses tanpa login
+app.get("/api/invoice/:orderId", (req, res) => {
+  const { orderId } = req.params;
+  const order = orders.find(o => o.id === orderId);
+  if (!order) {
+    return res.status(404).json({ error: "Invoice tidak ditemukan. Pastikan ID order benar." });
+  }
+  // Sembunyikan data sensitif
+  const publicOrder = {
+    id: order.id,
+    customerName: order.customerName,
+    items: order.items,
+    total: order.total,
+    subtotal: order.subtotal,
+    shippingCost: order.shippingCost,
+    shippingDiscount: order.shippingDiscount,
+    status: order.status,
+    deliveryMethod: order.deliveryMethod,
+    address: order.address,
+    notes: order.notes,
+    createdAt: order.createdAt
+  };
+  res.json(publicOrder);
 });
 
 // ===================================================================

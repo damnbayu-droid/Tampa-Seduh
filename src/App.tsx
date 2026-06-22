@@ -25,6 +25,7 @@ const CoffeeNews = lazy(() => import("./components/CoffeeNews"));
 const AdminDashboard = lazy(() => import("./components/AdminDashboard"));
 const CheckoutPage = lazy(() => import("./components/CheckoutPage"));
 const GlobalNotification = lazy(() => import("./components/GlobalNotification"));
+const InvoicePage = lazy(() => import("./components/InvoicePage"));
 
 export default function App() {
   // Navigation & admin panel toggles
@@ -37,7 +38,7 @@ export default function App() {
   // Core shop state
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [packages, setPackages] = useState<CoffeePackage[]>([]);
-  const [activeMenuTab, setActiveMenuTab] = useState<"all" | "cold" | "hot">("all");
+  const [activeMenuTab, setActiveMenuTab] = useState<"all" | "cold" | "hot" | "snack">("all");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isOrderPopupOpen, setIsOrderPopupOpen] = useState(false);
 
@@ -154,6 +155,7 @@ export default function App() {
                 priceReg: m.price_reg,
                 priceLarge: m.price_large,
                 isHot: m.is_hot,
+                menuCategory: (m.menu_category as any) || (m.is_hot ? 'hot' : 'cold'),
                 isAvailable: m.is_available,
                 image: m.image,
                 description: m.description
@@ -587,6 +589,16 @@ export default function App() {
     );
   }
 
+  // Render Invoice Page if path matches '/invoice/*'
+  if (currentPath.startsWith("/invoice/")) {
+    const orderId = currentPath.replace("/invoice/", "").split("?")[0];
+    return (
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-amber-600" /></div>}>
+        <InvoicePage orderId={orderId} onBack={() => navigateTo("/")} />
+      </Suspense>
+    );
+  }
+
   // Render Checkout Page if path matches '/checkout'
   if (currentPath === "/checkout") {
     return (
@@ -875,7 +887,7 @@ export default function App() {
             {/* Ice Menu Grid: 2 Columns styled identically to Foto 2 layout */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-[#E8E2D9] dark:bg-zinc-800 rounded-2xl overflow-hidden border border-[#E8E2D9] dark:border-zinc-800">
               {menuItems
-                .filter((item) => !item.isHot) // Ice/Cold items
+                .filter((item) => !item.isHot && (item as any).menuCategory !== 'snack') // Ice/Cold items only
                 .map((item) => {
                   const isInCartReg = cart.some(e => e.id === item.id && e.size === "R");
                   const isInCartLrg = cart.some(e => e.id === item.id && e.size === "L");
@@ -1023,7 +1035,7 @@ export default function App() {
             {/* Hot Menu Grid: 2 Columns styled identically to Foto 3 layout */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-[#E8E2D9] dark:bg-zinc-800 rounded-2xl overflow-hidden border border-[#E8E2D9] dark:border-zinc-800">
               {menuItems
-                .filter((item) => item.isHot) // Hot items
+                .filter((item) => item.isHot && (item as any).menuCategory !== 'snack') // Hot items only
                 .map((item) => {
                   const isInCartReg = cart.some(e => e.id === item.id && e.size === "R");
                   const isInCartLrg = cart.some(e => e.id === item.id && e.size === "L");
@@ -1147,6 +1159,55 @@ export default function App() {
       </section>
 
       {/* 4.5 Coffee Packages Section */}
+      {/* Snack Section — tampil jika ada snack items */}
+      {menuItems.some((item) => (item as any).menuCategory === 'snack') && (
+        <section className="py-16 border-t border-amber-900/5 bg-amber-950/5 dark:bg-zinc-900 text-stone-900 dark:text-stone-100 transition-colors duration-300">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col sm:flex-row items-center justify-between border-b pb-6 mb-8 border-[#E8E2D9] dark:border-zinc-800">
+              <div className="text-center sm:text-left">
+                <span className="text-[10px] font-bold uppercase tracking-[0.35em] text-[#8B5E3C] opacity-80 block">TEMAN NGOPI</span>
+                <h3 className="text-5xl sm:text-7xl font-serif font-black tracking-tight text-[#2D1B0D] dark:text-amber-50 leading-none">SNACK</h3>
+              </div>
+              <div className="flex items-center gap-3 mt-4 sm:mt-0 bg-white/40 dark:bg-zinc-950/40 px-5 py-3 rounded-2xl border border-[#E8E2D9] dark:border-zinc-800">
+                <div className="w-10 h-10 bg-[#4B3621] text-white rounded-full flex items-center justify-center text-xl">🍪</div>
+                <div>
+                  <h4 className="font-serif font-black text-lg tracking-tight leading-none text-[#2D1B0D] dark:text-amber-50">CAMILAN.</h4>
+                  <span className="text-[8px] uppercase tracking-[0.18em] font-extrabold text-[#8B5E3C] dark:text-amber-400">TEMAN SETIA SECANGKIR KOPI</span>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-[#E8E2D9] dark:bg-zinc-800 rounded-2xl overflow-hidden border border-[#E8E2D9] dark:border-zinc-800">
+              {menuItems.filter((item) => (item as any).menuCategory === 'snack').map((item) => {
+                const isInCart = cart.some(e => e.id === item.id && e.size === "R");
+                return (
+                  <motion.div key={item.id} whileHover={{ scale: 1.02 }}
+                    className="bg-white dark:bg-zinc-900 p-5 sm:p-6 flex justify-between items-center relative overflow-hidden group transition-all duration-300 hover:shadow-[0_0_20px_rgba(139,94,60,0.3)] border border-transparent hover:border-amber-500/30">
+                    <div className="space-y-4 flex-1">
+                      <h4 className="font-serif font-black text-base sm:text-lg text-[#2D1B0D] dark:text-amber-100">{item.name}</h4>
+                      <div className="flex items-center gap-3">
+                        <button onClick={() => { addToCart(item, "R", false); setOrderNotification(`1x ${item.name} ditambahkan!`); setTimeout(() => setOrderNotification(null), 3000); }}
+                          disabled={!item.isAvailable}
+                          className={`flex items-center gap-2 py-1.5 px-3.5 rounded-xl border text-xs font-bold tracking-tight cursor-pointer transition-all ${isInCart ? "bg-[#8B5E3C] text-white border-[#8B5E3C]" : "bg-[#F2EDE4]/60 dark:bg-white/5 border-transparent text-[#4A3728] dark:text-[#E8E2D9] hover:bg-[#E8E2D9]"}`}>
+                          <span className="font-extrabold font-mono">{item.priceReg} K</span>
+                          {isInCart ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                        </button>
+                        {isInCart && <button onClick={() => removeFromCart(item.id, "R")} className="w-7 h-7 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center hover:bg-red-100 cursor-pointer"><Minus className="w-3 h-3" /></button>}
+                      </div>
+                      {item.description && <p className="text-xs text-zinc-400 line-clamp-2">{item.description}</p>}
+                    </div>
+                    <div className="relative w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0 ml-4 rounded-full overflow-hidden bg-stone-100 border-2 border-[#E8E2D9] dark:border-zinc-800">
+                      <img src={item.image} alt={item.name} onClick={(e) => { e.stopPropagation(); setZoomedImage(item.image); }}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300 cursor-pointer" referrerPolicy="no-referrer" />
+                      {!item.isAvailable && <div className="absolute inset-0 bg-black/60 flex items-center justify-center"><span className="text-[10px] text-white font-black uppercase bg-red-600 px-1.5 py-0.5 rounded">HABIS</span></div>}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
       <section id="packages-section" className="py-20 border-t border-amber-900/5 bg-[#F9F7F2] dark:bg-zinc-950 text-stone-900 dark:text-stone-100 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center space-y-3 mb-12">
