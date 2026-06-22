@@ -1460,7 +1460,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                             <button
                               onClick={() => {
                                 setEditingMenu(item);
-                                setIsMenuOpen(true);
+                                // Buka modal edit di tengah layar, BUKAN scroll ke atas
                               }}
                               className="p-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-xl transition-all cursor-pointer"
                               title="Edit Kopi"
@@ -1689,7 +1689,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                           <button
                             onClick={() => {
                               setEditingPack(pack);
-                              setIsPackOpen(true);
+                              // Buka modal edit di tengah layar
                             }}
                             className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 transition-colors cursor-pointer"
                             title="Edit Paket"
@@ -3030,6 +3030,159 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
           </div>
         )}
       </AnimatePresence>
+
+      {/* ===== EDIT MENU MODAL — muncul di tengah layar ===== */}
+      {editingMenu && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={() => setEditingMenu(null)}>
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl" onClick={e => e.stopPropagation()}>
+            <form onSubmit={handleAddMenu} className="p-6 space-y-4">
+              <div className="flex items-center justify-between border-b pb-3 dark:border-zinc-800">
+                <h4 className="font-serif font-bold text-lg text-amber-950 dark:text-amber-100">✏️ Edit Menu: {editingMenu.name}</h4>
+                <button type="button" onClick={() => setEditingMenu(null)} className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer text-zinc-500"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Nama Minuman</label>
+                  <input type="text" required value={editingMenu.name}
+                    onChange={e => setEditingMenu({ ...editingMenu, name: e.target.value })}
+                    className="w-full text-xs px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Harga Reguler (K)</label>
+                  <input type="number" required value={editingMenu.priceReg}
+                    onChange={e => setEditingMenu({ ...editingMenu, priceReg: parseInt(e.target.value) || 0 })}
+                    className="w-full text-xs px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Harga Large (K - Opsional)</label>
+                  <input type="number" value={editingMenu.priceLarge || ""}
+                    onChange={e => setEditingMenu({ ...editingMenu, priceLarge: parseInt(e.target.value) || undefined })}
+                    className="w-full text-xs px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Sifat Penyajian</label>
+                  <select value={(editingMenu as any).menuCategory || (editingMenu.isHot ? 'hot' : 'cold')}
+                    onChange={e => { const v = e.target.value as 'hot'|'cold'|'snack'; setEditingMenu({ ...editingMenu, isHot: v==='hot', menuCategory: v } as any); }}
+                    className="w-full text-xs px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border rounded-xl">
+                    <option value="cold">🧊 Ice Drink</option>
+                    <option value="hot">☕ Hot Drink</option>
+                    <option value="snack">🍪 Snack</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Ketersediaan Stok</label>
+                  <select value={editingMenu.isAvailable ? 'true' : 'false'}
+                    onChange={e => setEditingMenu({ ...editingMenu, isAvailable: e.target.value === 'true' })}
+                    className="w-full text-xs px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border rounded-xl">
+                    <option value="true">Ada Stok</option>
+                    <option value="false">Habis Stok</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Upload Foto Produk</label>
+                  <div className="flex gap-2 items-center">
+                    <input type="file" accept="image/*" onChange={e => handleImageUpload(e, 'menu')} className="w-full text-xs text-zinc-500" />
+                    {isUploadingImage && <div className="w-4 h-4 border-2 border-amber-900 border-t-transparent rounded-full animate-spin" />}
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">URL Gambar</label>
+                <input type="text" value={editingMenu.image}
+                  onChange={e => setEditingMenu({ ...editingMenu, image: e.target.value })}
+                  className="w-full text-xs px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border rounded-xl" />
+              </div>
+              {editingMenu.image && <img src={editingMenu.image} alt="preview" className="w-24 h-24 object-cover rounded-xl border" />}
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Deskripsi</label>
+                <textarea rows={2} required value={editingMenu.description}
+                  onChange={e => setEditingMenu({ ...editingMenu, description: e.target.value })}
+                  className="w-full text-xs px-3 py-3 bg-zinc-50 dark:bg-zinc-800 border rounded-xl" />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setEditingMenu(null)}
+                  className="px-4 py-2 text-xs bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 rounded-xl cursor-pointer">Batal</button>
+                <button type="submit"
+                  className="px-5 py-2 text-xs bg-amber-900 text-amber-50 font-bold rounded-xl hover:bg-amber-800 cursor-pointer">Simpan Perubahan</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ===== EDIT PACKAGE MODAL — muncul di tengah layar ===== */}
+      {editingPack && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={() => setEditingPack(null)}>
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl" onClick={e => e.stopPropagation()}>
+            <form onSubmit={handleSavePack} className="p-6 space-y-4">
+              <div className="flex items-center justify-between border-b pb-3 dark:border-zinc-800">
+                <h4 className="font-serif font-bold text-lg text-amber-950 dark:text-amber-100">✏️ Edit Paket: {editingPack.name}</h4>
+                <button type="button" onClick={() => setEditingPack(null)} className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer text-zinc-500"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Nama Paket</label>
+                  <input type="text" required value={editingPack.name}
+                    onChange={e => setEditingPack({ ...editingPack, name: e.target.value })}
+                    className="w-full text-xs px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Harga Paket</label>
+                  <input type="number" required value={editingPack.price}
+                    onChange={e => setEditingPack({ ...editingPack, price: parseInt(e.target.value) || 0 })}
+                    className="w-full text-xs px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Badge (contoh: POPULER, HEMAT)</label>
+                  <input type="text" value={editingPack.badge || ''}
+                    onChange={e => setEditingPack({ ...editingPack, badge: e.target.value })}
+                    className="w-full text-xs px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Upload Foto Paket</label>
+                  <div className="flex gap-2 items-center">
+                    <input type="file" accept="image/*" onChange={e => handleImageUpload(e, 'package')} className="w-full text-xs text-zinc-500" />
+                    {isUploadingImage && <div className="w-4 h-4 border-2 border-amber-900 border-t-transparent rounded-full animate-spin" />}
+                  </div>
+                </div>
+              </div>
+              {editingPack.image && <img src={editingPack.image} alt="preview" className="w-24 h-24 object-cover rounded-xl border" />}
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Deskripsi Paket</label>
+                <textarea rows={2} required value={editingPack.description}
+                  onChange={e => setEditingPack({ ...editingPack, description: e.target.value })}
+                  className="w-full text-xs px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Pilih Produk untuk Paket</label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 border rounded-xl bg-zinc-50 dark:bg-zinc-950/20 max-h-40 overflow-y-auto dark:border-zinc-800">
+                  {menuList.map(m => {
+                    const checked = editingPack.items.includes(m.id);
+                    return (
+                      <label key={m.id} className="flex items-center gap-2 text-xs cursor-pointer">
+                        <input type="checkbox" checked={checked}
+                          onChange={e => {
+                            const items = e.target.checked
+                              ? [...editingPack.items, m.id]
+                              : editingPack.items.filter(i => i !== m.id);
+                            setEditingPack({ ...editingPack, items });
+                          }} />
+                        {m.name}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setEditingPack(null)}
+                  className="px-4 py-2 text-xs bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 rounded-xl cursor-pointer">Batal</button>
+                <button type="submit"
+                  className="px-5 py-2 text-xs bg-amber-900 text-amber-50 font-bold rounded-xl hover:bg-amber-800 cursor-pointer">Simpan Perubahan</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

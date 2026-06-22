@@ -6,9 +6,13 @@ export const getApiUrl = (path: string): string => {
   if (path.startsWith("http://") || path.startsWith("https://")) {
     return path;
   }
-  const cleanBase = API_BASE.replace(/\/$/, "");
+  // Use VITE_API_URL if explicitly set, otherwise use window.location.origin
+  // This prevents 308 redirect issues when non-www redirects to www (POST body is lost on redirect)
+  const base = API_BASE
+    ? API_BASE.replace(/\/$/, "")
+    : (typeof window !== "undefined" ? window.location.origin : "");
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
-  return `${cleanBase}${cleanPath}`;
+  return `${base}${cleanPath}`;
 };
 
 export const safeParseJson = async (response: Response): Promise<any> => {
