@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { 
   User as UserIcon, LogOut, ArrowLeft, Coffee, Gift, 
-  ShoppingBag, CheckCircle, Clock, Truck, Store, Moon, Sun, Check 
+  ShoppingBag, CheckCircle, Clock, Truck, Store, Moon, Sun, Check, HelpCircle
 } from "lucide-react";
 import { motion } from "motion/react";
 import { User } from "../types";
@@ -31,6 +31,7 @@ export default function UserDashboard({
 }: UserDashboardProps) {
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
   const [editForm, setEditForm] = useState({
     name: currentUser.name || "",
     email: currentUser.email || "",
@@ -72,6 +73,13 @@ export default function UserDashboard({
           </button>
           
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setGuideOpen(true)}
+              className="flex items-center gap-1.5 py-2 px-3 text-xs font-bold bg-amber-900/10 hover:bg-amber-900/20 text-amber-900 dark:text-amber-400 rounded-xl cursor-pointer transition-all"
+            >
+              <HelpCircle className="w-4 h-4" />
+              Panduan
+            </button>
             <button
               onClick={() => setDarkMode(!darkMode)}
               className="p-2.5 rounded-full hover:bg-amber-900/10 dark:hover:bg-white/5 text-amber-900 dark:text-amber-400 transition-colors cursor-pointer"
@@ -684,6 +692,75 @@ export default function UserDashboard({
           }
         }
       `}</style>
+
+      {/* ===== USER GUIDE MODAL POPUP ===== */}
+      {guideOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-start justify-center bg-black/80 backdrop-blur-sm p-4 pt-8 overflow-y-auto" onClick={() => setGuideOpen(false)}>
+          <div className="w-full max-w-2xl bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl mb-8" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="p-6 rounded-t-3xl bg-gradient-to-r from-amber-800 to-amber-600 text-white flex items-start justify-between gap-3">
+              <div>
+                <p className="font-black text-xl">📖 Panduan Lengkap User Dashboard</p>
+                <p className="text-xs text-white/70 mt-1">Semua yang perlu kamu tahu sebagai pelanggan Tampa Seduh</p>
+              </div>
+              <button onClick={() => setGuideOpen(false)} className="p-2 rounded-full hover:bg-white/20 transition cursor-pointer shrink-0"><span className="text-xl font-black">✕</span></button>
+            </div>
+            {/* Guide Sections */}
+            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[
+                {
+                  icon: '🔑', title: 'Cara Daftar & Login', color: 'border-blue-200 dark:border-blue-800',
+                  items: ['Daftar: Klik Login → Daftar Gratis → isi Nama, Email, Password', 'Login Email: masuk dengan email + password', 'Login Google: otomatis buat akun baru', 'Penting: selalu gunakan www.tampaseduh.com']
+                },
+                {
+                  icon: '🛒', title: 'Alur Pemesanan', color: 'border-amber-200 dark:border-amber-800',
+                  items: ['Pilih produk → klik foto → pilih ukuran R/L', 'Klik "Tambah ke Keranjang" (keranjang terakumulasi)', 'Klik ikon 🛒 di navbar untuk buka keranjang', 'Isi data: Nama, WA, Alamat, Metode Kirim', 'Klik "Konfirmasi Pesanan" → pesanan masuk ke Admin']
+                },
+                {
+                  icon: '💳', title: 'Mekanisme Pembayaran', color: 'border-green-200 dark:border-green-800',
+                  items: ['COD: bayar tunai saat kopi diantar/diambil', 'Transfer: Admin kirim nomor rekening/QR via WA', 'Upload bukti bayar di halaman checkout', 'Admin verifikasi manual sebelum proses pesanan', 'Ongkir: Rp 10.000 flat (Member: Rp 7.500)']
+                },
+                {
+                  icon: '📦', title: 'Status Pesanan', color: 'border-purple-200 dark:border-purple-800',
+                  items: ['⏳ Menunggu: pesanan diterima, belum diproses', '🔥 Disiapkan: barista sedang meracik kopi', '🚴 Diantar: kurir sedang menuju alamatmu', '✅ Selesai: pesanan sudah diterima', 'Klik pesanan di Riwayat untuk detail + cetak invoice']
+                },
+                {
+                  icon: '🎁', title: 'Program Member', color: 'border-yellow-200 dark:border-yellow-800',
+                  items: ['Gratis 100% — tidak ada biaya pendaftaran', 'Klik "Gabung Member Sekarang" di kolom kiri', 'Admin setujui dalam 1×24 jam', 'Setelah aktif: diskon ongkir 25% otomatis berlaku', 'Status Member terlihat di Member Card di atas']
+                },
+                {
+                  icon: '📸', title: 'Upload Foto (Customer Emotions)', color: 'border-pink-200 dark:border-pink-800',
+                  items: ['Scroll ke section "Customer Emotions" di beranda', 'Jika belum login: klik "Login untuk Upload Foto"', 'Setelah login: isi caption lalu klik Upload Foto', 'Foto dikonversi otomatis ke WebP', 'Admin review → jika disetujui, foto tampil di website', 'Upload konten yang sopan dan berkaitan Tampa Seduh']
+                },
+                {
+                  icon: '👤', title: 'Profil & Keamanan Akun', color: 'border-zinc-200 dark:border-zinc-700',
+                  items: ['Klik "Edit Profil" untuk ubah Nama, WA, Alamat', 'Password dienkripsi bcrypt — tidak ada yang bisa lihat', 'Ganti password: isi kolom saat edit profil', 'Alamat default tersimpan untuk pesanan berikutnya']
+                },
+                {
+                  icon: '💬', title: 'Butuh Bantuan?', color: 'border-green-200 dark:border-green-800',
+                  items: ['WhatsApp Admin: +62 856-9622-4448', 'Jam aktif: setiap hari dari pagi sampai malam', 'Untuk komplain, ubah alamat, atau konfirmasi bayar', 'Respon dalam 5–15 menit pada jam aktif']
+                },
+              ].map(({ icon, title, color, items }) => (
+                <div key={title} className={`p-4 rounded-2xl border ${color} space-y-2 bg-zinc-50 dark:bg-zinc-800/40`}>
+                  <p className="text-xs font-black text-zinc-800 dark:text-zinc-200">{icon} {title}</p>
+                  <ul className="space-y-1 text-[11px] text-zinc-600 dark:text-zinc-400">
+                    {items.map((item, i) => <li key={i} className="flex gap-1.5"><span className="opacity-40 shrink-0">›</span>{item}</li>)}
+                  </ul>
+                </div>
+              ))}
+            </div>
+            <div className="px-6 pb-6 text-center">
+              <a href="https://wa.me/6285696224448?text=Halo%20Tampa%20Seduh,%20saya%20butuh%20bantuan" target="_blank" rel="noreferrer"
+                className="inline-block px-6 py-2.5 bg-green-500 hover:bg-green-600 text-white text-xs font-bold rounded-xl transition-all mr-2">
+                💬 Chat WhatsApp Admin
+              </a>
+              <button onClick={() => setGuideOpen(false)} className="px-6 py-2.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs font-bold rounded-xl transition-all cursor-pointer">
+                Tutup Panduan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

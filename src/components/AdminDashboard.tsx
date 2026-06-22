@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   BarChart3, MessageSquare, Users, Coffee, Layers, ShoppingBag,
-  Sparkles, FileClock, Wallet, Mail, BookOpen, Plus, Trash2, Edit2, CheckCircle, RefreshCw, Moon, Sun, ArrowLeft, X, Lock, Receipt, Download, PanelLeftOpen, PanelLeftClose, ImageIcon, Calculator
+  Sparkles, FileClock, Wallet, Mail, BookOpen, Plus, Trash2, Edit2, CheckCircle, RefreshCw, Moon, Sun, ArrowLeft, X, Lock, Receipt, Download, PanelLeftOpen, PanelLeftClose, ImageIcon, Calculator, HelpCircle, Upload
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { MenuItem, CoffeePackage, Order, AuditLog, User, BlogNews, EmailLog, FinancialSummary, ProfitDashboard, GalleryPhoto, Pamflet, CustomerPhoto } from "../types";
@@ -129,6 +129,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<Order | null>(null);
   const [editingPack, setEditingPack] = useState<CoffeePackage | null>(null);
   const [editingMenu, setEditingMenu] = useState<MenuItem | null>(null);
+  const [guideModal, setGuideModal] = useState<string | null>(null); // null = tutup, string = nama panel
 
   // Forms states
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -1096,9 +1097,14 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                   <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-sm overflow-hidden">
                     <div className="flex justify-between items-center mb-4 pb-3 border-b border-zinc-100 dark:border-zinc-800">
                       <h3 className="font-serif font-bold text-lg text-amber-950 dark:text-amber-50">Daftar Transaksi Pesanan Antar</h3>
-                      <span className="text-xs bg-amber-900/5 dark:bg-amber-400/10 text-amber-900 dark:text-amber-300 font-bold px-3 py-1 rounded-full">
-                        {orderList.length} Total Pesanan
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => setGuideModal('orders')} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 border border-blue-200 dark:border-blue-800 transition-all cursor-pointer">
+                          <HelpCircle className="w-3.5 h-3.5" /> Panduan
+                        </button>
+                        <span className="text-xs bg-amber-900/5 dark:bg-amber-400/10 text-amber-900 dark:text-amber-300 font-bold px-3 py-1 rounded-full">
+                          {orderList.length} Total Pesanan
+                        </span>
+                      </div>
                     </div>
 
                     <div className="overflow-x-auto">
@@ -1393,13 +1399,21 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                     <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
                       Menampilkan <strong className="text-amber-900 dark:text-amber-400">{menuList.length}</strong> racikan variasi minuman
                     </span>
-                    <button
-                      onClick={() => setIsMenuOpen(!isMenuOpen)}
-                      className="bg-amber-900 hover:bg-amber-800 text-amber-50 text-xs font-bold py-2 px-4 rounded-xl transition-all shadow cursor-pointer flex items-center gap-1.5"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Tambah Menu
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setGuideModal('menu')}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:text-blue-400 border border-blue-200 dark:border-blue-800 transition-all cursor-pointer"
+                      >
+                        <HelpCircle className="w-3.5 h-3.5" /> Panduan
+                      </button>
+                      <button
+                        onClick={() => setIsMenuOpen(!isMenuOpen)}
+                        className="bg-amber-900 hover:bg-amber-800 text-amber-50 text-xs font-bold py-2 px-4 rounded-xl transition-all shadow cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Tambah Menu
+                      </button>
+                    </div>
                   </div>
 
                   {/* Add form */}
@@ -1473,15 +1487,23 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                         <div>
                           <label className="block text-xs font-bold text-zinc-450 uppercase mb-1">Upload Foto Produk</label>
                           <div className="flex gap-2 items-center">
+                            <label
+                              htmlFor="menu-file-upload"
+                              className="flex items-center gap-2 px-4 py-2 bg-amber-900 hover:bg-amber-800 text-amber-50 text-xs font-bold rounded-xl cursor-pointer transition-all shadow-sm"
+                            >
+                              {isUploadingImage
+                                ? <><div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Mengunggah...</>
+                                : <><Upload className="w-3.5 h-3.5" /> Pilih & Upload Foto</>}
+                            </label>
                             <input
                               type="file"
                               accept="image/*"
                               onChange={(e) => handleImageUpload(e, "menu")}
-                              className="w-full text-xs text-zinc-500"
+                              className="hidden"
                               id="menu-file-upload"
                             />
-                            {isUploadingImage && <div className="w-4 h-4 border-2 border-amber-900 border-t-transparent rounded-full animate-spin"></div>}
                           </div>
+                          <p className="text-[10px] text-zinc-400 mt-1">Foto otomatis dikonversi ke WebP</p>
                         </div>
                         <div>
                           <label className="block text-xs font-bold text-zinc-450 uppercase mb-1">Sifat Penyajian</label>
@@ -1622,19 +1644,27 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                     <span className="text-sm font-medium text-zinc-650 dark:text-zinc-400">
                       Mengatur bundel kombinasi hemat kopi
                     </span>
-                    <button
-                      onClick={() => {
-                        setEditingPack(null);
-                        setNewPack({
-                          name: "", price: 25, items: [], description: "", badge: "Promo"
-                        });
-                        setIsPackOpen(!isPackOpen);
-                      }}
-                      className="bg-amber-950 hover:bg-amber-900 text-amber-50 text-xs font-bold py-2 px-4 rounded-xl cursor-pointer flex items-center gap-1.5"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Buat Paket Baru
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setGuideModal('packages')}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:text-blue-400 border border-blue-200 dark:border-blue-800 transition-all cursor-pointer"
+                      >
+                        <HelpCircle className="w-3.5 h-3.5" /> Panduan
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingPack(null);
+                          setNewPack({
+                            name: "", price: 25, items: [], description: "", badge: "Promo"
+                          });
+                          setIsPackOpen(!isPackOpen);
+                        }}
+                        className="bg-amber-950 hover:bg-amber-900 text-amber-50 text-xs font-bold py-2 px-4 rounded-xl cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Buat Paket Baru
+                      </button>
+                    </div>
                   </div>
 
                   {/* Pack Add/Edit Form */}
@@ -1706,15 +1736,23 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                         <div>
                           <label className="block text-xs font-bold text-amber-900 dark:text-amber-400 uppercase mb-1">Upload Foto Cover Paket</label>
                           <div className="flex gap-2 items-center">
+                            <label
+                              htmlFor="pack-file-upload"
+                              className="flex items-center gap-2 px-4 py-2 bg-amber-900 hover:bg-amber-800 text-amber-50 text-xs font-bold rounded-xl cursor-pointer transition-all shadow-sm"
+                            >
+                              {isUploadingImage
+                                ? <><div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Mengunggah...</>
+                                : <><Upload className="w-3.5 h-3.5" /> Pilih & Upload Foto</>}
+                            </label>
                             <input
                               type="file"
                               accept="image/*"
                               onChange={(e) => handleImageUpload(e, "package")}
-                              className="w-full text-xs text-zinc-500"
+                              className="hidden"
                               id="pack-file-upload"
                             />
-                            {isUploadingImage && <div className="w-4 h-4 border-2 border-amber-900 border-t-transparent rounded-full animate-spin"></div>}
                           </div>
+                          <p className="text-[10px] text-zinc-400 mt-1">Foto otomatis dikonversi ke WebP</p>
                         </div>
                       </div>
                       <div className="text-left">
@@ -2118,13 +2156,18 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                 <div className="space-y-6">
                   {/* Action block */}
                   <div className="flex justify-between items-center bg-white dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-sm">
-                    <span className="text-xs font-semibold text-zinc-500">Kopi News & Blogs yang dipublikasikan di halaman depan</span>
-                    <button
-                      onClick={() => setIsNewsOpen(!isNewsOpen)}
-                      className="bg-amber-900 hover:bg-amber-800 text-amber-50 text-xs font-bold py-2 px-4 rounded-xl cursor-pointer"
-                    >
-                      Bikin Artikel Baru
-                    </button>
+                    <span className="text-xs font-semibold text-zinc-500">Kopi News &amp; Blogs yang dipublikasikan di halaman depan</span>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setGuideModal('news')} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 border border-blue-200 dark:border-blue-800 transition-all cursor-pointer">
+                        <HelpCircle className="w-3.5 h-3.5" /> Panduan
+                      </button>
+                      <button
+                        onClick={() => setIsNewsOpen(!isNewsOpen)}
+                        className="bg-amber-900 hover:bg-amber-800 text-amber-50 text-xs font-bold py-2 px-4 rounded-xl cursor-pointer"
+                      >
+                        Bikin Artikel Baru
+                      </button>
+                    </div>
                   </div>
 
                   {isNewsOpen && (
@@ -2360,8 +2403,11 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                 <div className="space-y-6">
                   <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-sm">
                     <div className="flex items-center justify-between mb-4 border-b pb-3 border-zinc-100 dark:border-zinc-800">
-                      <h3 className="font-serif font-bold text-lg text-amber-950 dark:text-amber-50">📸 Foto & Pamflet</h3>
-                      <div className="flex gap-2 flex-wrap">
+                      <h3 className="font-serif font-bold text-lg text-amber-950 dark:text-amber-50">📸 Foto &amp; Pamflet</h3>
+                      <div className="flex gap-2 flex-wrap items-center">
+                        <button onClick={() => setGuideModal('media')} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 border border-blue-200 dark:border-blue-800 transition-all cursor-pointer">
+                          <HelpCircle className="w-3.5 h-3.5" /> Panduan
+                        </button>
                         <button onClick={() => setMediaSubTab("gallery")} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${mediaSubTab === "gallery" ? "bg-amber-900 text-amber-50" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300"}`}>
                           🖼️ Foto Kolase
                         </button>
@@ -2584,7 +2630,12 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
               {activeTab === "users" && (
                 <div className="space-y-6">
                   <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-sm overflow-hidden">
-                    <h3 className="font-serif font-bold text-lg text-amber-950 dark:text-amber-50 mb-3 border-b pb-3 border-zinc-100 dark:border-zinc-800">Kawan Setia (Pengguna Sistem & Customers)</h3>
+                    <div className="flex justify-between items-center mb-3 border-b pb-3 border-zinc-100 dark:border-zinc-800">
+                      <h3 className="font-serif font-bold text-lg text-amber-950 dark:text-amber-50">Kawan Setia (Pengguna Sistem &amp; Customers)</h3>
+                      <button onClick={() => setGuideModal('users')} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 border border-blue-200 dark:border-blue-800 transition-all cursor-pointer">
+                        <HelpCircle className="w-3.5 h-3.5" /> Panduan
+                      </button>
+                    </div>
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-sm whitespace-nowrap">
                         <thead>
@@ -3162,6 +3213,134 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
           </div>
         )}
       </AnimatePresence>
+      {/* ===== GUIDE MODAL — Panduan per Panel ===== */}
+      {guideModal && (() => {
+        const GUIDES: Record<string, { icon: string; title: string; color: string; steps: { label: string; desc: string }[] }> = {
+          overview: {
+            icon: '📊', title: 'Panduan — Tab Overview',
+            color: 'from-blue-600 to-indigo-600',
+            steps: [
+              { label: 'Ringkasan Omset', desc: 'Total pendapatan dihitung otomatis dari semua pesanan berstatus Selesai.' },
+              { label: 'Pesanan Masuk', desc: 'Jumlah total pesanan + badge jumlah yang masih Pending menunggu diproses.' },
+              { label: 'Varian Menu', desc: 'Jumlah produk di database + berapa yang statusnya tersedia (stok ada).' },
+              { label: 'Total Pelanggan', desc: 'Jumlah akun yang terdaftar di website Tampa Seduh.' },
+              { label: 'Tabel Pesanan Terbaru', desc: 'Lihat dan update status pesanan terbaru langsung dari tabel ini tanpa perlu pindah tab.' },
+              { label: 'Update Status Cepat', desc: 'Klik dropdown status di kolom Status → pilih Disiapkan / Diantar / Selesai.' },
+            ]
+          },
+          orders: {
+            icon: '🛒', title: 'Panduan — Tab Pesanan',
+            color: 'from-amber-600 to-orange-600',
+            steps: [
+              { label: 'Lihat Semua Pesanan', desc: 'Tabel lengkap semua pesanan masuk dengan detail customer, item, total, dan status.' },
+              { label: 'Klik Baris untuk Detail', desc: 'Klik baris pesanan manapun untuk melihat detail lengkap termasuk foto bukti bayar.' },
+              { label: 'Alur Status Pesanan', desc: 'Pending → Disiapkan (barista mulai kerja) → Diantar (kurir jalan) → Selesai (terima kopi).' },
+              { label: 'Update Status', desc: 'Gunakan dropdown di kolom Status atau di modal detail untuk mengubah status pesanan.' },
+              { label: 'Bukti Pembayaran', desc: 'Foto transfer yang diupload customer muncul di detail pesanan. Klik untuk memperbesar.' },
+              { label: 'Hapus Pesanan', desc: 'Klik ikon 🗑️ untuk menghapus pesanan. PERINGATAN: tindakan ini permanen dan tidak bisa dibatalkan.' },
+              { label: 'Cetak Invoice', desc: 'Klik ikon cetak di baris pesanan untuk mencetak invoice resmi dalam format print-friendly.' },
+            ]
+          },
+          menu: {
+            icon: '☕', title: 'Panduan — Tab Menu (Daftar Kopi)',
+            color: 'from-green-600 to-teal-600',
+            steps: [
+              { label: 'Tambah Produk Baru', desc: 'Klik tombol "Tambah Menu" → form muncul → isi nama, harga reguler, harga large (opsional), sifat penyajian, stok, dan deskripsi.' },
+              { label: 'Upload Foto Produk', desc: 'Di dalam form, klik tombol "Pilih & Upload Foto" berwarna cokelat → pilih foto dari galeri HP/laptop → foto otomatis dikonversi ke WebP dan diupload.' },
+              { label: 'URL Gambar Manual', desc: 'Alternatif: paste URL gambar langsung di field "Ilustrasi Cover" jika sudah punya link foto dari internet.' },
+              { label: 'Edit Produk', desc: 'Klik tombol ✏️ (pensil) di kartu produk → modal edit muncul di tengah layar → ubah data → klik Simpan Perubahan.' },
+              { label: 'Toggle Stok', desc: 'Klik tombol "Ready" atau "Habis" langsung di kartu produk untuk mengubah ketersediaan stok tanpa masuk form edit.' },
+              { label: 'Hapus Produk', desc: 'Klik 🗑️ di kartu → konfirmasi → produk dihapus permanen dari database dan website.' },
+              { label: 'Real-time Update', desc: 'Semua perubahan (harga, stok, foto) langsung tampil di website utama setelah disimpan.' },
+            ]
+          },
+          packages: {
+            icon: '🎁', title: 'Panduan — Tab Paket (Bundle)',
+            color: 'from-purple-600 to-pink-600',
+            steps: [
+              { label: 'Buat Paket Baru', desc: 'Klik "Buat Paket Baru" → isi nama paket, harga bundel, dan badge promo (contoh: POPULER, HEMAT, BEST VALUE).' },
+              { label: 'Pilih Produk untuk Paket', desc: 'Centang produk-produk yang termasuk dalam paket ini. Produk yang dicentang akan tampil sebagai daftar item dalam kartu paket di website.' },
+              { label: 'Upload Foto Paket', desc: 'Klik tombol "Pilih & Upload Foto" di form → pilih gambar representatif untuk paket ini → otomatis dikonversi WebP.' },
+              { label: 'Edit Paket', desc: 'Klik ✏️ di kartu paket → modal edit muncul di tengah layar → ubah nama, harga, badge, produk, foto → simpan.' },
+              { label: 'Badge Promo', desc: 'Badge adalah label kecil yang tampil di kartu paket. Gunakan teks singkat seperti "POPULER", "HEMAT 20%", "BEST SELLER".' },
+              { label: 'Hapus Paket', desc: 'Klik 🗑️ untuk menghapus paket. Produk individual tidak ikut terhapus.' },
+            ]
+          },
+          news: {
+            icon: '📰', title: 'Panduan — Tab Kopi News (Blog)',
+            color: 'from-cyan-600 to-blue-600',
+            steps: [
+              { label: 'Bikin Artikel Baru', desc: 'Klik "Bikin Artikel Baru" → isi judul, kategori, isi artikel, dan foto cover.' },
+              { label: 'Upload Cover Artikel', desc: 'Klik tombol upload di field Cover → pilih foto → otomatis dikonversi ke WebP dan diupload ke storage.' },
+              { label: 'Status Artikel', desc: 'Draft = tidak tampil di website. Published = langsung tampil di section Kopi News di beranda.' },
+              { label: 'Edit Artikel', desc: 'Klik tombol Edit di kartu artikel yang sudah ada → form edit muncul → ubah konten atau foto → simpan.' },
+              { label: 'Ganti Foto Cover', desc: 'Saat edit artikel, gunakan tombol upload foto cover untuk mengganti gambar. Foto lama tidak otomatis dihapus dari storage.' },
+              { label: 'Hapus Artikel', desc: 'Klik 🗑️ untuk menghapus artikel. Artikel yang dihapus tidak bisa dipulihkan.' },
+              { label: 'SEO Artikel', desc: 'Judul artikel sangat penting untuk SEO. Gunakan kata kunci seperti "kopi Kotabunan", "Tampa Seduh", "Boltim" dalam judul.' },
+            ]
+          },
+          media: {
+            icon: '🖼️', title: 'Panduan — Tab Media (Foto & Pamflet)',
+            color: 'from-pink-600 to-rose-600',
+            steps: [
+              { label: 'Tab Foto Kolase', desc: 'Upload foto suasana kedai, momen seru, dan kejadian lucu. Foto tampil di section "Street Coffee Foto Collage" di beranda sebagai swipe galeri.' },
+              { label: 'Tab Pamflet / Brosur', desc: 'Upload brosur, iklan event, atau pengumuman penting. Tampil di section Pamflet di beranda sebagai galeri swipe terpisah.' },
+              { label: 'Tab Customer Emotions', desc: 'Foto yang diupload oleh customer. Ada badge merah jika ada yang masih menunggu review.' },
+              { label: 'Approve Foto Customer', desc: 'Klik ✅ Approve → foto langsung tampil di section Customer Emotions di website.' },
+              { label: 'Tolak Foto Customer', desc: 'Klik ❌ Tolak → foto tidak tampil di website tapi masih tersimpan di database.' },
+              { label: 'Hapus Foto', desc: 'Klik 🗑️ untuk menghapus foto permanen dari storage dan database.' },
+              { label: 'Format & Konversi', desc: 'Semua foto yang diupload (JPG, PNG, HEIC) otomatis dikonversi ke WebP oleh browser sebelum diupload — lebih ringan dan cepat di web.' },
+            ]
+          },
+          users: {
+            icon: '👥', title: 'Panduan — Tab Pelanggan',
+            color: 'from-orange-600 to-red-600',
+            steps: [
+              { label: 'Lihat Semua Customer', desc: 'Tabel semua akun terdaftar dengan detail nama, email, WhatsApp, status member, dan riwayat pesanan.' },
+              { label: 'Approve Member', desc: 'Customer yang mengajukan member tampil dengan status "pending". Klik ✅ Approve → customer otomatis dapat diskon ongkir 25%.' },
+              { label: 'Blokir Akun', desc: 'Klik tombol Blokir di baris customer untuk memblokir akses. Akun terblokir tidak bisa login ke website.' },
+              { label: 'Unblokir Akun', desc: 'Customer terblokir bisa di-unblokir dengan klik tombol Unblokir. Akses langsung pulih.' },
+              { label: 'Reset Password', desc: 'Klik Reset Password untuk mengatur ulang password customer yang lupa. Password baru dikirim secara manual.' },
+              { label: 'Histori Belanja', desc: 'Kolom Histori Belanja menampilkan total order dan tanggal terakhir aktif customer.' },
+            ]
+          },
+        };
+
+        const guide = GUIDES[guideModal];
+        if (!guide) return null;
+        return (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setGuideModal(null)}>
+            <div className="w-full max-w-lg max-h-[88vh] overflow-y-auto bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl" onClick={e => e.stopPropagation()}>
+              {/* Header */}
+              <div className={`p-5 rounded-t-3xl bg-gradient-to-r ${guide.color} text-white flex items-start justify-between gap-3`}>
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">{guide.icon}</span>
+                  <div>
+                    <p className="font-black text-base leading-tight">{guide.title}</p>
+                    <p className="text-xs text-white/70 mt-0.5">Panduan lengkap penggunaan panel ini</p>
+                  </div>
+                </div>
+                <button onClick={() => setGuideModal(null)} className="p-2 rounded-full hover:bg-white/20 transition cursor-pointer shrink-0"><X className="w-5 h-5" /></button>
+              </div>
+              {/* Steps */}
+              <div className="p-5 space-y-3">
+                {guide.steps.map((step, i) => (
+                  <div key={i} className="flex gap-3 p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-100 dark:border-zinc-800">
+                    <span className="w-6 h-6 rounded-full bg-amber-900 text-white text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                    <div>
+                      <p className="text-xs font-black text-zinc-800 dark:text-zinc-200">{step.label}</p>
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed">{step.desc}</p>
+                    </div>
+                  </div>
+                ))}
+                <div className="text-center pt-2">
+                  <button onClick={() => setGuideModal(null)} className="px-6 py-2.5 bg-amber-900 hover:bg-amber-800 text-white text-xs font-bold rounded-xl cursor-pointer transition-all">Tutup Panduan</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ===== EDIT MENU MODAL — muncul di tengah layar ===== */}
       {editingMenu && (
