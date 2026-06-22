@@ -2340,6 +2340,35 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                     {/* Customer Emotions Sub-Tab */}
                     {mediaSubTab === "customer" && (
                       <div className="space-y-4">
+                        {/* Info Flow Card */}
+                        <div className="bg-gradient-to-br from-amber-50 to-amber-100/60 dark:from-zinc-800 dark:to-zinc-800/60 border border-amber-200/80 dark:border-zinc-700 rounded-2xl p-4 space-y-3">
+                          <p className="text-xs font-black uppercase tracking-widest text-amber-800 dark:text-amber-400 flex items-center gap-1.5">
+                            <span>📋</span> Panduan Alur Customer Emotions
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                            {[
+                              { step: '1', icon: '🌐', label: 'Customer buka website', desc: 'Scroll ke section "Customer Emotions"', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300' },
+                              { step: '2', icon: '🔑', label: 'Belum login', desc: 'Tombol "Login untuk Upload Foto" muncul', color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300' },
+                              { step: '3', icon: '📸', label: 'Setelah login', desc: 'Form caption + tombol Upload tersedia', color: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300' },
+                              { step: '4', icon: '🔄', label: 'Auto WebP', desc: 'Browser konversi foto ke WebP sebelum upload', color: 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-800 dark:text-cyan-300' },
+                              { step: '5', icon: '⏳', label: 'Pending', desc: 'Foto masuk database dengan status PENDING', color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' },
+                              { step: '6', icon: '🔔', label: 'Badge merah muncul', desc: 'Di tab "😊 Customer Emotions" ini, angka merah muncul', color: 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300' },
+                              { step: '7', icon: '✅', label: 'Admin klik Approve', desc: 'Status jadi APPROVED → foto tampil di website', color: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' },
+                              { step: '8', icon: '❌', label: 'Admin klik Tolak', desc: 'Status REJECTED → foto tidak tampil, tersimpan di bucket', color: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' },
+                              { step: '9', icon: '🗑️', label: 'Hapus Permanen', desc: 'Tombol hapus menghapus dari bucket & database selamanya', color: 'bg-zinc-100 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300' },
+                            ].map(({ step, icon, label, desc, color }) => (
+                              <div key={step} className={`flex items-start gap-2 rounded-xl px-2.5 py-2 ${color}`}>
+                                <span className="font-black text-[10px] opacity-60 w-4 shrink-0">#{step}</span>
+                                <span className="shrink-0">{icon}</span>
+                                <div>
+                                  <p className="font-bold leading-tight">{label}</p>
+                                  <p className="opacity-70 text-[10px] leading-tight mt-0.5">{desc}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-sm font-bold text-zinc-800 dark:text-zinc-200">Customer Emotions — Foto dari Pelanggan</p>
