@@ -2,132 +2,355 @@
 <html lang="id">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- ============================================================ -->
+    <!--  MOBILE FIRST — viewport & performance                       -->
+    <!-- ============================================================ -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#1b100a" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#7c3f00" media="(prefers-color-scheme: light)" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Tampa Seduh" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <!-- ============================================================ -->
+    <!--  FAVICON & ICONS                                             -->
+    <!-- ============================================================ -->
     <link rel="icon" type="image/webp" href="/FaviconTampaSeduh.webp" />
-    <title>Tampa Seduh - Street Coffee Boltim | Kopi Delivery Kotabunan</title>
-    <meta name="description" content="Tampa Seduh - Kedai kopi artisanal di Kotabunan, Bolaang Mongondow Timur. Nikmati keunikan kopi Liberica khas Boltim, minuman jahe tradisional Saraba, dan pesan online dengan pengantaran langsung." />
-    <meta name="keywords" content="Tampa Seduh, Kopi Liberica Kotabunan, Kopi Boltim, Kedai Kopi Kotabunan, Bolaang Mongondow Timur, Saraba, Trans Sulawesi, Kopi Sulawesi Utara" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://yizsanjcyphlbtjcwzxl.supabase.co" crossorigin>
-    <link rel="preconnect" href="https://accounts.google.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
+    <link rel="apple-touch-icon" href="/FaviconTampaSeduh.webp" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+
+    <!-- ============================================================ -->
+    <!--  PRIMARY SEO META TAGS                                       -->
+    <!-- ============================================================ -->
+    <title>Tampa Seduh – Kopi Kotabunan No.1 | Pesan Kopi Online Delivery 24 Jam Boltim</title>
+    <meta name="description" content="Tampa Seduh — Street Coffee No.1 di Kotabunan, Bolaang Mongondow Timur (Boltim). Pesan kopi Liberica khas Kotabunan online, delivery 24 jam ke Kotabunan, Tutuyan, Panang & Paret. Kopi online, saraba rempah, kopi delivery boltim." />
+    <meta name="keywords" content="Tampa Seduh, kopi Kotabunan, pesan kopi online, kopi delivery 24 jam, street kopi boltim, kopi online 24 jam, kopi Liberica Kotabunan, kedai kopi Boltim, Bolaang Mongondow Timur kopi, kopi delivery Kotabunan, order kopi online Boltim, Saraba Kotabunan, kopi Sulawesi Utara, kopi artisanal Boltim, kopi terdekat Kotabunan, kedai kopi delivery, kopi lokal Kotabunan, kopi Trans Sulawesi, kopi murah Boltim, kopi enak Kotabunan" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="author" content="Tampa Seduh – Kotabunan Projek" />
+    <meta name="rating" content="general" />
+    <meta name="revisit-after" content="3 days" />
+    <meta name="language" content="Indonesian" />
     <link rel="canonical" href="https://tampaseduh.com/" />
-    
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website" />
+
+    <!-- ============================================================ -->
+    <!--  GEOTAGGING — Bolaang Mongondow Timur / Kotabunan           -->
+    <!-- ============================================================ -->
+    <meta name="geo.region" content="ID-SA" />
+    <meta name="geo.placename" content="Kotabunan, Bolaang Mongondow Timur, Sulawesi Utara, Indonesia" />
+    <meta name="geo.position" content="0.8086947;124.6539621" />
+    <meta name="ICBM" content="0.8086947, 124.6539621" />
+
+    <!-- ============================================================ -->
+    <!--  OPEN GRAPH / FACEBOOK / WHATSAPP SHARE                     -->
+    <!-- ============================================================ -->
+    <meta property="og:type" content="restaurant" />
     <meta property="og:url" content="https://tampaseduh.com/" />
-    <meta property="og:title" content="Tampa Seduh - Street Coffee Boltim | Kopi Liberica Kotabunan" />
-    <meta property="og:description" content="Kedai kopi artisanal di Kotabunan, Bolaang Mongondow Timur. Sajian kopi Liberica unik dengan aroma nangka dan kehangatan jahe Saraba." />
+    <meta property="og:site_name" content="Tampa Seduh" />
+    <meta property="og:locale" content="id_ID" />
+    <meta property="og:title" content="Tampa Seduh – Kopi Kotabunan No.1 | Pesan Kopi Online 24 Jam Boltim" />
+    <meta property="og:description" content="Pesan kopi Liberica khas Kotabunan secara online. Delivery 24 jam ke area Kotabunan, Tutuyan, Panang dan Paret. Street Coffee No.1 Bolaang Mongondow Timur." />
     <meta property="og:image" content="https://tampaseduh.com/OG-Image.webp" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <!-- Twitter -->
+    <meta property="og:image:alt" content="Tampa Seduh – Street Coffee Kotabunan, Boltim" />
+    <meta property="business:contact_data:locality" content="Kotabunan" />
+    <meta property="business:contact_data:region" content="Bolaang Mongondow Timur" />
+    <meta property="business:contact_data:country_name" content="Indonesia" />
+    <meta property="business:contact_data:phone_number" content="+6285696224448" />
+
+    <!-- ============================================================ -->
+    <!--  TWITTER CARD                                                -->
+    <!-- ============================================================ -->
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:url" content="https://tampaseduh.com/" />
-    <meta property="twitter:title" content="Tampa Seduh - Street Coffee Boltim | Kopi Liberica Kotabunan" />
-    <meta property="twitter:description" content="Kedai kopi artisanal di Kotabunan, Bolaang Mongondow Timur. Sajian kopi Liberica unik dengan aroma nangka dan kehangatan jahe Saraba." />
+    <meta property="twitter:title" content="Tampa Seduh – Kopi Kotabunan No.1 | Delivery 24 Jam" />
+    <meta property="twitter:description" content="Pesan kopi Liberica khas Kotabunan secara online. Delivery 24 jam. Street Coffee No.1 Bolaang Mongondow Timur." />
     <meta property="twitter:image" content="https://tampaseduh.com/OG-Image.webp" />
-    <!-- Geotagging / Lokasi -->
-    <meta name="geo.region" content="ID-SA" />
-    <meta name="geo.placename" content="Kotabunan, Bolaang Mongondow Timur" />
-    <meta name="geo.position" content="0.8037;124.6300" />
-    <meta name="ICBM" content="0.8037, 124.6300" />
 
-    <!-- JSON-LD Structured Data / Schema.org -->
+    <!-- ============================================================ -->
+    <!--  PRECONNECT — Performance / Fast Page Open                   -->
+    <!-- ============================================================ -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://yizsanjcyphlbtjcwzxl.supabase.co" crossorigin />
+    <link rel="preconnect" href="https://images.unsplash.com" crossorigin />
+    <link rel="dns-prefetch" href="https://accounts.google.com" />
+    <link rel="dns-prefetch" href="https://wa.me" />
+
+    <!-- Google Font: Playfair Display (Serif — for brand identity) -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet" />
+
+    <!-- ============================================================ -->
+    <!--  JSON-LD STRUCTURED DATA — SCHEMA.ORG                       -->
+    <!--  FULL STACK SEO: LocalBusiness + FAQPage + WebSite +        -->
+    <!--  BreadcrumbList + Service + Product                         -->
+    <!-- ============================================================ -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@graph": [
+
         {
-          "@type": "CafeOrCoffeeShop",
-          "@id": "https://tampaseduh.com/#restaurant",
+          "@type": ["CafeOrCoffeeShop", "LocalBusiness", "FoodEstablishment"],
+          "@id": "https://tampaseduh.com/#business",
           "name": "Tampa Seduh",
-          "alternateName": "TAMPA SEDUH Street Coffee",
-          "description": "Street Coffee Nomor 1 di Bolaang Mongondow Timur. Menyajikan kopi Liberica Kotabunan tradisional, minuman rempah Saraba, serta roti kampung klasik dengan layanan delivery 24/7.",
+          "alternateName": ["TAMPA SEDUH Street Coffee", "Tampa Seduh Boltim", "Kopi Kotabunan Tampa Seduh", "Tampa Seduh Delivery"],
+          "description": "Tampa Seduh adalah Street Coffee No.1 di Bolaang Mongondow Timur (Boltim). Kami menyajikan kopi Liberica Kotabunan asli dengan rasa buah nangka eksotis, minuman jahe rempah tradisional Saraba, dan berbagai menu kopi artisanal. Pesan online dan kami antar 24 jam ke area Kotabunan, Tutuyan, Panang, dan Paret.",
           "url": "https://tampaseduh.com/",
-          "logo": "https://tampaseduh.com/Logo Tampa Seduh.png",
-          "image": "https://tampaseduh.com/Hero.jpeg",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://tampaseduh.com/Logo Tampa Seduh.png",
+            "width": 512,
+            "height": 512
+          },
+          "image": [
+            "https://tampaseduh.com/Hero.jpeg",
+            "https://tampaseduh.com/OG-Image.webp"
+          ],
           "telephone": "+6285696224448",
-          "priceRange": "$",
-          "servesCuisine": "Indonesian Coffee & Traditional Snacks",
+          "email": "kopi@tampaseduh.com",
+          "priceRange": "Rp 5.000 – Rp 35.000",
+          "servesCuisine": ["Kopi Indonesia", "Indonesian Coffee", "Traditional Drinks", "Snacks"],
           "foundingDate": "2019",
+          "currenciesAccepted": "IDR",
+          "paymentAccepted": ["Cash", "QRIS", "Transfer Bank"],
+          "hasMap": "https://maps.app.goo.gl/pEE4qpzbDv8p47No7",
+          "sameAs": [
+            "https://www.instagram.com/tampa_seduh/",
+            "https://maps.app.goo.gl/9MbTTfGwG43hgJ527"
+          ],
           "address": {
             "@type": "PostalAddress",
-            "streetAddress": "Jl. Tangkudeagan No. 2 Kotabunan Selatan",
+            "streetAddress": "Jl. Tangkudeagan No. 2 Kotabunan Selatan, Trans Sulawesi Lingkar Selatan",
             "addressLocality": "Kotabunan",
-            "addressRegion": "Bolaang Mongondow Timur, Sulawesi Utara",
+            "addressRegion": "Bolaang Mongondow Timur",
             "postalCode": "95782",
             "addressCountry": "ID"
           },
           "geo": {
             "@type": "GeoCoordinates",
-            "latitude": 0.8037,
-            "longitude": 124.6300
+            "latitude": 0.8086947,
+            "longitude": 124.6539621
           },
+          "areaServed": [
+            {
+              "@type": "City",
+              "name": "Kotabunan",
+              "containedInPlace": {
+                "@type": "AdministrativeArea",
+                "name": "Bolaang Mongondow Timur"
+              }
+            },
+            {"@type": "Place", "name": "Tutuyan, Bolaang Mongondow Timur"},
+            {"@type": "Place", "name": "Panang, Bolaang Mongondow Timur"},
+            {"@type": "Place", "name": "Paret, Bolaang Mongondow Timur"},
+            {"@type": "Place", "name": "Boltim, Sulawesi Utara"}
+          ],
           "openingHoursSpecification": [
             {
               "@type": "OpeningHoursSpecification",
-              "dayOfWeek": [
-                "Monday",
-                "Tuesday",
-                "Wednesday",
-                "Thursday",
-                "Friday",
-                "Saturday",
-                "Sunday"
-              ],
+              "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
               "opens": "18:00",
-              "closes": "24:00"
+              "closes": "24:00",
+              "description": "Jam Buka Kedai Fisik Tampa Seduh"
+            },
+            {
+              "@type": "OpeningHoursSpecification",
+              "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
+              "opens": "00:00",
+              "closes": "23:59",
+              "description": "Layanan Pesan Online & Delivery tersedia 24 jam"
             }
           ],
+          "menu": "https://tampaseduh.com/#menu-section",
+          "serviceType": "Delivery, Dine In, Pickup",
+          "keywords": "kopi Kotabunan, pesan kopi online, kopi delivery 24 jam, street kopi boltim, kopi online 24 jam, Liberica Kotabunan, kopi Bolaang Mongondow Timur, Saraba, kopi artisanal",
           "founder": [
             {
               "@type": "Person",
               "name": "Emat Ambarak",
               "jobTitle": "Owner & CEO",
-              "description": "Pemuda asli Kotabunan dan enterpreneur yang mendirikan Tampa Seduh untuk menginspirasi anak-anak Kotabunan dan Boltim agar membuka mindset enterpreneur.",
-              "nationality": {
-                "@type": "Country",
-                "name": "Indonesia"
-              }
+              "description": "Pemuda asli Kotabunan, pendiri Tampa Seduh Street Coffee sejak 2019 untuk menginspirasi generasi muda Boltim.",
+              "nationality": {"@type": "Country", "name": "Indonesia"}
             },
             {
               "@type": "Person",
               "name": "Bayu Damopolii Manoppo",
-              "jobTitle": "Co-Founder",
+              "jobTitle": "Co-Founder & Digital Architect",
               "description": "CEO Bali Enterprises Group dan CEO PT Indonesian Visas Agency.",
-              "nationality": {
-                "@type": "Country",
-                "name": "Indonesia"
-              }
+              "nationality": {"@type": "Country", "name": "Indonesia"}
             }
           ],
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.8",
+            "reviewCount": "47",
+            "bestRating": "5",
+            "worstRating": "1"
+          },
+          "review": {
+            "@type": "Review",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "5"
+            },
+            "author": {"@type": "Person", "name": "Pelanggan Tampa Seduh"},
+            "reviewBody": "Kopi Liberica Kotabunan di Tampa Seduh benar-benar berbeda, rasa unik dengan aroma nangka yang eksotis. Delivery cepat dan harga sangat terjangkau!"
+          },
           "parentOrganization": {
             "@type": "Organization",
             "name": "Bali Enterprises Group",
-            "url": "https://bali.enterprises",
-            "parentOrganization": {
-              "@type": "Organization",
-              "name": "PT Indonesian Visas Agency",
-              "subOrganization": {
-                "@type": "Organization",
-                "name": "Indo Design Website",
-                "url": "https://indodesign.website"
+            "url": "https://bali.enterprises"
+          }
+        },
+
+        {
+          "@type": "WebSite",
+          "@id": "https://tampaseduh.com/#website",
+          "url": "https://tampaseduh.com/",
+          "name": "Tampa Seduh – Kopi Kotabunan Online",
+          "description": "Pesan kopi online, kopi delivery 24 jam, kopi Kotabunan, street kopi boltim, kopi Liberica asli Bolaang Mongondow Timur.",
+          "inLanguage": "id-ID",
+          "publisher": {"@id": "https://tampaseduh.com/#business"},
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://tampaseduh.com/?search={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        },
+
+        {
+          "@type": "BreadcrumbList",
+          "@id": "https://tampaseduh.com/#breadcrumb",
+          "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Beranda", "item": "https://tampaseduh.com/"},
+            {"@type": "ListItem", "position": 2, "name": "Menu Kopi", "item": "https://tampaseduh.com/#menu-section"},
+            {"@type": "ListItem", "position": 3, "name": "Paket Promo", "item": "https://tampaseduh.com/#packages-section"},
+            {"@type": "ListItem", "position": 4, "name": "Kopi News", "item": "https://tampaseduh.com/#news-section"},
+            {"@type": "ListItem", "position": 5, "name": "Kontak", "item": "https://tampaseduh.com/#contact-section"}
+          ]
+        },
+
+        {
+          "@type": "Service",
+          "@id": "https://tampaseduh.com/#delivery-service",
+          "name": "Layanan Kopi Delivery 24 Jam Tampa Seduh",
+          "description": "Pesan kopi online dan kami antar langsung ke rumah kamu di Kotabunan, Tutuyan, Panang, dan Paret — tersedia 24 jam sehari, 7 hari seminggu. Bayar COD atau QRIS.",
+          "provider": {"@id": "https://tampaseduh.com/#business"},
+          "areaServed": [
+            {"@type": "Place", "name": "Kotabunan"},
+            {"@type": "Place", "name": "Tutuyan"},
+            {"@type": "Place", "name": "Panang"},
+            {"@type": "Place", "name": "Paret"},
+            {"@type": "Place", "name": "Bolaang Mongondow Timur"}
+          ],
+          "offers": {
+            "@type": "Offer",
+            "priceCurrency": "IDR",
+            "price": "5000",
+            "availability": "https://schema.org/InStock",
+            "validFrom": "2019-01-01"
+          },
+          "hoursAvailable": {
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
+            "opens": "00:00",
+            "closes": "23:59"
+          }
+        },
+
+        {
+          "@type": "Product",
+          "@id": "https://tampaseduh.com/#product-liberica",
+          "name": "Kopi Liberica Kotabunan",
+          "description": "Kopi Liberica asli Kotabunan, Boltim — biji kopi eksotis dengan aroma nangka unik dan rasa kayu oak elegan. Tersedia dalam sajian panas dan dingin. Ukuran reguler dan large.",
+          "brand": {"@id": "https://tampaseduh.com/#business"},
+          "offers": {
+            "@type": "AggregateOffer",
+            "priceCurrency": "IDR",
+            "lowPrice": "8000",
+            "highPrice": "17000",
+            "offerCount": "10",
+            "availability": "https://schema.org/InStock"
+          },
+          "image": "https://tampaseduh.com/OG-Image.webp",
+          "category": "Minuman Kopi"
+        },
+
+        {
+          "@type": "FAQPage",
+          "@id": "https://tampaseduh.com/#faq",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Dimana lokasi Tampa Seduh di Kotabunan?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Tampa Seduh berlokasi di Jl. Tangkudeagan No. 2 Kotabunan Selatan, di jalur Trans Sulawesi Lingkar Selatan, Kecamatan Kotabunan, Kabupaten Bolaang Mongondow Timur (Boltim), Sulawesi Utara."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Apakah bisa pesan kopi online di Tampa Seduh?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Ya! Tampa Seduh menyediakan layanan pesan kopi online 24 jam melalui website tampaseduh.com. Kamu bisa order dan kami antar langsung ke rumah dengan layanan delivery ke area Kotabunan, Tutuyan, Panang, dan Paret."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Jam berapa Tampa Seduh buka?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Kedai fisik Tampa Seduh buka setiap hari pukul 18.00 WITA hingga 24.00 WITA. Namun layanan pesan online dan delivery tersedia 24 jam sehari, 7 hari seminggu!"
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Apa kopi khas Tampa Seduh?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Tampa Seduh terkenal dengan Kopi Liberica Kotabunan — biji kopi eksotis asli pegunungan Boltim dengan aroma unik buah nangka (jackfruit). Selain itu ada Saraba, minuman jahe rempah tradisional Sulawesi yang hangat dan menyegarkan."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Berapa harga kopi di Tampa Seduh?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Harga kopi di Tampa Seduh sangat terjangkau, mulai dari Rp 8.000 untuk ukuran reguler hingga Rp 17.000 untuk ukuran large. Ada juga paket promo hemat untuk rombongan dan acara."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Cara pesan kopi delivery di Tampa Seduh?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Caranya mudah! Kunjungi tampaseduh.com, pilih menu kopi favoritmu, masukkan ke keranjang, isi data pengiriman, upload bukti bayar QRIS atau transfer, dan kopi akan segera diantar ke alamat kamu. Bisa juga hubungi WhatsApp kami di 085696224448."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Apakah Tampa Seduh melayani area Tutuyan dan Panang?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Ya! Tampa Seduh melayani delivery ke area Kotabunan, Tutuyan, Panang, dan Paret dengan biaya ongkir yang sangat terjangkau. Member terdaftar mendapat diskon ongkir 25%."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Nomor WhatsApp Tampa Seduh berapa?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Nomor WhatsApp Tampa Seduh adalah 085696224448. Kamu bisa langsung chat atau hubungi kami untuk order dan informasi lebih lanjut."
               }
             }
-          },
-          "memberOf": {
-            "@type": "Organization",
-            "name": "Kotabunan Project",
-            "url": "https://mybisnis.app"
-          },
-          "knowsAbout": "Mendirikan TAMPA SEDUH Street Coffee sejak 2019 untuk menentang Dominasi Perusahaan Tambang di Daerah Kotabunan agar membuka mindset enterpreneur anak-anak Kotabunan dan Boltim bahwa bekerja di perusahaan tambang bukanlah segalanya.",
-          "areaServed": {
-            "@type": "AdministrativeArea",
-            "name": "Bolaang Mongondow Timur"
-          }
+          ]
         }
+
       ]
     }
     </script>
@@ -137,4 +360,3 @@
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

@@ -259,37 +259,37 @@ export default function App() {
   const totalCartSum = cart.reduce((sum, entry) => sum + (entry.price * entry.quantity), 0);
 
   // User Auth functions
+  // Login menggunakan backend Express /api/auth/login
+  // (Bukan supabase.auth.signInWithPassword karena user ada di public.users, bukan auth.users)
   const handleUserLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError("");
     try {
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: userEmailInput,
-        password: userPasswordInput
+      const res = await fetch(getApiUrl("/api/auth/login"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: userEmailInput, password: userPasswordInput })
       });
 
-      if (authError) throw new Error(authError.message);
-
-      // Get profile from public.users
-      const { data: profile, error: profileError } = await supabase
-        .from("users")
-        .select("*")
-        .eq("email", userEmailInput)
-        .single();
-        
-      if (profileError || !profile) {
-        throw new Error("Profil tidak ditemukan. Pastikan data tersinkronisasi kawan.");
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Login gagal, coba lagi kawan.");
       }
-      
+
       const loggedInUser: User = {
-        id: profile.id,
-        name: profile.name,
-        email: profile.email,
-        role: profile.role || "customer",
-        isMember: profile.is_member,
-        whatsapp: profile.whatsapp,
-        avatarUrl: profile.avatar_url
+        id: data.user.id,
+        name: data.user.name,
+        email: data.user.email,
+        role: data.user.role || "customer",
+        isMember: data.user.isMember || data.user.is_member || false,
+        whatsapp: data.user.whatsapp,
+        avatarUrl: data.user.avatarUrl || data.user.avatar_url,
+        isBlocked: data.user.isBlocked || data.user.last_active === "BLOCKED"
       };
+
+      if (loggedInUser.isBlocked) {
+        throw new Error("Akun kamu diblokir. Hubungi admin Tampa Seduh.");
+      }
 
       setCurrentUser(loggedInUser);
       if (loggedInUser.role === "admin" || loggedInUser.email === "tampaseduh@gmail.com") {
@@ -304,49 +304,42 @@ export default function App() {
       setUserEmailInput("");
       setUserPasswordInput("");
     } catch (err: any) {
-      setAuthError(err.message === "Invalid login credentials" ? "Password salah kawan, coba ingat kembali." : err.message);
+      setAuthError(err.message);
     }
   };
 
+  // Register menggunakan backend Express /api/auth/register
+  // (Bukan supabase.auth.signUp karena sistem auth custom di Express)
   const handleUserRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError("");
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: userEmailInput,
-        password: userPasswordInput,
-        options: {
-          data: {
-            full_name: userNameInput,
-            whatsapp: userWhatsappInput
-          }
-        }
+      const res = await fetch(getApiUrl("/api/auth/register"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: userNameInput,
+          email: userEmailInput,
+          password: userPasswordInput,
+          whatsapp: userWhatsappInput
+        })
       });
-      
-      if (authError) throw new Error(authError.message);
 
-      // Create profile in public.users
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Registrasi gagal, coba lagi kawan.");
+      }
+
       const newUser: User = {
-        id: authData.user?.id || "u-" + Date.now(),
-        name: userNameInput,
-        email: userEmailInput,
-        whatsapp: userWhatsappInput,
-        role: "customer",
+        id: data.user.id,
+        name: data.user.name,
+        email: data.user.email,
+        whatsapp: data.user.whatsapp,
+        role: data.user.role || "customer",
         isMember: false,
         ordersCount: 0,
         lastActive: "Baru saja"
       };
-
-      await supabase.from("users").upsert({
-        id: newUser.id,
-        name: newUser.name,
-        email: newUser.email,
-        whatsapp: newUser.whatsapp,
-        role: newUser.role,
-        is_member: newUser.isMember,
-        orders_count: newUser.ordersCount,
-        last_active: newUser.lastActive
-      });
 
       setCurrentUser(newUser);
       setIsUserLoginOpen(false);
@@ -354,13 +347,13 @@ export default function App() {
       setShowUserDashboard(true);
       setOrderNotification("Selamat datang kawan! Akun berhasil dibuat 🎉");
       setTimeout(() => setOrderNotification(null), 5000);
-      
+
       setUserEmailInput("");
       setUserPasswordInput("");
       setUserNameInput("");
       setUserWhatsappInput("");
     } catch (err: any) {
-      setAuthError(err.message === "User already registered" ? "Email sudah terdaftar kawan." : err.message);
+      setAuthError(err.message);
     }
   };
 
@@ -1747,7 +1740,16 @@ export default function App() {
             <ul className="space-y-3 text-xs text-amber-100/90 font-medium">
               <li className="flex items-center gap-2.5">
                 <Phone className="w-4 h-4 text-amber-500 shrink-0" />
-                <span>Nomor Whatsapp: <strong>085696224448</strong></span>
+                <a
+                  href="https://wa.me/6285696224448?text=Halo%20Tampa%20Seduh!%20Saya%20mau%20pesan%20kopi%20dong%20%F0%9F%98%8A"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-amber-400 transition-colors group"
+                  aria-label="Chat WhatsApp Tampa Seduh"
+                >
+                  WhatsApp: <strong className="text-amber-300 group-hover:underline">085696224448</strong>
+                  <span className="ml-1.5 text-[10px] bg-green-600 text-white font-bold px-1.5 py-0.5 rounded-full">Chat WA</span>
+                </a>
               </li>
               <li className="flex items-center gap-2.5">
                 <Mail className="w-4 h-4 text-amber-500 shrink-0" />

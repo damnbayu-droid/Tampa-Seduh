@@ -148,6 +148,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
     coverImage: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=800",
     category: "Tips Seduh"
   });
+  const [editingNews, setEditingNews] = useState<BlogNews | null>(null);
 
   const [financePeriod, setFinancePeriod] = useState<"Harian" | "Mingguan" | "Bulanan" | "6 Bulan" | "1 Tahun" | "Semua">("Bulanan");
 
@@ -557,6 +558,33 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
     } catch (err: any) {
       console.error(err);
       showNotif("Gagal menghapus berita", "error");
+    }
+  };
+
+  const handleEditNews = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingNews) return;
+    try {
+      const res = await fetchWithAuth(getApiUrl(`/api/news/${editingNews.id}`), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: editingNews.title,
+          content: editingNews.content,
+          author: editingNews.author,
+          coverImage: editingNews.coverImage,
+          category: editingNews.category
+        })
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Gagal mengedit berita");
+      }
+      showNotif("Berita berhasil diperbarui!", "success");
+      setEditingNews(null);
+      setRefreshKey(p => p + 1);
+    } catch (err: any) {
+      showNotif(err.message || "Gagal mengedit berita", "error");
     }
   };
 
@@ -1842,28 +1870,139 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                     </motion.form>
                   )}
 
-                  <div className="space-y-4">
-                    {newsList.map((post) => (
-                      <div key={post.id} className="p-5 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-150 dark:border-zinc-800 shadow-sm flex flex-col sm:flex-row justify-between gap-4">
-                        <div className="flex gap-4">
-                          <img src={post.coverImage} className="w-20 h-20 object-cover rounded-xl" referrerPolicy="no-referrer" />
-                          <div>
-                            <span className="text-[10px] bg-amber-900/10 text-amber-900 dark:text-amber-300 font-bold px-2 py-0.5 rounded-full">{post.category}</span>
-                            <h4 className="font-serif font-bold text-sm text-zinc-900 dark:text-zinc-100 mt-1">{post.title}</h4>
-                            <p className="text-zinc-500 text-xs font-sans line-clamp-1 mt-1">{post.content}</p>
-                          </div>
-                        </div>
-                        <div className="text-right flex flex-col justify-between items-end">
-                          <span className="text-xs text-zinc-400">{post.date}</span>
-                          <div className="flex items-center gap-3">
-                            <span className="text-xs font-bold text-amber-950 dark:text-amber-200">Editor: {post.author}</span>
-                            <button onClick={() => handleDeleteNews(post.id)} className="p-1 hover:bg-red-500/10 text-red-500 rounded-lg transition-colors cursor-pointer" title="Hapus Berita">
-                              <Trash2 className="w-4 h-4" />
+                  {/* Modal Edit Artikel */}
+                  <AnimatePresence>
+                    {editingNews && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+                        onClick={(e) => e.target === e.currentTarget && setEditingNews(null)}
+                      >
+                        <motion.form
+                          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                          onSubmit={handleEditNews}
+                          className="w-full max-w-2xl bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-amber-900/10 p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+                        >
+                          <div className="flex justify-between items-center border-b pb-3 dark:border-zinc-800">
+                            <h4 className="font-serif font-bold text-lg dark:text-amber-50">✏️ Edit Artikel</h4>
+                            <button type="button" onClick={() => setEditingNews(null)} className="p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 cursor-pointer">
+                              <X className="w-5 h-5" />
                             </button>
                           </div>
-                        </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Judul Artikel</label>
+                              <input
+                                type="text"
+                                value={editingNews.title}
+                                onChange={(e) => setEditingNews({ ...editingNews, title: e.target.value })}
+                                className="w-full text-xs px-3 py-2 border dark:bg-zinc-800 dark:border-zinc-700 rounded-xl"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Kategori</label>
+                              <select
+                                value={editingNews.category}
+                                onChange={(e) => setEditingNews({ ...editingNews, category: e.target.value as any })}
+                                className="w-full text-xs px-3 py-2 border dark:bg-zinc-800 dark:border-zinc-700 rounded-xl"
+                              >
+                                <option value="Petani">Petani</option>
+                                <option value="Biji Kopi">Biji Kopi</option>
+                                <option value="Tips Seduh">Tips Seduh</option>
+                                <option value="Kabar Kedai">Kabar Kedai</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Cover Foto (URL)</label>
+                              <input
+                                type="text"
+                                value={editingNews.coverImage}
+                                onChange={(e) => setEditingNews({ ...editingNews, coverImage: e.target.value })}
+                                className="w-full text-xs px-3 py-2 border dark:bg-zinc-800 dark:border-zinc-700 rounded-xl"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Penulis</label>
+                              <input
+                                type="text"
+                                value={editingNews.author}
+                                onChange={(e) => setEditingNews({ ...editingNews, author: e.target.value })}
+                                className="w-full text-xs px-3 py-2 border dark:bg-zinc-800 dark:border-zinc-700 rounded-xl"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Isi Artikel</label>
+                            <textarea
+                              rows={6}
+                              value={editingNews.content}
+                              onChange={(e) => setEditingNews({ ...editingNews, content: e.target.value })}
+                              className="w-full text-xs p-3 border dark:bg-zinc-800 dark:border-zinc-700 rounded-xl"
+                              required
+                            />
+                          </div>
+                          {editingNews.coverImage && (
+                            <img src={editingNews.coverImage} alt="preview" className="w-full h-32 object-cover rounded-xl opacity-80" referrerPolicy="no-referrer" />
+                          )}
+                          <div className="flex justify-end gap-2 text-xs pt-2 border-t dark:border-zinc-800">
+                            <button type="button" onClick={() => setEditingNews(null)} className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 rounded-xl cursor-pointer">Batal</button>
+                            <button type="submit" className="px-4 py-2 bg-amber-900 text-amber-50 font-bold rounded-xl cursor-pointer">Simpan Perubahan</button>
+                          </div>
+                        </motion.form>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <div className="space-y-4">
+                    {newsList.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-12 bg-zinc-50 dark:bg-zinc-900/40 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl">
+                        <BookOpen className="w-8 h-8 text-zinc-300 mb-2" />
+                        <p className="text-sm text-zinc-400 font-medium">Belum ada artikel. Buat artikel pertama!</p>
                       </div>
-                    ))}
+                    ) : (
+                      newsList.map((post) => (
+                        <div key={post.id} className="p-5 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-150 dark:border-zinc-800 shadow-sm flex flex-col sm:flex-row justify-between gap-4">
+                          <div className="flex gap-4">
+                            <img
+                              src={post.coverImage || "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=200"}
+                              className="w-20 h-20 object-cover rounded-xl flex-shrink-0"
+                              referrerPolicy="no-referrer"
+                              onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=200"; }}
+                            />
+                            <div className="min-w-0">
+                              <span className="text-[10px] bg-amber-900/10 text-amber-900 dark:text-amber-300 font-bold px-2 py-0.5 rounded-full">{post.category}</span>
+                              <h4 className="font-serif font-bold text-sm text-zinc-900 dark:text-zinc-100 mt-1 line-clamp-2">{post.title}</h4>
+                              <p className="text-zinc-500 text-xs font-sans line-clamp-2 mt-1">{post.content}</p>
+                            </div>
+                          </div>
+                          <div className="text-right flex flex-col justify-between items-end flex-shrink-0">
+                            <span className="text-xs text-zinc-400">{post.date}</span>
+                            <div className="flex items-center gap-2 mt-2">
+                              <span className="text-xs font-bold text-amber-950 dark:text-amber-200 hidden sm:block">by {post.author}</span>
+                              <button
+                                onClick={() => setEditingNews({ ...post })}
+                                className="p-1.5 hover:bg-amber-100 dark:hover:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-lg transition-colors cursor-pointer"
+                                title="Edit Artikel"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteNews(post.id)}
+                                className="p-1.5 hover:bg-red-500/10 text-red-500 rounded-lg transition-colors cursor-pointer"
+                                title="Hapus Artikel"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               )}

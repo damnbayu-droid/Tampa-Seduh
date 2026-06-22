@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset
+  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
+  xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+    http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+
+  <!-- ============================================================ -->
+  <!-- HALAMAN UTAMA / HOMEPAGE                                     -->
+  <!-- Prioritas tertinggi — landing page utama                     -->
+  <!-- ============================================================ -->
+  <url>
+    <loc>https://tampaseduh.com/</loc>
+    <lastmod>2026-06-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://tampaseduh.com/OG-Image.webp</image:loc>
+      <image:title>Tampa Seduh – Street Coffee Kotabunan Boltim</image:title>
+      <image:caption>Kedai Kopi No.1 di Kotabunan, Bolaang Mongondow Timur</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://tampaseduh.com/Hero.jpeg</image:loc>
+      <image:title>Tampa Seduh Hero – Kopi Kotabunan Delivery 24 Jam</image:title>
+    </image:image>
+  </url>
+
+  <!-- ============================================================ -->
+  <!-- SECTION: MENU KOPI                                           -->
+  <!-- ============================================================ -->
+  <url>
+    <loc>https://tampaseduh.com/#menu-section</loc>
+    <lastmod>2026-06-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- ============================================================ -->
+  <!-- SECTION: PAKET PROMO                                         -->
+  <!-- ============================================================ -->
+  <url>
+    <loc>https://tampaseduh.com/#packages-section</loc>
+    <lastmod>2026-06-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- ============================================================ -->
+  <!-- SECTION: KOPI NEWS & BUDAYA                                  -->
+  <!-- Diupdate sering sesuai frekuensi artikel                     -->
+  <!-- ============================================================ -->
+  <url>
+    <loc>https://tampaseduh.com/#news-section</loc>
+    <lastmod>2026-06-23</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- ============================================================ -->
+  <!-- SECTION: TENTANG KAMI / FOUNDERS                             -->
+  <!-- ============================================================ -->
+  <url>
+    <loc>https://tampaseduh.com/#about-section</loc>
+    <lastmod>2026-06-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <!-- ============================================================ -->
+  <!-- SECTION: KONTAK & LOKASI                                     -->
+  <!-- ============================================================ -->
+  <url>
+    <loc>https://tampaseduh.com/#contact-section</loc>
+    <lastmod>2026-06-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- ============================================================ -->
+  <!-- HALAMAN PUBLIK: INVOICE                                      -->
+  <!-- ============================================================ -->
+  <url>
+    <loc>https://tampaseduh.com/invoice</loc>
+    <lastmod>2026-06-23</lastmod>
+    <changefreq>never</changefreq>
+    <priority>0.3</priority>
+  </url>
+
+</urlset>

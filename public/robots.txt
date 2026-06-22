@@ -1,0 +1,70 @@
+# ================================================================
+# robots.txt — Tampa Seduh
+# Website: https://tampaseduh.com
+# Updated: 2026-06-23
+# ================================================================
+
+# --- Allow all search engine crawlers ---
+User-agent: *
+Allow: /
+Allow: /sitemap.xml
+Allow: /manifest.json
+
+# --- Block admin and API paths from being indexed ---
+Disallow: /admin
+Disallow: /admin/
+Disallow: /api/
+Disallow: /api/*
+Disallow: /auth/
+Disallow: /auth/callback
+
+# --- Block error pages and internal routes ---
+Disallow: /404
+Disallow: /*?*admin*
+Disallow: /*?*token*
+Disallow: /*?*session*
+
+# --- Sitemap location ---
+Sitemap: https://tampaseduh.com/sitemap.xml
+
+# ================================================================
+# Google Bot specific — Enhanced crawl hints
+# ================================================================
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 1
+
+# ================================================================
+# Google Image Bot — Allow product & hero images
+# ================================================================
+User-agent: Googlebot-Image
+Allow: /
+Allow: /*.webp
+Allow: /*.jpg
+Allow: /*.jpeg
+Allow: /*.png
+
+# ================================================================
+# Bing / Yahoo
+# ================================================================
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 2
+
+# ================================================================
+# Block bad bots and scrapers
+# ================================================================
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: ia_archiver
+Disallow: /api/

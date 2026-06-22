@@ -1998,21 +1998,54 @@ app.post("/api/auth/login", authLimiter, async (req, res) => {
       return res.json({ success: true, user: adminUser });
     }
 
-    // 2. Cek Customer
-    const user = registeredUsers.find(u => u.email === email);
+    // 2. Cek Customer — cari di in-memory cache dulu
+    let user = registeredUsers.find(u => u.email === email);
+
+    // 2b. Fallback: query Supabase langsung jika cache kosong (cold start Vercel)
+    if (!user && supabaseUrl && supabaseAnonKey) {
+      try {
+        const { data: dbUser, error } = await supabase
+          .from("users")
+          .select("*")
+          .eq("email", email)
+          .single();
+        if (!error && dbUser) {
+          user = {
+            id: dbUser.id,
+            name: dbUser.name,
+            email: dbUser.email,
+            password: dbUser.password,
+            role: dbUser.role,
+            isMember: dbUser.is_member,
+            ordersCount: dbUser.orders_count,
+            lastActive: dbUser.last_active,
+            whatsapp: dbUser.whatsapp,
+            isBlocked: dbUser.last_active === "BLOCKED"
+          };
+          // Tambahkan ke cache agar request berikutnya lebih cepat
+          registeredUsers.push(user);
+        }
+      } catch (sbErr) {
+        console.error("Supabase fallback query error:", sbErr);
+      }
+    }
+
     if (!user) {
       return res.status(401).json({ error: "Akun tidak ditemukan kawan. Silakan daftar dulu." });
     }
 
-    // 3. Lazy Bcrypt Migration
-    // Deteksi apakah password sudah berupa bcrypt hash atau masih plain text
+    // 3. Cek blokir
+    if (user.isBlocked || user.lastActive === "BLOCKED") {
+      return res.status(403).json({ error: "Akun kamu diblokir. Hubungi admin Tampa Seduh." });
+    }
+
+    // 4. Lazy Bcrypt Migration
     const storedPassword = user.password || "";
     const isBcryptHash = storedPassword.startsWith("$2a$") || storedPassword.startsWith("$2b$");
 
     let passwordValid = false;
 
     if (isBcryptHash) {
-      // Password sudah di-hash: gunakan bcrypt.compare
       passwordValid = await bcrypt.compare(password, storedPassword);
     } else {
       // Password masih plain text: verifikasi lama
@@ -2022,7 +2055,6 @@ app.post("/api/auth/login", authLimiter, async (req, res) => {
         // Auto-upgrade ke bcrypt setelah login berhasil (lazy migration)
         const newHash = await bcrypt.hash(password, 12);
         user.password = newHash;
-        // Update di Supabase secara non-blocking
         writeSupabase("users", "update", { id: user.id }, { password: newHash });
         console.log(`[Security] Password user ${user.email} di-upgrade ke bcrypt hash.`);
       }
@@ -2260,44 +2292,126 @@ app.get("/api/emails", requireAdmin, (req, res) => {
 });
 
 // 7. Blog/News API
-app.get("/api/news", (req, res) => {
-  res.json(blogNews);
+// GET: Selalu ambil dari Supabase untuk data terbaru
+app.get("/api/news", async (req, res) => {
+  try {
+    if (supabaseUrl && supabaseAnonKey) {
+      const { data, error } = await supabase
+        .from("blog_news")
+        .select("*")
+        .order("date", { ascending: false });
+      if (!error && data && data.length > 0) {
+        // Sync in-memory cache
+        blogNews = data.map(n => ({
+          id: n.id, title: n.title, slug: n.slug, content: n.content,
+          author: n.author, date: n.date, coverImage: n.cover_image, category: n.category
+        }));
+        return res.json(blogNews);
+      }
+    }
+    // Fallback: kembalikan cache in-memory
+    res.json(blogNews);
+  } catch (err) {
+    res.json(blogNews);
+  }
 });
 
-app.post("/api/news", requireAdmin, (req, res) => {
+// POST: Tambah artikel baru
+app.post("/api/news", requireAdmin, async (req, res) => {
+  const timestamp = Date.now();
   const newPost: BlogNews = {
     ...req.body,
-    id: "news-" + (blogNews.length + 1),
-    slug: req.body.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+    id: "news-" + timestamp,
+    slug: req.body.title
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, ""),
     date: new Date().toISOString().split('T')[0]
   };
+
+  // Tulis langsung ke Supabase dan tunggu hasilnya
+  try {
+    const { error } = await supabase.from('blog_news').insert({
+      id: newPost.id,
+      title: newPost.title,
+      slug: newPost.slug,
+      content: newPost.content,
+      author: newPost.author,
+      date: newPost.date,
+      cover_image: newPost.coverImage,
+      category: newPost.category
+    });
+    if (error) throw error;
+  } catch (err: any) {
+    console.error('Gagal insert berita ke Supabase:', err.message);
+    return res.status(500).json({ error: 'Gagal menyimpan berita: ' + err.message });
+  }
+
+  // Update in-memory cache
   blogNews.unshift(newPost);
-
-  // Background write to Supabase
-  writeSupabase('blog_news', 'insert', {}, {
-    id: newPost.id,
-    title: newPost.title,
-    slug: newPost.slug,
-    content: newPost.content,
-    author: newPost.author,
-    date: newPost.date,
-    cover_image: newPost.coverImage,
-    category: newPost.category
-  });
-
   res.status(201).json(newPost);
 });
 
-app.delete("/api/news/:id", requireAdmin, (req, res) => {
+// PUT: Edit artikel yang sudah ada
+app.put("/api/news/:id", requireAdmin, async (req, res) => {
   const { id } = req.params;
-  const idx = blogNews.findIndex((n) => n.id === id);
-  if (idx !== -1) {
-    blogNews.splice(idx, 1);
-    writeSupabase('blog_news', 'delete', { id }, {});
-    res.json({ success: true });
-  } else {
-    res.status(404).json({ error: "Berita tidak ditemukan" });
+  const { title, content, author, coverImage, category } = req.body;
+
+  const updatedSlug = title
+    ? title.toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "")
+    : undefined;
+
+  try {
+    const updateData: any = {};
+    if (title !== undefined) { updateData.title = title; updateData.slug = updatedSlug; }
+    if (content !== undefined) updateData.content = content;
+    if (author !== undefined) updateData.author = author;
+    if (coverImage !== undefined) updateData.cover_image = coverImage;
+    if (category !== undefined) updateData.category = category;
+
+    const { error } = await supabase.from('blog_news').update(updateData).eq('id', id);
+    if (error) throw error;
+  } catch (err: any) {
+    console.error('Gagal update berita ke Supabase:', err.message);
+    return res.status(500).json({ error: 'Gagal mengupdate berita: ' + err.message });
   }
+
+  // Update in-memory cache
+  const idx = blogNews.findIndex(n => n.id === id);
+  if (idx !== -1) {
+    blogNews[idx] = {
+      ...blogNews[idx],
+      ...(title && { title, slug: updatedSlug! }),
+      ...(content && { content }),
+      ...(author && { author }),
+      ...(coverImage && { coverImage }),
+      ...(category && { category })
+    };
+  }
+
+  res.json({ success: true, post: blogNews[idx] || null });
+});
+
+// DELETE: Hapus artikel
+app.delete("/api/news/:id", requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { error } = await supabase.from('blog_news').delete().eq('id', id);
+    if (error) throw error;
+  } catch (err: any) {
+    console.error('Gagal hapus berita dari Supabase:', err.message);
+    return res.status(500).json({ error: 'Gagal menghapus: ' + err.message });
+  }
+  // Update in-memory cache
+  const idx = blogNews.findIndex(n => n.id === id);
+  if (idx !== -1) blogNews.splice(idx, 1);
+  res.json({ success: true });
 });
 
 // 8. Financial Accounting API (Real Data Aggregation)
