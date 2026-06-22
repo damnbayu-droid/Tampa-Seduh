@@ -4,7 +4,7 @@ import {
   Sparkles, FileClock, Wallet, Mail, BookOpen, Plus, Trash2, Edit2, CheckCircle, RefreshCw, Moon, Sun, ArrowLeft, X, Lock, Receipt, Download, PanelLeftOpen, PanelLeftClose, ImageIcon, Calculator
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { MenuItem, CoffeePackage, Order, AuditLog, User, BlogNews, EmailLog, FinancialSummary, ProfitDashboard, GalleryPhoto, Pamflet } from "../types";
+import { MenuItem, CoffeePackage, Order, AuditLog, User, BlogNews, EmailLog, FinancialSummary, ProfitDashboard, GalleryPhoto, Pamflet, CustomerPhoto } from "../types";
 import { getApiUrl } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import AdminRecipeLab from "./AdminRecipeLab";
@@ -154,7 +154,8 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   // Media Panel state
   const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhoto[]>([]);
   const [pamfletList, setPamfletList] = useState<Pamflet[]>([]);
-  const [mediaSubTab, setMediaSubTab] = useState<"gallery" | "pamflet">("gallery");
+  const [customerPhotos, setCustomerPhotos] = useState<CustomerPhoto[]>([]);
+  const [mediaSubTab, setMediaSubTab] = useState<"gallery" | "pamflet" | "customer">("gallery");
   const [isUploadingGallery, setIsUploadingGallery] = useState(false);
   const [isUploadingPamflet, setIsUploadingPamflet] = useState(false);
   const [isUploadingEditNewsImg, setIsUploadingEditNewsImg] = useState(false);
@@ -165,7 +166,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      const [mRes, pRes, oRes, uRes, lRes, eRes, nRes, fRes, aiRes, profitRes, galRes, pamRes] = await Promise.all([
+      const [mRes, pRes, oRes, uRes, lRes, eRes, nRes, fRes, aiRes, profitRes, galRes, pamRes, custRes] = await Promise.all([
         fetchWithAuth(getApiUrl("/api/menu")),
         fetchWithAuth(getApiUrl("/api/packages")),
         fetchWithAuth(getApiUrl("/api/orders")),
@@ -177,7 +178,8 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
         fetchWithAuth(getApiUrl("/api/ai-config")),
         fetchWithAuth(getApiUrl("/api/profit/dashboard")),
         fetch(getApiUrl("/api/gallery")),
-        fetch(getApiUrl("/api/pamflets"))
+        fetch(getApiUrl("/api/pamflets")),
+        fetchWithAuth(getApiUrl("/api/customer-photos/all"))
       ]);
 
 
@@ -193,6 +195,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
       if (profitRes.ok) setProfitDashboard(await profitRes.json());
       if (galRes.ok) setGalleryPhotos(await galRes.json());
       if (pamRes.ok) setPamfletList(await pamRes.json());
+      if (custRes.ok) setCustomerPhotos(await custRes.json());
       
       const chatsRes = await fetchWithAuth(getApiUrl("/api/chat-admin/sessions"));
       if (chatsRes.ok) setChatSessions(await chatsRes.json());
@@ -635,6 +638,43 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
       showNotif('Pamflet dihapus', 'success');
     } catch (err: any) {
       showNotif('Gagal hapus pamflet: ' + err.message, 'error');
+    }
+  };
+
+  // Customer Photo — Approve
+  const handleApproveCustomerPhoto = async (id: string) => {
+    try {
+      const res = await fetchWithAuth(getApiUrl(`/api/customer-photos/${id}/approve`), { method: 'PATCH' });
+      if (!res.ok) throw new Error('Gagal approve');
+      setCustomerPhotos(prev => prev.map(p => p.id === id ? { ...p, status: 'approved' } : p));
+      showNotif('Foto disetujui dan akan tampil di website!', 'success');
+    } catch (err: any) {
+      showNotif('Gagal approve: ' + err.message, 'error');
+    }
+  };
+
+  // Customer Photo — Reject
+  const handleRejectCustomerPhoto = async (id: string) => {
+    try {
+      const res = await fetchWithAuth(getApiUrl(`/api/customer-photos/${id}/reject`), { method: 'PATCH' });
+      if (!res.ok) throw new Error('Gagal reject');
+      setCustomerPhotos(prev => prev.map(p => p.id === id ? { ...p, status: 'rejected' } : p));
+      showNotif('Foto ditolak.', 'success');
+    } catch (err: any) {
+      showNotif('Gagal reject: ' + err.message, 'error');
+    }
+  };
+
+  // Customer Photo — Delete
+  const handleDeleteCustomerPhoto = async (id: string) => {
+    if (!confirm('Hapus foto customer ini secara permanen?')) return;
+    try {
+      const res = await fetchWithAuth(getApiUrl(`/api/customer-photos/${id}`), { method: 'DELETE' });
+      if (!res.ok) throw new Error('Gagal hapus');
+      setCustomerPhotos(prev => prev.filter(p => p.id !== id));
+      showNotif('Foto customer dihapus.', 'success');
+    } catch (err: any) {
+      showNotif('Gagal hapus: ' + err.message, 'error');
     }
   };
 
@@ -2189,12 +2229,20 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                   <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-sm">
                     <div className="flex items-center justify-between mb-4 border-b pb-3 border-zinc-100 dark:border-zinc-800">
                       <h3 className="font-serif font-bold text-lg text-amber-950 dark:text-amber-50">📸 Foto & Pamflet</h3>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
                         <button onClick={() => setMediaSubTab("gallery")} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${mediaSubTab === "gallery" ? "bg-amber-900 text-amber-50" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300"}`}>
                           🖼️ Foto Kolase
                         </button>
                         <button onClick={() => setMediaSubTab("pamflet")} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${mediaSubTab === "pamflet" ? "bg-amber-900 text-amber-50" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300"}`}>
                           📋 Pamflet / Brosur
+                        </button>
+                        <button onClick={() => setMediaSubTab("customer")} className={`relative px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${mediaSubTab === "customer" ? "bg-amber-900 text-amber-50" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300"}`}>
+                          😊 Customer Emotions
+                          {customerPhotos.filter(p => p.status === 'pending').length > 0 && (
+                            <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">
+                              {customerPhotos.filter(p => p.status === 'pending').length}
+                            </span>
+                          )}
                         </button>
                       </div>
                     </div>
@@ -2286,6 +2334,85 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                           </div>
                         )}
                         <p className="text-[10px] text-zinc-400 text-center">{pamfletList.length} pamflet tersimpan • Klik hover untuk opsi hapus</p>
+                      </div>
+                    )}
+
+                    {/* Customer Emotions Sub-Tab */}
+                    {mediaSubTab === "customer" && (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-bold text-zinc-800 dark:text-zinc-200">Customer Emotions — Foto dari Pelanggan</p>
+                            <p className="text-xs text-zinc-400">Foto yang diupload customer. Approve agar tampil di website, Reject untuk menyembunyikan.</p>
+                          </div>
+                          <div className="flex gap-2 text-xs">
+                            <span className="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400 rounded-lg font-bold">
+                              {customerPhotos.filter(p => p.status === 'pending').length} Pending
+                            </span>
+                            <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 rounded-lg font-bold">
+                              {customerPhotos.filter(p => p.status === 'approved').length} Live
+                            </span>
+                          </div>
+                        </div>
+
+                        {customerPhotos.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center py-12 bg-zinc-50 dark:bg-zinc-900/40 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl">
+                            <span className="text-4xl mb-2">😊</span>
+                            <p className="text-sm text-zinc-400 font-medium">Belum ada foto dari customer.</p>
+                            <p className="text-xs text-zinc-400 mt-1">Foto akan muncul di sini setelah customer upload dari website.</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {/* Group by status: pending first */}
+                            {['pending', 'approved', 'rejected'].map(status => {
+                              const filtered = customerPhotos.filter(p => p.status === status);
+                              if (filtered.length === 0) return null;
+                              return (
+                                <div key={status}>
+                                  <div className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-md inline-block mb-2 ${
+                                    status === 'pending' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' :
+                                    status === 'approved' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
+                                    'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                                  }`}>
+                                    {status === 'pending' ? '⏳ Menunggu Persetujuan' : status === 'approved' ? '✅ Ditampilkan di Website' : '❌ Ditolak'}
+                                    {' '}({filtered.length})
+                                  </div>
+                                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                                    {filtered.map((photo) => (
+                                      <div key={photo.id} className="relative group rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
+                                        <img src={photo.url} alt={photo.caption || photo.user_name}
+                                          className="w-full aspect-square object-cover" />
+                                        <div className="p-2 space-y-1">
+                                          <p className="text-[10px] font-bold text-zinc-700 dark:text-zinc-300 truncate">{photo.user_name}</p>
+                                          {photo.caption && <p className="text-[9px] text-zinc-400 truncate italic">"{photo.caption}"</p>}
+                                          <p className="text-[9px] text-zinc-400">{new Date(photo.created_at).toLocaleDateString('id-ID')}</p>
+                                        </div>
+                                        <div className="flex gap-1 p-2 pt-0">
+                                          {photo.status !== 'approved' && (
+                                            <button onClick={() => handleApproveCustomerPhoto(photo.id)}
+                                              className="flex-1 py-1 bg-green-600 hover:bg-green-700 text-white text-[9px] font-black rounded-lg cursor-pointer transition-all">
+                                              ✓ Approve
+                                            </button>
+                                          )}
+                                          {photo.status !== 'rejected' && (
+                                            <button onClick={() => handleRejectCustomerPhoto(photo.id)}
+                                              className="flex-1 py-1 bg-zinc-400 hover:bg-zinc-500 text-white text-[9px] font-black rounded-lg cursor-pointer transition-all">
+                                              ✗ Tolak
+                                            </button>
+                                          )}
+                                          <button onClick={() => handleDeleteCustomerPhoto(photo.id)}
+                                            className="py-1 px-2 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 text-red-600 text-[9px] font-black rounded-lg cursor-pointer transition-all">
+                                            <Trash2 className="w-3 h-3" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

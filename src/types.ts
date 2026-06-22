@@ -236,4 +236,18 @@ export interface Pamflet {
   created_at: string;
 }
 
+export interface CustomerPhoto {
+  id: string;
+  user_id: string;
+  user_name: string;
+  user_email: string;
+  url: string;
+  filename: string;
+  caption?: string;
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
+  reviewed_at?: string;
+  reviewed_by?: string;
+}
+
 

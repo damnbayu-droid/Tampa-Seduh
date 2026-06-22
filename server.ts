@@ -2009,6 +2009,129 @@ app.delete("/api/pamflets/:filename", requireAdmin, async (req, res) => {
 });
 
 
+// ============================================================
+// CUSTOMER PHOTOS API — Customer Emotions Upload & Approval
+// ============================================================
+
+// GET /api/customer-photos — Public: hanya yang approved
+app.get("/api/customer-photos", async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("customer_photos")
+      .select("*")
+      .eq("status", "approved")
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    res.json(data || []);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/customer-photos/all — Admin: semua status
+app.get("/api/customer-photos/all", requireAdmin, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("customer_photos")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    res.json(data || []);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/customer-photos — Customer upload (harus login)
+app.post("/api/customer-photos", async (req, res) => {
+  const { base64Data, fileName, caption, userId, userName, userEmail } = req.body;
+  if (!base64Data || !fileName || !userId) {
+    return res.status(400).json({ error: "Data tidak lengkap" });
+  }
+  try {
+    const cleanBase64 = base64Data.replace(/^data:image\/\w+;base64,/, "");
+    const fileBuffer = Buffer.from(cleanBase64, "base64");
+    const uniqueName = `customer-${Date.now()}-${fileName.replace(/[^a-zA-Z0-9.]/g, "_")}`;
+
+    const { error: storageErr } = await supabase.storage
+      .from("customer-photos")
+      .upload(uniqueName, fileBuffer, { contentType: "image/webp", upsert: false });
+    if (storageErr) throw storageErr;
+
+    const { data: urlData } = supabase.storage.from("customer-photos").getPublicUrl(uniqueName);
+
+    const { data: photoData, error: dbErr } = await supabase
+      .from("customer_photos")
+      .insert({
+        user_id: userId,
+        user_name: userName || "Anonymous",
+        user_email: userEmail || "",
+        url: urlData.publicUrl,
+        filename: uniqueName,
+        caption: caption || null,
+        status: "pending",
+      })
+      .select()
+      .single();
+    if (dbErr) throw dbErr;
+
+    res.json({ success: true, photo: photoData });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/customer-photos/:id/approve — Admin approve
+app.patch("/api/customer-photos/:id/approve", requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { data, error } = await supabase
+      .from("customer_photos")
+      .update({ status: "approved", reviewed_at: new Date().toISOString(), reviewed_by: "admin" })
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) throw error;
+    res.json({ success: true, photo: data });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/customer-photos/:id/reject — Admin reject
+app.patch("/api/customer-photos/:id/reject", requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { data, error } = await supabase
+      .from("customer_photos")
+      .update({ status: "rejected", reviewed_at: new Date().toISOString(), reviewed_by: "admin" })
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) throw error;
+    res.json({ success: true, photo: data });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/customer-photos/:id — Admin delete
+app.delete("/api/customer-photos/:id", requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { data: photo } = await supabase.from("customer_photos").select("filename").eq("id", id).single();
+    if (photo?.filename) {
+      await supabase.storage.from("customer-photos").remove([photo.filename]);
+    }
+    const { error } = await supabase.from("customer_photos").delete().eq("id", id);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 app.get("/api/logs", requireAdmin, (req, res) => {
   res.json(auditLogs);
 });

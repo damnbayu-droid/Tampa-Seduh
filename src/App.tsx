@@ -6,7 +6,7 @@ import {
   Eye, EyeOff, Loader2, Instagram, BookOpen
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { MenuItem, CoffeePackage, CartItem, User, GalleryPhoto, Pamflet } from "./types";
+import { MenuItem, CoffeePackage, CartItem, User, GalleryPhoto, Pamflet, CustomerPhoto } from "./types";
 import { supabase } from "./lib/supabase";
 
 const CoffeeBean = ({ className }: { className?: string }) => (
@@ -66,8 +66,13 @@ export default function App() {
   // Media Gallery & Pamflet State
   const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhoto[]>([]);
   const [pamfletList, setPamfletList] = useState<Pamflet[]>([]);
+  const [customerPhotos, setCustomerPhotos] = useState<CustomerPhoto[]>([]);
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [pamfletIndex, setPamfletIndex] = useState(0);
+  const [customerGalleryIndex, setCustomerGalleryIndex] = useState(0);
+  const [isUploadingCustomerPhoto, setIsUploadingCustomerPhoto] = useState(false);
+  const [customerPhotoCaption, setCustomerPhotoCaption] = useState("");
+  const [customerUploadSuccess, setCustomerUploadSuccess] = useState(false);
   useEffect(() => {
     const handleError = (e: ErrorEvent) => setRenderError(e.message);
     window.addEventListener('error', handleError);
@@ -199,17 +204,67 @@ export default function App() {
     }
   };
 
-  // Fetch gallery and pamflets for frontend display
+  // Fetch gallery, pamflets, and approved customer photos for frontend display
   const loadMediaData = async () => {
     try {
-      const [galRes, pamRes] = await Promise.all([
+      const [galRes, pamRes, custRes] = await Promise.all([
         fetch(getApiUrl("/api/gallery")),
-        fetch(getApiUrl("/api/pamflets"))
+        fetch(getApiUrl("/api/pamflets")),
+        fetch(getApiUrl("/api/customer-photos"))
       ]);
       if (galRes.ok) setGalleryPhotos(await galRes.json());
       if (pamRes.ok) setPamfletList(await pamRes.json());
+      if (custRes.ok) setCustomerPhotos(await custRes.json());
     } catch (err) {
       console.warn("Gagal load media:", err);
+    }
+  };
+
+  // Customer upload handler
+  const handleCustomerPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentUser) return;
+    setIsUploadingCustomerPhoto(true);
+    setCustomerUploadSuccess(false);
+    try {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const img = new Image();
+        img.src = reader.result as string;
+        img.onload = async () => {
+          const canvas = document.createElement('canvas');
+          const max = 1200;
+          const ratio = Math.min(max / img.width, max / img.height, 1);
+          canvas.width = Math.round(img.width * ratio);
+          canvas.height = Math.round(img.height * ratio);
+          canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const webpData = canvas.toDataURL('image/webp', 0.85);
+
+          const res = await fetch(getApiUrl('/api/customer-photos'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              base64Data: webpData,
+              fileName: file.name.replace(/\.[^/.]+$/, '') + '.webp',
+              caption: customerPhotoCaption,
+              userId: currentUser.id,
+              userName: currentUser.name,
+              userEmail: currentUser.email,
+            })
+          });
+
+          if (!res.ok) throw new Error('Upload gagal');
+          setCustomerUploadSuccess(true);
+          setCustomerPhotoCaption('');
+          setIsUploadingCustomerPhoto(false);
+        };
+        img.onerror = () => { setIsUploadingCustomerPhoto(false); };
+      };
+      reader.onerror = () => { setIsUploadingCustomerPhoto(false); };
+    } catch (err) {
+      console.error('Upload customer photo error:', err);
+      setIsUploadingCustomerPhoto(false);
     }
   };
 
@@ -1685,6 +1740,111 @@ export default function App() {
         </section>
       )}
 
+      {/* === SECTION CUSTOMER EMOTIONS === */}
+      <section id="customer-emotions" className="py-16 bg-white dark:bg-zinc-900 border-t border-amber-900/5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-[0.35em] text-[#8B5E3C] dark:text-amber-400 opacity-80 block mb-1">MOMEN KAWAN SETIA</span>
+              <h2 className="text-3xl sm:text-5xl font-serif font-black tracking-tight text-[#2D1B0D] dark:text-amber-50 leading-none">Customer Emotions</h2>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-2">Foto keren dari pelanggan setia Tampa Seduh ☕</p>
+            </div>
+            {/* Upload area — only for logged-in customers */}
+            {currentUser && !currentUser.role?.includes('admin') && (
+              <div className="shrink-0 w-full sm:w-auto">
+                {customerUploadSuccess ? (
+                  <div className="flex items-center gap-2 px-4 py-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-2xl text-green-700 dark:text-green-400 text-sm font-bold">
+                    <span>✅</span>
+                    <div>
+                      <p>Foto terkirim! Menunggu persetujuan admin.</p>
+                      <button onClick={() => setCustomerUploadSuccess(false)} className="text-xs underline cursor-pointer mt-0.5">Upload lagi</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-amber-50 dark:bg-zinc-800 border border-amber-200 dark:border-zinc-700 rounded-2xl p-4 space-y-2 w-full sm:w-72">
+                    <p className="text-xs font-bold text-amber-900 dark:text-amber-400">📸 Bagikan momen kamu!</p>
+                    <input
+                      type="text"
+                      placeholder="Caption (opsional)"
+                      value={customerPhotoCaption}
+                      onChange={e => setCustomerPhotoCaption(e.target.value)}
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-amber-200 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                    />
+                    <input type="file" id="customer-photo-upload" accept="image/*" className="hidden"
+                      onChange={handleCustomerPhotoUpload} disabled={isUploadingCustomerPhoto} />
+                    <label htmlFor="customer-photo-upload"
+                      className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer transition-all
+                        ${isUploadingCustomerPhoto
+                          ? 'bg-zinc-200 dark:bg-zinc-700 text-zinc-400 pointer-events-none'
+                          : 'bg-gradient-to-r from-amber-900 to-amber-950 text-amber-50 hover:from-amber-800 hover:to-amber-900 shadow-sm'}`}>
+                      {isUploadingCustomerPhoto ? (
+                        <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Mengunggah...</>
+                      ) : (
+                        <><Plus className="w-3.5 h-3.5" /> Upload Foto</>
+                      )}
+                    </label>
+                    <p className="text-[9px] text-zinc-400 text-center">Foto akan tampil setelah disetujui admin</p>
+                  </div>
+                )}
+              </div>
+            )}
+            {!currentUser && (
+              <button onClick={() => setIsUserLoginOpen(true)}
+                className="shrink-0 flex items-center gap-2 px-4 py-2.5 bg-amber-900/10 dark:bg-amber-400/10 text-amber-800 dark:text-amber-400 text-xs font-bold rounded-xl border border-amber-900/20 dark:border-amber-400/20 cursor-pointer hover:bg-amber-900/20 transition-all">
+                <LogIn className="w-3.5 h-3.5" /> Login untuk Upload Foto
+              </button>
+            )}
+          </div>
+
+          {/* Customer Photos Gallery */}
+          {customerPhotos.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 bg-zinc-50 dark:bg-zinc-800/30 rounded-3xl border border-dashed border-zinc-200 dark:border-zinc-700">
+              <span className="text-5xl mb-3">😊</span>
+              <p className="text-zinc-400 font-medium text-sm">Belum ada foto customer yang tampil.</p>
+              <p className="text-xs text-zinc-400 mt-1">Jadilah yang pertama berbagi momen di Tampa Seduh!</p>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                {customerPhotos.slice(customerGalleryIndex, customerGalleryIndex + 8).concat(
+                  customerGalleryIndex + 8 > customerPhotos.length
+                    ? customerPhotos.slice(0, (customerGalleryIndex + 8) % customerPhotos.length)
+                    : []
+                ).map((photo, idx) => (
+                  <motion.div key={photo.id + idx}
+                    initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: idx * 0.05 }}
+                    className={`relative rounded-2xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 ${idx === 0 ? 'col-span-2 row-span-2 aspect-square' : 'aspect-square'} group`}>
+                    <img src={photo.url} alt={photo.caption || photo.user_name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      loading="lazy" />
+                    <div className="absolute bottom-0 inset-x-0 p-2 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                      <p className="text-white text-xs font-bold truncate">{photo.user_name}</p>
+                      {photo.caption && <p className="text-white/80 text-[9px] truncate italic">"{photo.caption}"</p>}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+              {customerPhotos.length > 8 && (
+                <div className="flex justify-center items-center gap-4 mt-4">
+                  <button onClick={() => setCustomerGalleryIndex(i => Math.max(0, i - 8))}
+                    disabled={customerGalleryIndex === 0}
+                    className="p-2 rounded-full bg-amber-900/10 hover:bg-amber-900/20 dark:bg-white/10 text-amber-800 dark:text-amber-200 transition-all cursor-pointer disabled:opacity-30 border border-amber-900/10">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                  </button>
+                  <span className="text-xs text-zinc-400">{Math.floor(customerGalleryIndex / 8) + 1} / {Math.ceil(customerPhotos.length / 8)}</span>
+                  <button onClick={() => setCustomerGalleryIndex(i => Math.min(Math.floor((customerPhotos.length - 1) / 8) * 8, i + 8))}
+                    disabled={customerGalleryIndex + 8 >= customerPhotos.length}
+                    className="p-2 rounded-full bg-amber-900/10 hover:bg-amber-900/20 dark:bg-white/10 text-amber-800 dark:text-amber-200 transition-all cursor-pointer disabled:opacity-30 border border-amber-900/10">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </section>
+
       {/* 5. Coffee News Blog section on frontpage */}
       <Suspense fallback={null}>
         <CoffeeNews />
@@ -1706,7 +1866,7 @@ export default function App() {
             },
             {
               q: "Dari mana asal biji kopi Liberica Kotabunan?",
-              a: "Biji kopi dipanen langsung oleh kelompok tani lokal di perkebunan wilayah pegunungan sejuk Kotabunan Selatan, Kabupaten Bolaang Mongondow Timur (Boltim), Sulawesi Utara. Benar-benar produk kedaulatan lokal kebanggaan Boltim kawan!"
+              a: "Biji kopi dipanen langsung oleh kelompok tani lokal di perkebunan wilayah pegunungan sejuk Utara Kotabunan (Bakan-Bokaka), Kabupaten Bolaang Mongondow Timur (Boltim), Sulawesi Utara. Benar-benar produk kedaulatan lokal kebanggaan Boltim kawan!"
             },
             {
               q: "Apakah pesanan bisa diantar ke seluruh Kotabunan?",
