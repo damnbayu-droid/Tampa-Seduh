@@ -62,6 +62,7 @@ export default function App() {
 
   // Image Zoom/Lightbox State — full product detail modal
   const [zoomedItem, setZoomedItem] = useState<MenuItem | null>(null);
+  const [zoomedPackage, setZoomedPackage] = useState<CoffeePackage | null>(null);
 
   // Media Gallery & Pamflet State
   const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhoto[]>([]);
@@ -1302,11 +1303,14 @@ export default function App() {
                 
                 <div className="space-y-4">
                   {pack.image ? (
-                    <div className="w-full h-44 rounded-2xl overflow-hidden mb-4 bg-stone-100 border border-zinc-150 dark:border-zinc-800 flex-shrink-0">
+                    <div
+                      className="w-full h-44 rounded-2xl overflow-hidden mb-4 bg-stone-100 border border-zinc-150 dark:border-zinc-800 flex-shrink-0 cursor-pointer"
+                      onClick={() => setZoomedPackage(pack)}
+                    >
                       <img 
                         src={pack.image} 
                         alt={pack.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                         referrerPolicy="no-referrer"
                       />
                     </div>
@@ -1316,7 +1320,10 @@ export default function App() {
                     </div>
                   )}
                   <div>
-                    <h3 className="font-serif font-bold text-xl text-amber-955 dark:text-amber-50">{pack.name}</h3>
+                    <h3
+                      className="font-serif font-bold text-xl text-amber-955 dark:text-amber-50 cursor-pointer hover:text-amber-700 dark:hover:text-amber-300 transition-colors"
+                      onClick={() => setZoomedPackage(pack)}
+                    >{pack.name}</h3>
                     <p className="text-xs text-zinc-400 mt-1 leading-relaxed">{pack.description}</p>
                   </div>
 
@@ -2523,7 +2530,7 @@ export default function App() {
                         onClick={() => { setZoomedItem(null); setIsOrderPopupOpen(true); }}
                         className="w-full py-2 text-amber-800 dark:text-amber-400 text-xs font-bold text-center cursor-pointer hover:underline transition-all"
                       >
-                        🛒 Lihat Keranjang ({cart.reduce((s, i) => s + i.qty, 0)} item) → Lanjut Pesan
+                        🛒 Lihat Keranjang ({cart.reduce((s, i) => s + i.quantity, 0)} item) → Lanjut Pesan
                       </button>
                     )}
                   </div>
@@ -2532,6 +2539,152 @@ export default function App() {
                     Stok Habis
                   </div>
                 )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {/* Package Detail Modal — Foto + Daftar Menu + Harga + Tambah ke Keranjang */}
+      <AnimatePresence>
+        {zoomedPackage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setZoomedPackage(null)}
+            className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/85 backdrop-blur-sm p-0 sm:p-6 cursor-zoom-out"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 40 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 40 }}
+              transition={{ type: "spring", damping: 28, stiffness: 280 }}
+              className="relative w-full sm:max-w-md bg-amber-50 dark:bg-zinc-900 rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Photo */}
+              {zoomedPackage.image ? (
+                <div className="relative w-full" style={{ maxHeight: '45vh' }}>
+                  <img
+                    src={zoomedPackage.image}
+                    alt={zoomedPackage.name}
+                    className="w-full object-cover"
+                    style={{ maxHeight: '45vh', objectFit: 'cover' }}
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                  {zoomedPackage.badge && (
+                    <span className="absolute top-3 left-3 bg-amber-900 text-amber-100 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full">
+                      {zoomedPackage.badge}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => setZoomedPackage(null)}
+                    className="absolute top-3 right-3 bg-black/40 hover:bg-black/70 text-white p-2 rounded-full transition-colors backdrop-blur-md cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              ) : (
+                <div className="relative flex items-center justify-center bg-gradient-to-br from-amber-900 to-amber-950 h-28">
+                  <Coffee className="w-12 h-12 text-amber-200 opacity-40" />
+                  {zoomedPackage.badge && (
+                    <span className="absolute top-3 left-3 bg-white/20 text-white text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full">
+                      {zoomedPackage.badge}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => setZoomedPackage(null)}
+                    className="absolute top-3 right-3 bg-black/30 hover:bg-black/60 text-white p-2 rounded-full transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
+
+              {/* Package Details */}
+              <div className="p-5 space-y-3 max-h-[55vh] overflow-y-auto">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-serif font-black text-xl text-amber-950 dark:text-amber-50 leading-tight">{zoomedPackage.name}</h3>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400 bg-amber-900/8 dark:bg-amber-400/10 px-2 py-0.5 rounded-full mt-1 inline-block">
+                      🎁 Paket Kombinasi
+                    </span>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-[10px] text-zinc-400 font-sans">Harga Spesial</div>
+                    <div className="text-amber-900 dark:text-amber-400 font-black font-mono text-lg">Rp {zoomedPackage.price}.000</div>
+                  </div>
+                </div>
+
+                {zoomedPackage.description && (
+                  <p className="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed">{zoomedPackage.description}</p>
+                )}
+
+                {/* Item list */}
+                <div className="bg-amber-900/5 dark:bg-zinc-800/50 rounded-2xl p-3 space-y-1.5">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block">Sudah Termasuk:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {zoomedPackage.items.map((itemId, idx) => {
+                      const found = menuItems.find(m => m.id === itemId);
+                      return (
+                        <span key={idx} className="bg-white dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200 text-[11px] font-semibold px-2.5 py-1 rounded-lg shadow-xs border border-zinc-100 dark:border-zinc-600">
+                          {found ? found.name : itemId}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Add to Cart */}
+                {(() => {
+                  const isInCart = cart.some(e => e.id === zoomedPackage.id);
+                  return isInCart ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between bg-amber-50 dark:bg-zinc-800 rounded-xl border border-amber-200 dark:border-zinc-700 overflow-hidden">
+                        <button onClick={() => removeFromCart(zoomedPackage.id, "Default")}
+                          className="px-4 py-3 hover:bg-red-500/10 text-red-500 cursor-pointer transition-colors font-bold text-lg leading-none">
+                          −
+                        </button>
+                        <span className="font-black text-amber-900 dark:text-amber-400 text-sm">
+                          {cart.find(e => e.id === zoomedPackage.id)?.quantity || 1}× di keranjang
+                        </span>
+                        <button onClick={() => { addToCart(zoomedPackage, "Default", true); }}
+                          className="px-4 py-3 hover:bg-green-500/10 text-green-600 cursor-pointer transition-colors font-bold text-lg leading-none">
+                          +
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => { setZoomedPackage(null); setIsOrderPopupOpen(true); }}
+                        className="w-full py-2.5 bg-gradient-to-r from-amber-900 to-amber-950 text-amber-50 font-bold rounded-xl text-sm uppercase tracking-wider cursor-pointer hover:from-amber-800 hover:to-amber-900 transition-all shadow"
+                      >
+                        🛒 Lanjut Pesan ({cart.reduce((s, i) => s + i.quantity, 0)} item)
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <button
+                        onClick={() => {
+                          addToCart(zoomedPackage, "Default", true);
+                          setOrderNotification(`Paket ${zoomedPackage.name} ditambahkan ke keranjang!`);
+                          setTimeout(() => setOrderNotification(null), 3000);
+                        }}
+                        className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-amber-900 to-amber-950 text-amber-50 font-bold rounded-xl text-sm uppercase tracking-wider cursor-pointer hover:from-amber-800 hover:to-amber-900 transition-all shadow"
+                      >
+                        <Plus className="w-4 h-4" /> Tambah ke Keranjang
+                      </button>
+                      {cart.length > 0 && (
+                        <button
+                          onClick={() => { setZoomedPackage(null); setIsOrderPopupOpen(true); }}
+                          className="w-full py-2 text-amber-800 dark:text-amber-400 text-xs font-bold text-center cursor-pointer hover:underline transition-all"
+                        >
+                          🛒 Lihat Keranjang ({cart.reduce((s, i) => s + i.quantity, 0)} item) → Lanjut Pesan
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </motion.div>
           </motion.div>
