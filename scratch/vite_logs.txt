@@ -510,3 +510,246 @@
 1:07:20 PM [vite] (client) hmr update /src/index.css, /src/App.tsx
 1:07:58 PM [vite] (client) hmr update /src/App.tsx, /src/index.css
 1:08:25 PM [vite] (client) page reload index.html
+1:12:39 PM [vite] (client) hmr update /src/App.tsx, /src/index.css
+1:12:56 PM [vite] (client) hmr update /src/App.tsx, /src/index.css
+1:12:56 PM [vite] Internal server error: /Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/src/App.tsx: Expected corresponding JSX closing tag for <div>. (1263:6)
+
+  1261 |           })}
+  1262 |         </div>
+> 1263 |       </section>
+       |       ^
+  1264 |
+  1265 |       {/* 4.7 Roti Kampung Education Section */}
+  1266 |       <section id="roti-edu-section" className="py-20 bg-gradient-to-b from-[#F9F7F2] to-amber-50/20 dark:from-zinc-950 dark:to-zinc-900 text-stone-900 dark:text-stone-100 border-t border-amber-900/5">
+  Plugin: vite:react-babel
+  File: /Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/src/App.tsx:1263:6
+  1261|            })}
+  1262|          </div>
+  1263|        </section>
+     |        ^
+  1264|  
+  1265|        {/* 4.7 Roti Kampung Education Section */}
+      at constructor (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:365:19)
+      at TypeScriptParserMixin.raise (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:6616:19)
+      at TypeScriptParserMixin.jsxParseElementAt (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:4739:16)
+      at TypeScriptParserMixin.jsxParseElementAt (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:4710:32)
+      at TypeScriptParserMixin.jsxParseElementAt (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:4710:32)
+      at TypeScriptParserMixin.jsxParseElement (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:4761:17)
+      at TypeScriptParserMixin.parseExprAtom (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:4771:19)
+      at TypeScriptParserMixin.parseExprSubscripts (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11063:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:9854:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10916:61)
+      at TypeScriptParserMixin.parseExprOps (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10921:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10898:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10848:21)
+      at /Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:9792:39
+      at TypeScriptParserMixin.tryParse (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:6924:20)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:9792:18)
+      at /Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10817:39
+      at TypeScriptParserMixin.allowInAnd (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:12443:12)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10817:17)
+      at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:12510:17)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11692:28)
+      at TypeScriptParserMixin.parseExprAtom (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11348:23)
+      at TypeScriptParserMixin.parseExprAtom (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:4776:20)
+      at TypeScriptParserMixin.parseExprSubscripts (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11063:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:9854:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10916:61)
+      at TypeScriptParserMixin.parseExprOps (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10921:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10898:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10848:21)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:9803:20)
+      at TypeScriptParserMixin.parseConditional (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10910:29)
+      at TypeScriptParserMixin.parseConditional (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:9620:18)
+      at TypeScriptParserMixin.parseMaybeConditional (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10902:17)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10848:21)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:9803:20)
+      at TypeScriptParserMixin.parseExpressionBase (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10801:23)
+      at /Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10797:39
+      at TypeScriptParserMixin.allowInAnd (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:12443:12)
+      at TypeScriptParserMixin.parseExpression (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10797:17)
+      at TypeScriptParserMixin.jsxParseExpressionContainer (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:4644:31)
+      at TypeScriptParserMixin.jsxParseElementAt (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:4723:36)
+      at TypeScriptParserMixin.jsxParseElement (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:4761:17)
+      at TypeScriptParserMixin.parseExprAtom (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:4771:19)
+      at TypeScriptParserMixin.parseExprSubscripts (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11063:23)
+1:13:05 PM [vite] (client) Pre-transform error: /Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/src/App.tsx: Expected corresponding JSX closing tag for <div>. (1263:6)
+
+  1261 |           })}
+  1262 |         </div>
+> 1263 |       </section>
+       |       ^
+  1264 |
+  1265 |       {/* 4.7 Roti Kampung Education Section */}
+  1266 |       <section id="roti-edu-section" className="py-20 bg-gradient-to-b from-[#F9F7F2] to-amber-50/20 dark:from-zinc-950 dark:to-zinc-900 text-stone-900 dark:text-stone-100 border-t border-amber-900/5">
+  Plugin: vite:react-babel
+  File: /Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/src/App.tsx:1263:6
+  1261|            })}
+  1262|          </div>
+  1263|        </section>
+     |        ^
+  1264|  
+  1265|        {/* 4.7 Roti Kampung Education Section */}
+1:13:15 PM [vite] (client) hmr update /src/App.tsx, /src/index.css
+1:13:59 PM [vite] (client) hmr update /src/App.tsx, /src/index.css
+1:14:23 PM [vite] (client) hmr update /src/App.tsx, /src/index.css
+1:14:23 PM [vite] Internal server error: /Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/src/App.tsx: Expected corresponding JSX closing tag for <div>. (1263:6)
+
+  1261 |           })}
+  1262 |         </div>
+> 1263 |       </section>
+       |       ^
+  1264 |
+  1265 |       {/* 4.7 Roti Kampung Education Section */}
+  1266 |       <section id="roti-edu-section" className="py-20 bg-gradient-to-b from-[#F9F7F2] to-amber-50/20 dark:from-zinc-950 dark:to-zinc-900 text-stone-900 dark:text-stone-100 border-t border-amber-900/5">
+  Plugin: vite:react-babel
+  File: /Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/src/App.tsx:1263:6
+  1261|            })}
+  1262|          </div>
+  1263|        </section>
+     |        ^
+  1264|  
+  1265|        {/* 4.7 Roti Kampung Education Section */}
+      at constructor (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:365:19)
+      at TypeScriptParserMixin.raise (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:6616:19)
+      at TypeScriptParserMixin.jsxParseElementAt (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:4739:16)
+      at TypeScriptParserMixin.jsxParseElementAt (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:4710:32)
+      at TypeScriptParserMixin.jsxParseElementAt (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:4710:32)
+      at TypeScriptParserMixin.jsxParseElement (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:4761:17)
+      at TypeScriptParserMixin.parseExprAtom (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:4771:19)
+      at TypeScriptParserMixin.parseExprSubscripts (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11063:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:9854:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10916:61)
+      at TypeScriptParserMixin.parseExprOps (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10921:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10898:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10848:21)
+      at /Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:9792:39
+      at TypeScriptParserMixin.tryParse (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:6924:20)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:9792:18)
+      at /Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10817:39
+      at TypeScriptParserMixin.allowInAnd (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:12443:12)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10817:17)
+      at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:12510:17)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11692:28)
+      at TypeScriptParserMixin.parseExprAtom (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11348:23)
+      at TypeScriptParserMixin.parseExprAtom (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:4776:20)
+      at TypeScriptParserMixin.parseExprSubscripts (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11063:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:9854:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10916:61)
+      at TypeScriptParserMixin.parseExprOps (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10921:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10898:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10848:21)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:9803:20)
+      at TypeScriptParserMixin.parseConditional (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10910:29)
+      at TypeScriptParserMixin.parseConditional (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:9620:18)
+      at TypeScriptParserMixin.parseMaybeConditional (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10902:17)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10848:21)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:9803:20)
+      at TypeScriptParserMixin.parseExpressionBase (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10801:23)
+      at /Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10797:39
+      at TypeScriptParserMixin.allowInAnd (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:12443:12)
+      at TypeScriptParserMixin.parseExpression (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10797:17)
+      at TypeScriptParserMixin.jsxParseExpressionContainer (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:4644:31)
+      at TypeScriptParserMixin.jsxParseElementAt (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:4723:36)
+      at TypeScriptParserMixin.jsxParseElement (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:4761:17)
+      at TypeScriptParserMixin.parseExprAtom (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:4771:19)
+      at TypeScriptParserMixin.parseExprSubscripts (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11063:23)
+1:14:25 PM [vite] (client) Pre-transform error: /Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/src/App.tsx: Expected corresponding JSX closing tag for <div>. (1263:6)
+
+  1261 |           })}
+  1262 |         </div>
+> 1263 |       </section>
+       |       ^
+  1264 |
+  1265 |       {/* 4.7 Roti Kampung Education Section */}
+  1266 |       <section id="roti-edu-section" className="py-20 bg-gradient-to-b from-[#F9F7F2] to-amber-50/20 dark:from-zinc-950 dark:to-zinc-900 text-stone-900 dark:text-stone-100 border-t border-amber-900/5">
+  Plugin: vite:react-babel
+  File: /Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/src/App.tsx:1263:6
+  1261|            })}
+  1262|          </div>
+  1263|        </section>
+     |        ^
+  1264|  
+  1265|        {/* 4.7 Roti Kampung Education Section */}
+1:14:48 PM [vite] (client) hmr update /src/App.tsx, /src/index.css
+1:14:48 PM [vite] Internal server error: /Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/src/App.tsx: Expected corresponding JSX closing tag for <div>. (1263:6)
+
+  1261 |           })}
+  1262 |         </div>
+> 1263 |       </section>
+       |       ^
+  1264 |
+  1265 |       {/* 4.7 Roti Kampung Education Section */}
+  1266 |       <section id="roti-edu-section" className="py-20 bg-gradient-to-b from-[#F9F7F2] to-amber-50/20 dark:from-zinc-950 dark:to-zinc-900 text-stone-900 dark:text-stone-100 border-t border-amber-900/5">
+  Plugin: vite:react-babel
+  File: /Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/src/App.tsx:1263:6
+  1261|            })}
+  1262|          </div>
+  1263|        </section>
+     |        ^
+  1264|  
+  1265|        {/* 4.7 Roti Kampung Education Section */}
+      at constructor (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:365:19)
+      at TypeScriptParserMixin.raise (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:6616:19)
+      at TypeScriptParserMixin.jsxParseElementAt (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:4739:16)
+      at TypeScriptParserMixin.jsxParseElementAt (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:4710:32)
+      at TypeScriptParserMixin.jsxParseElementAt (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:4710:32)
+      at TypeScriptParserMixin.jsxParseElement (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:4761:17)
+      at TypeScriptParserMixin.parseExprAtom (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:4771:19)
+      at TypeScriptParserMixin.parseExprSubscripts (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11063:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:9854:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10916:61)
+      at TypeScriptParserMixin.parseExprOps (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10921:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10898:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10848:21)
+      at /Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:9792:39
+      at TypeScriptParserMixin.tryParse (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:6924:20)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:9792:18)
+      at /Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10817:39
+      at TypeScriptParserMixin.allowInAnd (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:12443:12)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10817:17)
+      at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:12510:17)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11692:28)
+      at TypeScriptParserMixin.parseExprAtom (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11348:23)
+      at TypeScriptParserMixin.parseExprAtom (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:4776:20)
+      at TypeScriptParserMixin.parseExprSubscripts (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11063:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:9854:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10916:61)
+      at TypeScriptParserMixin.parseExprOps (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10921:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10898:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10848:21)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:9803:20)
+      at TypeScriptParserMixin.parseConditional (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10910:29)
+      at TypeScriptParserMixin.parseConditional (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:9620:18)
+      at TypeScriptParserMixin.parseMaybeConditional (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10902:17)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10848:21)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:9803:20)
+      at TypeScriptParserMixin.parseExpressionBase (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10801:23)
+      at /Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10797:39
+      at TypeScriptParserMixin.allowInAnd (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:12443:12)
+      at TypeScriptParserMixin.parseExpression (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:10797:17)
+      at TypeScriptParserMixin.jsxParseExpressionContainer (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:4644:31)
+      at TypeScriptParserMixin.jsxParseElementAt (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:4723:36)
+      at TypeScriptParserMixin.jsxParseElement (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:4761:17)
+      at TypeScriptParserMixin.parseExprAtom (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:4771:19)
+      at TypeScriptParserMixin.parseExprSubscripts (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/bayu_1/Documents/WEBSITE BUILDER/Tampa Seduh/Tampa-Seduh/node_modules/@babel/parser/lib/index.js:11063:23)
+1:14:54 PM [vite] (client) hmr update /src/App.tsx, /src/index.css
+1:15:12 PM [vite] (client) hmr update /src/App.tsx, /src/index.css
