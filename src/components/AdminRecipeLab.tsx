@@ -490,27 +490,27 @@ export default function AdminRecipeLab({ showNotif }: AdminRecipeLabProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-zinc-900 dark:text-zinc-100">
       {/* Header and navigation tabs */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-amber-900/20 pb-5">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-stone-205 dark:border-amber-900/20 pb-5">
         <div>
-          <h2 className="text-2xl font-bold font-serif text-amber-100 flex items-center gap-2">
-            <Calculator className="w-7 h-7 text-amber-500 animate-pulse" />
+          <h2 className="text-2xl font-bold font-serif text-amber-950 dark:text-amber-100 flex items-center gap-2">
+            <Calculator className="w-7 h-7 text-amber-700 dark:text-amber-500 animate-pulse" />
             Costing & Recipe Lab
           </h2>
-          <p className="text-sm text-amber-200/60 mt-1">
+          <p className="text-sm text-stone-600 dark:text-amber-200/60 mt-1">
             Ukur HPP, simulasi margin profit, dan analisis kelayakan resep & menu Anda secara realtime.
           </p>
         </div>
 
         {/* Tab Buttons */}
-        <div className="flex items-center gap-1 bg-amber-950/45 p-1 rounded-xl border border-amber-900/30 self-start md:self-auto overflow-x-auto max-w-full">
+        <div className="flex items-center gap-1 bg-stone-200/80 dark:bg-amber-950/45 p-1 rounded-xl border border-stone-300/60 dark:border-amber-900/30 self-start md:self-auto overflow-x-auto max-w-full">
           <button
             onClick={() => setActiveTab("ingredients")}
             className={`px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition duration-200 ${
               activeTab === "ingredients"
                 ? "bg-amber-600 text-white shadow-md"
-                : "text-amber-200/70 hover:text-amber-100 hover:bg-amber-900/20"
+                : "text-stone-600 dark:text-amber-200/70 hover:text-stone-900 dark:hover:text-amber-100 hover:bg-stone-300/40 dark:hover:bg-amber-900/20"
             }`}
           >
             Bahan Baku
@@ -520,7 +520,7 @@ export default function AdminRecipeLab({ showNotif }: AdminRecipeLabProps) {
             className={`px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition duration-200 ${
               activeTab === "recipes"
                 ? "bg-amber-600 text-white shadow-md"
-                : "text-amber-200/70 hover:text-amber-100 hover:bg-amber-900/20"
+                : "text-stone-600 dark:text-amber-200/70 hover:text-stone-900 dark:hover:text-amber-100 hover:bg-stone-300/40 dark:hover:bg-amber-900/20"
             }`}
           >
             Pembuat Resep
@@ -530,7 +530,7 @@ export default function AdminRecipeLab({ showNotif }: AdminRecipeLabProps) {
             className={`px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition duration-200 ${
               activeTab === "packages"
                 ? "bg-amber-600 text-white shadow-md"
-                : "text-amber-200/70 hover:text-amber-100 hover:bg-amber-900/20"
+                : "text-stone-600 dark:text-amber-200/70 hover:text-stone-900 dark:hover:text-amber-100 hover:bg-stone-300/40 dark:hover:bg-amber-900/20"
             }`}
           >
             Pembuat Paket
@@ -540,7 +540,7 @@ export default function AdminRecipeLab({ showNotif }: AdminRecipeLabProps) {
             className={`px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition duration-200 ${
               activeTab === "analytics"
                 ? "bg-amber-600 text-white shadow-md"
-                : "text-amber-200/70 hover:text-amber-100 hover:bg-amber-900/20"
+                : "text-stone-600 dark:text-amber-200/70 hover:text-stone-900 dark:hover:text-amber-100 hover:bg-stone-300/40 dark:hover:bg-amber-900/20"
             }`}
           >
             Analitik HPP
@@ -551,7 +551,7 @@ export default function AdminRecipeLab({ showNotif }: AdminRecipeLabProps) {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 space-y-4">
           <RefreshCw className="w-10 h-10 text-amber-500 animate-spin" />
-          <p className="text-amber-200/70 text-sm">Menyinkronkan data laboratorium resep...</p>
+          <p className="text-stone-650 dark:text-amber-200/70 text-sm">Menyinkronkan data laboratorium resep...</p>
         </div>
       ) : (
         <div>
@@ -559,7 +559,7 @@ export default function AdminRecipeLab({ showNotif }: AdminRecipeLabProps) {
           {activeTab === "ingredients" && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-amber-50">Daftar Bahan Baku (Ingredients Master)</h3>
+                <h3 className="text-lg font-semibold text-stone-900 dark:text-amber-50">Daftar Bahan Baku (Ingredients Master)</h3>
                 <button
                   onClick={() => handleOpenIngModal()}
                   className="flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 rounded-xl text-sm font-medium transition duration-200"
@@ -569,15 +569,15 @@ export default function AdminRecipeLab({ showNotif }: AdminRecipeLabProps) {
               </div>
 
               {ingredients.length === 0 ? (
-                <div className="bg-amber-950/10 border border-amber-900/20 rounded-2xl p-10 text-center text-amber-200/50">
-                  <AlertCircle className="w-12 h-12 mx-auto mb-3 text-amber-600/60" />
+                <div className="bg-stone-200/40 dark:bg-amber-950/10 border border-stone-300/60 dark:border-amber-900/20 rounded-2xl p-10 text-center text-stone-500 dark:text-amber-200/50">
+                  <AlertCircle className="w-12 h-12 mx-auto mb-3 text-amber-700/70 dark:text-amber-600/60" />
                   Belum ada bahan baku. Tambahkan bahan baku untuk menyusun resep HPP.
                 </div>
               ) : (
-                <div className="bg-amber-950/20 backdrop-blur-md border border-amber-900/30 rounded-2xl overflow-hidden overflow-x-auto">
+                <div className="bg-white dark:bg-amber-950/20 border border-stone-200 dark:border-amber-900/30 rounded-2xl overflow-hidden overflow-x-auto shadow-sm">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="bg-amber-950/50 text-amber-200/80 text-xs font-semibold uppercase tracking-wider">
+                      <tr className="bg-stone-100 dark:bg-amber-950/50 text-stone-700 dark:text-amber-200/80 text-xs font-semibold uppercase tracking-wider">
                         <th className="px-6 py-4">Nama Bahan</th>
                         <th className="px-6 py-4">Kategori</th>
                         <th className="px-6 py-4">Kuantitas Pembelian</th>
@@ -587,33 +587,33 @@ export default function AdminRecipeLab({ showNotif }: AdminRecipeLabProps) {
                         <th className="px-6 py-4 text-right">Aksi</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-amber-900/20 text-sm text-amber-100">
+                    <tbody className="divide-y divide-stone-200 dark:divide-amber-900/20 text-sm text-stone-800 dark:text-amber-100">
                       {ingredients.map((ing) => (
-                        <tr key={ing.id} className="hover:bg-amber-900/10 transition">
-                          <td className="px-6 py-4 font-medium text-amber-50">{ing.name}</td>
+                        <tr key={ing.id} className="hover:bg-stone-50 dark:hover:bg-amber-900/10 transition">
+                          <td className="px-6 py-4 font-medium text-stone-900 dark:text-amber-50">{ing.name}</td>
                           <td className="px-6 py-4">
-                            <span className="bg-amber-950/80 border border-amber-900/60 text-amber-300 text-xs px-2 py-0.5 rounded-full">
+                            <span className="bg-stone-100 dark:bg-amber-950/80 border border-stone-200 dark:border-amber-900/60 text-stone-700 dark:text-amber-300 text-xs px-2 py-0.5 rounded-full">
                               {ing.category}
                             </span>
                           </td>
                           <td className="px-6 py-4">{ing.purchase_quantity} {ing.purchase_unit}</td>
                           <td className="px-6 py-4">{formatIDR(ing.purchase_price)}</td>
-                          <td className="px-6 py-4 font-mono text-amber-400">
+                          <td className="px-6 py-4 font-mono text-amber-700 dark:text-amber-400">
                             {formatHppPerUnit(ing.cost_per_unit || 0)}/{ing.purchase_unit}
                           </td>
-                          <td className="px-6 py-4 text-amber-200/60">{ing.supplier || "-"}</td>
+                          <td className="px-6 py-4 text-stone-500 dark:text-amber-200/60">{ing.supplier || "-"}</td>
                           <td className="px-6 py-4 text-right">
                             <div className="flex justify-end gap-2">
                               <button
                                 onClick={() => handleOpenIngModal(ing)}
-                                className="p-2 hover:bg-amber-900/30 text-amber-300 rounded-lg transition"
+                                className="p-2 hover:bg-stone-200 dark:hover:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-lg transition"
                                 title="Edit"
                               >
                                 <Edit2 className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => handleDeleteIng(ing.id)}
-                                className="p-2 hover:bg-rose-900/30 text-rose-300 rounded-lg transition"
+                                className="p-2 hover:bg-rose-50 dark:hover:bg-rose-900/30 text-rose-600 dark:text-rose-300 rounded-lg transition"
                                 title="Hapus"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -633,18 +633,18 @@ export default function AdminRecipeLab({ showNotif }: AdminRecipeLabProps) {
           {activeTab === "recipes" && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-amber-50">Daftar Resep & HPP Menu</h3>
+                <h3 className="text-lg font-semibold text-stone-900 dark:text-amber-50">Daftar Resep & HPP Menu</h3>
                 <button
                   onClick={() => handleOpenRecipeModal()}
-                  className="flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 rounded-xl text-sm font-medium transition duration-200"
+                  className="flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 rounded-xl text-sm font-medium transition duration-200 shadow-sm"
                 >
                   <Plus className="w-4 h-4" /> Buat Resep Baru
                 </button>
               </div>
 
               {recipes.length === 0 ? (
-                <div className="bg-amber-950/10 border border-amber-900/20 rounded-2xl p-10 text-center text-amber-200/50">
-                  <AlertCircle className="w-12 h-12 mx-auto mb-3 text-amber-600/60" />
+                <div className="bg-stone-200/40 dark:bg-amber-950/10 border border-stone-300/60 dark:border-amber-900/20 rounded-2xl p-10 text-center text-stone-500 dark:text-amber-200/50">
+                  <AlertCircle className="w-12 h-12 mx-auto mb-3 text-amber-700/70 dark:text-amber-600/60" />
                   Belum ada resep yang terdaftar. Hubungkan bahan baku Anda menjadi menu HPP.
                 </div>
               ) : (
@@ -659,27 +659,27 @@ export default function AdminRecipeLab({ showNotif }: AdminRecipeLabProps) {
                     return (
                       <div
                         key={rec.id}
-                        className="bg-amber-950/20 backdrop-blur-md border border-amber-900/30 rounded-2xl p-5 flex flex-col justify-between space-y-4 hover:border-amber-500/30 transition duration-300"
+                        className="bg-white dark:bg-amber-950/20 border border-stone-200 dark:border-amber-900/30 rounded-2xl p-5 flex flex-col justify-between space-y-4 hover:border-amber-500/30 dark:hover:border-amber-500/30 transition duration-300 shadow-sm"
                       >
                         <div className="space-y-2">
                           <div className="flex justify-between items-start">
                             <div>
-                              <span className="text-[10px] uppercase font-bold tracking-widest text-amber-500">
+                              <span className="text-[10px] uppercase font-bold tracking-widest text-amber-700 dark:text-amber-500">
                                 {rec.category}
                               </span>
-                              <h4 className="text-lg font-semibold text-amber-50">{rec.name}</h4>
+                              <h4 className="text-lg font-semibold text-stone-900 dark:text-amber-50">{rec.name}</h4>
                             </div>
                             <div className="flex items-center gap-1">
                               <button
                                 onClick={() => handleOpenRecipeModal(rec)}
-                                className="p-1.5 hover:bg-amber-900/30 text-amber-300 rounded-lg transition"
+                                className="p-1.5 hover:bg-stone-100 dark:hover:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-lg transition"
                                 title="Edit Resep"
                               >
                                 <Edit2 className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => handleDeleteRecipe(rec.id)}
-                                className="p-1.5 hover:bg-rose-900/30 text-rose-300 rounded-lg transition"
+                                className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-900/30 text-rose-600 dark:text-rose-300 rounded-lg transition"
                                 title="Hapus Resep"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -687,7 +687,7 @@ export default function AdminRecipeLab({ showNotif }: AdminRecipeLabProps) {
                             </div>
                           </div>
 
-                          <p className="text-xs text-amber-200/50 line-clamp-2">
+                          <p className="text-xs text-stone-550 dark:text-amber-200/50 line-clamp-2">
                             {rec.description || "Tidak ada deskripsi."}
                           </p>
 
@@ -696,13 +696,13 @@ export default function AdminRecipeLab({ showNotif }: AdminRecipeLabProps) {
                             {rec.recipe_items?.map((ri) => (
                               <span
                                 key={ri.id}
-                                className="text-[10px] bg-amber-950/60 border border-amber-900/30 text-amber-200 px-2 py-0.5 rounded"
+                                className="text-[10px] bg-stone-100 dark:bg-amber-950/60 border border-stone-200 dark:border-amber-900/30 text-stone-750 dark:text-amber-200 px-2 py-0.5 rounded"
                               >
                                 {ri.ingredient?.name} ({ri.quantity_used} {ri.unit})
                               </span>
                             ))}
                             {(!rec.recipe_items || rec.recipe_items.length === 0) && (
-                              <span className="text-[10px] text-rose-300 bg-rose-950/20 px-2 py-0.5 rounded border border-rose-900/30">
+                              <span className="text-[10px] text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/20 px-2 py-0.5 rounded border border-rose-200 dark:border-rose-900/30">
                                 Tanpa Bahan Baku!
                               </span>
                             )}
@@ -710,38 +710,38 @@ export default function AdminRecipeLab({ showNotif }: AdminRecipeLabProps) {
                         </div>
 
                         {/* Cost & Profit calculations */}
-                        <div className="border-t border-amber-900/10 pt-4 mt-auto space-y-3">
+                        <div className="border-t border-stone-200 dark:border-amber-900/10 pt-4 mt-auto space-y-3">
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <span className="text-[10px] text-amber-200/50 block">Harga Pokok (HPP)</span>
-                              <span className="text-base font-bold font-mono text-amber-400">
+                              <span className="text-[10px] text-stone-500 dark:text-amber-200/50 block">Harga Pokok (HPP)</span>
+                              <span className="text-base font-bold font-mono text-amber-700 dark:text-amber-400">
                                 {formatIDR(hpp)}
                               </span>
                             </div>
                             <div>
-                              <span className="text-[10px] text-amber-200/50 block">Harga Jual</span>
-                              <span className="text-base font-bold font-mono text-amber-50">
+                              <span className="text-[10px] text-stone-500 dark:text-amber-200/50 block">Harga Jual</span>
+                              <span className="text-base font-bold font-mono text-stone-900 dark:text-amber-50">
                                 {formatIDR(price)}
                               </span>
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-3 gap-2 bg-amber-950/40 p-2.5 rounded-xl border border-amber-900/20 text-center">
+                          <div className="grid grid-cols-3 gap-2 bg-stone-50 dark:bg-amber-950/40 p-2.5 rounded-xl border border-stone-200 dark:border-amber-900/20 text-center">
                             <div>
-                              <span className="text-[9px] text-amber-200/50 block">Profit</span>
-                              <span className={`text-xs font-bold ${profit >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                              <span className="text-[9px] text-stone-500 dark:text-amber-200/50 block">Profit</span>
+                              <span className={`text-xs font-bold ${profit >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-400"}`}>
                                 {formatIDR(profit)}
                               </span>
                             </div>
                             <div>
-                              <span className="text-[9px] text-amber-200/50 block">Margin</span>
-                              <span className={`text-xs font-bold ${marginPercent >= 50 ? "text-emerald-400" : marginPercent >= 20 ? "text-amber-400" : "text-rose-400"}`}>
+                              <span className="text-[9px] text-stone-500 dark:text-amber-200/50 block">Margin</span>
+                              <span className={`text-xs font-bold ${marginPercent >= 50 ? "text-emerald-700 dark:text-emerald-400" : marginPercent >= 20 ? "text-amber-600 dark:text-amber-400" : "text-rose-600 dark:text-rose-400"}`}>
                                 {marginPercent.toFixed(1)}%
                               </span>
                             </div>
                             <div>
-                              <span className="text-[9px] text-amber-200/50 block">Food Cost</span>
-                              <span className={`text-xs font-bold ${foodCostPercent <= 35 ? "text-emerald-400" : foodCostPercent <= 60 ? "text-amber-400" : "text-rose-400"}`}>
+                              <span className="text-[9px] text-stone-500 dark:text-amber-200/50 block">Food Cost</span>
+                              <span className={`text-xs font-bold ${foodCostPercent <= 35 ? "text-emerald-700 dark:text-emerald-400" : foodCostPercent <= 60 ? "text-amber-600 dark:text-amber-400" : "text-rose-600 dark:text-rose-400"}`}>
                                 {foodCostPercent.toFixed(1)}%
                               </span>
                             </div>
@@ -759,18 +759,18 @@ export default function AdminRecipeLab({ showNotif }: AdminRecipeLabProps) {
           {activeTab === "packages" && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-amber-50">Daftar Paket Bundling HPP</h3>
+                <h3 className="text-lg font-semibold text-stone-900 dark:text-amber-50">Daftar Paket Bundling HPP</h3>
                 <button
                   onClick={() => handleOpenPackModal()}
-                  className="flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 rounded-xl text-sm font-medium transition duration-200"
+                  className="flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 rounded-xl text-sm font-medium transition duration-200 shadow-sm"
                 >
                   <Plus className="w-4 h-4" /> Buat Paket Baru
                 </button>
               </div>
 
               {packages.length === 0 ? (
-                <div className="bg-amber-950/10 border border-amber-900/20 rounded-2xl p-10 text-center text-amber-200/50">
-                  <AlertCircle className="w-12 h-12 mx-auto mb-3 text-amber-600/60" />
+                <div className="bg-stone-200/40 dark:bg-amber-950/10 border border-stone-300/60 dark:border-amber-900/20 rounded-2xl p-10 text-center text-stone-500 dark:text-amber-200/50">
+                  <AlertCircle className="w-12 h-12 mx-auto mb-3 text-amber-705/65 dark:text-amber-600/60" />
                   Belum ada paket bundling yang terdaftar. Gabungkan resep kopi untuk membuat paket promo.
                 </div>
               ) : (
@@ -785,27 +785,27 @@ export default function AdminRecipeLab({ showNotif }: AdminRecipeLabProps) {
                     return (
                       <div
                         key={pack.id}
-                        className="bg-amber-950/20 backdrop-blur-md border border-amber-900/30 rounded-2xl p-5 flex flex-col justify-between space-y-4 hover:border-amber-500/30 transition duration-300"
+                        className="bg-white dark:bg-amber-950/20 border border-stone-200 dark:border-amber-900/30 rounded-2xl p-5 flex flex-col justify-between space-y-4 hover:border-amber-500/30 dark:hover:border-amber-500/30 transition duration-300 shadow-sm"
                       >
                         <div className="space-y-2">
                           <div className="flex justify-between items-start">
                             <div>
-                              <span className="text-[10px] uppercase font-bold tracking-widest text-amber-500">
+                              <span className="text-[10px] uppercase font-bold tracking-widest text-amber-700 dark:text-amber-500">
                                 Bundling Promo
                               </span>
-                              <h4 className="text-lg font-semibold text-amber-50">{pack.package_name}</h4>
+                              <h4 className="text-lg font-semibold text-stone-900 dark:text-amber-50">{pack.package_name}</h4>
                             </div>
                             <div className="flex items-center gap-1">
                               <button
                                 onClick={() => handleOpenPackModal(pack)}
-                                className="p-1.5 hover:bg-amber-900/30 text-amber-300 rounded-lg transition"
+                                className="p-1.5 hover:bg-stone-100 dark:hover:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-lg transition"
                                 title="Edit Paket"
                               >
                                 <Edit2 className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => handleDeletePack(pack.id)}
-                                className="p-1.5 hover:bg-rose-900/30 text-rose-300 rounded-lg transition"
+                                className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-900/30 text-rose-600 dark:text-rose-300 rounded-lg transition"
                                 title="Hapus Paket"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -815,18 +815,18 @@ export default function AdminRecipeLab({ showNotif }: AdminRecipeLabProps) {
 
                           {/* Package items */}
                           <div className="space-y-1 pt-2">
-                            <span className="text-[10px] text-amber-200/50 block font-semibold">Resep Terkandung:</span>
+                            <span className="text-[10px] text-stone-600 dark:text-amber-200/50 block font-semibold">Resep Terkandung:</span>
                             {pack.package_items?.map((pi) => (
                               <div
                                 key={pi.id}
-                                className="flex justify-between text-xs bg-amber-950/40 border border-amber-900/10 px-3 py-1.5 rounded-lg text-amber-200"
+                                className="flex justify-between text-xs bg-stone-50 dark:bg-amber-950/40 border border-stone-200 dark:border-amber-900/10 px-3 py-1.5 rounded-lg text-stone-700 dark:text-amber-200"
                               >
                                 <span>{pi.recipe?.name}</span>
-                                <span className="font-semibold text-amber-50">x {pi.quantity}</span>
+                                <span className="font-semibold text-stone-950 dark:text-amber-50">x {pi.quantity}</span>
                               </div>
                             ))}
                             {(!pack.package_items || pack.package_items.length === 0) && (
-                              <span className="text-[10px] text-rose-300 bg-rose-950/20 px-2 py-0.5 rounded border border-rose-900/30">
+                              <span className="text-[10px] text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/20 px-2 py-0.5 rounded border border-rose-200 dark:border-rose-900/30">
                                 Kosong! Hubungkan minimal 1 resep.
                               </span>
                             )}
@@ -834,38 +834,38 @@ export default function AdminRecipeLab({ showNotif }: AdminRecipeLabProps) {
                         </div>
 
                         {/* Financial calculations */}
-                        <div className="border-t border-amber-900/10 pt-4 mt-auto space-y-3">
+                        <div className="border-t border-stone-200 dark:border-amber-900/10 pt-4 mt-auto space-y-3">
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <span className="text-[10px] text-amber-200/50 block">HPP Paket Kumulatif</span>
-                              <span className="text-base font-bold font-mono text-amber-400">
+                              <span className="text-[10px] text-stone-500 dark:text-amber-200/50 block">HPP Paket Kumulatif</span>
+                              <span className="text-base font-bold font-mono text-amber-700 dark:text-amber-400">
                                 {formatIDR(hpp)}
                               </span>
                             </div>
                             <div>
-                              <span className="text-[10px] text-amber-200/50 block">Harga Jual Paket</span>
-                              <span className="text-base font-bold font-mono text-amber-50">
+                              <span className="text-[10px] text-stone-500 dark:text-amber-200/50 block">Harga Jual Paket</span>
+                              <span className="text-base font-bold font-mono text-stone-900 dark:text-amber-50">
                                 {formatIDR(price)}
                               </span>
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-3 gap-2 bg-amber-950/40 p-2.5 rounded-xl border border-amber-900/20 text-center">
+                          <div className="grid grid-cols-3 gap-2 bg-stone-50 dark:bg-amber-950/40 p-2.5 rounded-xl border border-stone-200 dark:border-amber-900/20 text-center">
                             <div>
-                              <span className="text-[9px] text-amber-200/50 block">Profit Paket</span>
-                              <span className={`text-xs font-bold ${profit >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                              <span className="text-[9px] text-stone-500 dark:text-amber-200/50 block">Profit Paket</span>
+                              <span className={`text-xs font-bold ${profit >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-400"}`}>
                                 {formatIDR(profit)}
                               </span>
                             </div>
                             <div>
-                              <span className="text-[9px] text-amber-200/50 block">Margin Paket</span>
-                              <span className={`text-xs font-bold ${marginPercent >= 55 ? "text-emerald-400" : marginPercent >= 25 ? "text-amber-400" : "text-rose-400"}`}>
+                              <span className="text-[9px] text-stone-500 dark:text-amber-200/50 block">Margin Paket</span>
+                              <span className={`text-xs font-bold ${marginPercent >= 55 ? "text-emerald-700 dark:text-emerald-400" : marginPercent >= 25 ? "text-amber-600 dark:text-amber-400" : "text-rose-600 dark:text-rose-400"}`}>
                                 {marginPercent.toFixed(1)}%
                               </span>
                             </div>
                             <div>
-                              <span className="text-[9px] text-amber-200/50 block">Food Cost Paket</span>
-                              <span className={`text-xs font-bold ${foodCostPercent <= 30 ? "text-emerald-400" : foodCostPercent <= 55 ? "text-amber-400" : "text-rose-400"}`}>
+                              <span className="text-[9px] text-stone-500 dark:text-amber-200/50 block">Food Cost Paket</span>
+                              <span className={`text-xs font-bold ${foodCostPercent <= 30 ? "text-emerald-700 dark:text-emerald-400" : foodCostPercent <= 55 ? "text-amber-600 dark:text-amber-400" : "text-rose-600 dark:text-rose-400"}`}>
                                 {foodCostPercent.toFixed(1)}%
                               </span>
                             </div>
@@ -885,57 +885,57 @@ export default function AdminRecipeLab({ showNotif }: AdminRecipeLabProps) {
               {/* Analytics widgets */}
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                 {/* Average Food Cost Card */}
-                <div className="bg-amber-950/20 border border-amber-900/30 rounded-2xl p-5 space-y-2">
+                <div className="bg-white dark:bg-amber-950/20 border border-stone-200 dark:border-amber-900/30 rounded-2xl p-5 space-y-2 shadow-sm">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs text-amber-200/50">Avg Food Cost %</span>
-                    <PieChart className="w-5 h-5 text-amber-500" />
+                    <span className="text-xs text-stone-500 dark:text-amber-200/50 font-medium">Avg Food Cost %</span>
+                    <PieChart className="w-5 h-5 text-amber-650 dark:text-amber-500" />
                   </div>
-                  <div className="text-3xl font-bold font-mono text-amber-50">
+                  <div className="text-3xl font-bold font-mono text-stone-900 dark:text-amber-50">
                     {averageFoodCostPercent.toFixed(1)}%
                   </div>
-                  <p className="text-[10px] text-amber-200/40">
+                  <p className="text-[10px] text-stone-550 dark:text-amber-200/40">
                     Persentase ideal: 25% - 35% untuk menjaga margin profit tetap tebal.
                   </p>
                 </div>
 
                 {/* Overhead Costs Card */}
-                <div className="bg-amber-950/20 border border-amber-900/30 rounded-2xl p-5 space-y-2">
+                <div className="bg-white dark:bg-amber-950/20 border border-stone-200 dark:border-amber-900/30 rounded-2xl p-5 space-y-2 shadow-sm">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs text-amber-200/50">Total Biaya Operasional</span>
-                    <DollarSign className="w-5 h-5 text-amber-500" />
+                    <span className="text-xs text-stone-500 dark:text-amber-200/50 font-medium">Total Biaya Operasional</span>
+                    <DollarSign className="w-5 h-5 text-amber-650 dark:text-amber-500" />
                   </div>
-                  <div className="text-3xl font-bold font-mono text-amber-50">
+                  <div className="text-3xl font-bold font-mono text-stone-900 dark:text-amber-50">
                     {formatIDR(totalOverhead)}
                   </div>
-                  <p className="text-[10px] text-amber-200/40">
+                  <p className="text-[10px] text-stone-550 dark:text-amber-200/40">
                     Biaya tetap bulanan (sewa, gaji, listrik, dll).
                   </p>
                 </div>
 
                 {/* Most Profitable Menu Card */}
-                <div className="bg-amber-950/20 border border-amber-900/30 rounded-2xl p-5 space-y-2">
+                <div className="bg-white dark:bg-amber-950/20 border border-stone-200 dark:border-amber-900/30 rounded-2xl p-5 space-y-2 shadow-sm">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs text-amber-200/50">Menu Paling Menguntungkan</span>
-                    <TrendingUp className="w-5 h-5 text-emerald-500" />
+                    <span className="text-xs text-stone-500 dark:text-amber-200/50 font-medium">Menu Paling Untungkan</span>
+                    <TrendingUp className="w-5 h-5 text-emerald-650 dark:text-emerald-500" />
                   </div>
-                  <div className="text-lg font-bold text-amber-50 truncate">
+                  <div className="text-lg font-bold text-stone-900 dark:text-amber-50 truncate">
                     {mostProfitable ? mostProfitable.name : "N/A"}
                   </div>
-                  <p className="text-xs font-mono text-emerald-400">
+                  <p className="text-xs font-mono text-emerald-700 dark:text-emerald-400">
                     {mostProfitable ? `${(((mostProfitable.selling_price - (mostProfitable.totalHpp || 0)) / mostProfitable.selling_price) * 100).toFixed(1)}% Margin` : "N/A"}
                   </p>
                 </div>
 
                 {/* Break-Even Point Card */}
-                <div className="bg-amber-950/20 border border-amber-900/30 rounded-2xl p-5 space-y-2">
+                <div className="bg-white dark:bg-amber-950/20 border border-stone-200 dark:border-amber-900/30 rounded-2xl p-5 space-y-2 shadow-sm">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs text-amber-200/50">Titik Impas (BEP Bulanan)</span>
-                    <Calculator className="w-5 h-5 text-amber-500 animate-pulse" />
+                    <span className="text-xs text-stone-500 dark:text-amber-200/50 font-medium">Titik Impas (BEP Bulanan)</span>
+                    <Calculator className="w-5 h-5 text-amber-650 dark:text-amber-500 animate-pulse" />
                   </div>
-                  <div className="text-3xl font-bold font-mono text-amber-50">
-                    {breakEvenCups} <span className="text-xs text-amber-200/60 font-sans">Produk/Bulan</span>
+                  <div className="text-3xl font-bold font-mono text-stone-900 dark:text-amber-50">
+                    {breakEvenCups} <span className="text-xs text-stone-600 dark:text-amber-200/60 font-sans">Produk/Bulan</span>
                   </div>
-                  <p className="text-[10px] text-amber-200/40">
+                  <p className="text-[10px] text-stone-550 dark:text-amber-200/40">
                     Target minimum penjualan agar operasional tidak merugi.
                   </p>
                 </div>
@@ -946,45 +946,45 @@ export default function AdminRecipeLab({ showNotif }: AdminRecipeLabProps) {
                 {/* Fixed Costs Management List */}
                 <div className="lg:col-span-2 space-y-4">
                   <div className="flex justify-between items-center">
-                    <h4 className="text-lg font-semibold text-amber-50">Daftar Biaya Operasional Tetap (Fixed Costs)</h4>
+                    <h4 className="text-lg font-semibold text-stone-900 dark:text-amber-50">Daftar Biaya Operasional Tetap (Fixed Costs)</h4>
                     <button
                       onClick={() => handleOpenOverheadModal()}
-                      className="flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-xl text-xs font-medium transition duration-200"
+                      className="flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-xl text-xs font-medium transition duration-200 shadow-sm"
                     >
                       <Plus className="w-3.5 h-3.5" /> Tambah Biaya
                     </button>
                   </div>
 
                   {overheads.length === 0 ? (
-                    <div className="bg-amber-950/10 border border-amber-900/20 rounded-2xl p-8 text-center text-amber-200/50">
+                    <div className="bg-stone-200/40 dark:bg-amber-950/10 border border-stone-300/60 dark:border-amber-900/20 rounded-2xl p-8 text-center text-stone-500 dark:text-amber-200/50">
                       Belum ada biaya operasional terdaftar.
                     </div>
                   ) : (
-                    <div className="bg-amber-950/20 border border-amber-900/30 rounded-2xl overflow-hidden overflow-x-auto">
+                    <div className="bg-white dark:bg-amber-950/20 border border-stone-200 dark:border-amber-900/30 rounded-2xl overflow-hidden overflow-x-auto shadow-sm">
                       <table className="w-full text-left border-collapse">
                         <thead>
-                          <tr className="bg-amber-950/50 text-amber-200/80 text-xs font-semibold uppercase">
+                          <tr className="bg-stone-100 dark:bg-amber-950/50 text-stone-700 dark:text-amber-200/80 text-xs font-semibold uppercase">
                             <th className="px-6 py-3">Deskripsi Biaya</th>
                             <th className="px-6 py-3">Biaya Bulanan</th>
                             <th className="px-6 py-3 text-right">Aksi</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-amber-900/20 text-sm text-amber-100">
+                        <tbody className="divide-y divide-stone-200 dark:divide-amber-900/20 text-sm text-stone-800 dark:text-amber-100">
                           {overheads.map((oh) => (
-                            <tr key={oh.id} className="hover:bg-amber-900/10 transition">
-                              <td className="px-6 py-3.5 font-medium">{oh.name}</td>
-                              <td className="px-6 py-3.5 font-mono text-rose-400">{formatIDR(oh.monthly_cost)}</td>
+                            <tr key={oh.id} className="hover:bg-stone-50 dark:hover:bg-amber-900/10 transition">
+                              <td className="px-6 py-3.5 font-medium text-stone-900 dark:text-amber-50">{oh.name}</td>
+                              <td className="px-6 py-3.5 font-mono text-rose-700 dark:text-rose-400">{formatIDR(oh.monthly_cost)}</td>
                               <td className="px-6 py-3.5 text-right">
                                 <div className="flex justify-end gap-1.5">
                                   <button
                                     onClick={() => handleOpenOverheadModal(oh)}
-                                    className="p-1 hover:bg-amber-900/30 text-amber-300 rounded"
+                                    className="p-1 hover:bg-stone-200 dark:hover:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded"
                                   >
                                     <Edit2 className="w-3.5 h-3.5" />
                                   </button>
                                   <button
                                     onClick={() => handleDeleteOverhead(oh.id)}
-                                    className="p-1 hover:bg-rose-900/30 text-rose-300 rounded"
+                                    className="p-1 hover:bg-rose-50 dark:hover:bg-rose-900/30 text-rose-600 dark:text-rose-300 rounded"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </button>
@@ -999,32 +999,32 @@ export default function AdminRecipeLab({ showNotif }: AdminRecipeLabProps) {
                 </div>
 
                 {/* Simulating Profitability */}
-                <div className="bg-amber-950/20 border border-amber-900/30 rounded-2xl p-5 space-y-4">
-                  <h4 className="text-md font-semibold text-amber-50 flex items-center gap-1.5">
-                    <Info className="w-4 h-4 text-amber-500" />
+                <div className="bg-white dark:bg-amber-950/20 border border-stone-200 dark:border-amber-900/30 rounded-2xl p-5 space-y-4 shadow-sm">
+                  <h4 className="text-md font-semibold text-stone-900 dark:text-amber-50 flex items-center gap-1.5">
+                    <Info className="w-4 h-4 text-amber-650 dark:text-amber-500" />
                     Kalkulator Titik Impas (BEP)
                   </h4>
-                  <p className="text-xs text-amber-200/60 leading-relaxed">
+                  <p className="text-xs text-stone-600 dark:text-amber-200/60 leading-relaxed">
                     Kalkulasi didasarkan pada biaya tetap bulanan sebesar <strong>{formatIDR(totalOverhead)}</strong>, rata-rata harga jual per unit <strong>{formatIDR(averagePrice)}</strong>, dan rata-rata biaya HPP sebesar <strong>{formatIDR(averageHpp)}</strong>.
                   </p>
 
-                  <div className="bg-amber-950/50 border border-amber-900/20 p-4 rounded-xl space-y-3">
+                  <div className="bg-stone-50 dark:bg-amber-950/50 border border-stone-200 dark:border-amber-900/20 p-4 rounded-xl space-y-3">
                     <div className="flex justify-between text-xs">
-                      <span className="text-amber-200/50">Total Biaya Operasional:</span>
-                      <span className="font-mono font-bold text-rose-400">{formatIDR(totalOverhead)}</span>
+                      <span className="text-stone-500 dark:text-amber-200/50">Total Biaya Operasional:</span>
+                      <span className="font-mono font-bold text-rose-700 dark:text-rose-400">{formatIDR(totalOverhead)}</span>
                     </div>
                     <div className="flex justify-between text-xs">
-                      <span className="text-amber-200/50">Rata-rata Margin Margin ($):</span>
-                      <span className="font-mono font-bold text-emerald-400">{formatIDR(averageProfit)}</span>
+                      <span className="text-stone-500 dark:text-amber-200/50">Rata-rata Margin ($):</span>
+                      <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400">{formatIDR(averageProfit)}</span>
                     </div>
-                    <div className="border-t border-amber-900/20 pt-2.5 flex justify-between items-center text-sm font-semibold">
-                      <span>Titik BEP Kopi:</span>
-                      <span className="text-amber-100 font-mono">{breakEvenCups} cups / bulan</span>
+                    <div className="border-t border-stone-200 dark:border-amber-900/20 pt-2.5 flex justify-between items-center text-sm font-semibold">
+                      <span className="text-stone-850 dark:text-amber-100">Titik BEP Kopi:</span>
+                      <span className="text-stone-950 dark:text-amber-100 font-mono">{breakEvenCups} cups / bulan</span>
                     </div>
                   </div>
 
-                  <div className="text-[10px] text-amber-200/40 flex gap-1.5 items-start">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-500" />
+                  <div className="text-[10px] text-stone-500 dark:text-amber-200/40 flex gap-1.5 items-start">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-600/70 dark:text-amber-500" />
                     <span>
                       Semakin tipis biaya HPP bahan baku, semakin rendah kuantitas produk yang harus dijual untuk mencapai titik impas setiap bulannya.
                     </span>
