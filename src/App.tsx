@@ -2470,12 +2470,68 @@ export default function App() {
                 {zoomedItem.description && (
                   <p className="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed">{zoomedItem.description}</p>
                 )}
-                <button
-                  onClick={() => { setZoomedItem(null); setIsOrderPopupOpen(true); }}
-                  className="w-full py-3 bg-gradient-to-r from-amber-900 to-amber-950 text-amber-50 font-bold rounded-xl text-sm uppercase tracking-wider cursor-pointer hover:from-amber-800 hover:to-amber-900 transition-all shadow"
-                >
-                  Pesan Sekarang
-                </button>
+
+                {/* Size selector + Add to Cart */}
+                {zoomedItem.isAvailable ? (
+                  <div className="space-y-2.5">
+                    {/* Size buttons — show L only if item has priceLarge */}
+                    {zoomedItem.priceLarge ? (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            addToCart(zoomedItem, "R", false);
+                            setOrderNotification(`1x ${zoomedItem.name} (R) ditambahkan!`);
+                            setTimeout(() => setOrderNotification(null), 3000);
+                            setZoomedItem(null);
+                          }}
+                          className="flex-1 flex flex-col items-center py-2.5 bg-amber-50 dark:bg-zinc-800 hover:bg-amber-100 dark:hover:bg-zinc-700 border-2 border-amber-200 dark:border-zinc-600 hover:border-amber-500 dark:hover:border-amber-500 rounded-xl transition-all cursor-pointer group"
+                        >
+                          <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400 group-hover:text-amber-900 dark:group-hover:text-amber-300">Regular</span>
+                          <span className="font-black font-mono text-amber-900 dark:text-amber-300 text-sm">{zoomedItem.priceReg}K</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            addToCart(zoomedItem, "L", false);
+                            setOrderNotification(`1x ${zoomedItem.name} (L) ditambahkan!`);
+                            setTimeout(() => setOrderNotification(null), 3000);
+                            setZoomedItem(null);
+                          }}
+                          className="flex-1 flex flex-col items-center py-2.5 bg-amber-50 dark:bg-zinc-800 hover:bg-amber-100 dark:hover:bg-zinc-700 border-2 border-amber-200 dark:border-zinc-600 hover:border-amber-500 dark:hover:border-amber-500 rounded-xl transition-all cursor-pointer group"
+                        >
+                          <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400 group-hover:text-amber-900 dark:group-hover:text-amber-300">Large</span>
+                          <span className="font-black font-mono text-amber-900 dark:text-amber-300 text-sm">{zoomedItem.priceLarge}K</span>
+                        </button>
+                      </div>
+                    ) : (
+                      /* Snack / item tanpa ukuran L */
+                      <button
+                        onClick={() => {
+                          addToCart(zoomedItem, "R", false);
+                          setOrderNotification(`1x ${zoomedItem.name} ditambahkan ke keranjang!`);
+                          setTimeout(() => setOrderNotification(null), 3000);
+                          setZoomedItem(null);
+                        }}
+                        className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-amber-900 to-amber-950 text-amber-50 font-bold rounded-xl text-sm uppercase tracking-wider cursor-pointer hover:from-amber-800 hover:to-amber-900 transition-all shadow"
+                      >
+                        <Plus className="w-4 h-4" /> Tambah ke Keranjang — {zoomedItem.priceReg}K
+                      </button>
+                    )}
+
+                    {/* Lanjut ke Checkout */}
+                    {cart.length > 0 && (
+                      <button
+                        onClick={() => { setZoomedItem(null); setIsOrderPopupOpen(true); }}
+                        className="w-full py-2 text-amber-800 dark:text-amber-400 text-xs font-bold text-center cursor-pointer hover:underline transition-all"
+                      >
+                        🛒 Lihat Keranjang ({cart.reduce((s, i) => s + i.qty, 0)} item) → Lanjut Pesan
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="w-full py-3 bg-zinc-100 dark:bg-zinc-800 text-zinc-400 font-bold rounded-xl text-sm text-center uppercase tracking-wider">
+                    Stok Habis
+                  </div>
+                )}
               </div>
             </motion.div>
           </motion.div>
