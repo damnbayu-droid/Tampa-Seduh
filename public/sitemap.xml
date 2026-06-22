@@ -7,9 +7,12 @@
     http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
 
   <!-- ============================================================ -->
-  <!-- HALAMAN UTAMA / HOMEPAGE                                     -->
-  <!-- Prioritas tertinggi — landing page utama                     -->
+  <!-- CATATAN: URL fragment (#section) tidak valid di sitemap.     -->
+  <!-- Google hanya menerima URL lengkap tanpa hash (#).            -->
+  <!-- Semua section (menu, paket, news, kontak) ada di homepage.  -->
   <!-- ============================================================ -->
+
+  <!-- HALAMAN UTAMA — Tampa Seduh Homepage -->
   <url>
     <loc>https://tampaseduh.com/</loc>
     <lastmod>2026-06-23</lastmod>
@@ -17,74 +20,27 @@
     <priority>1.0</priority>
     <image:image>
       <image:loc>https://tampaseduh.com/OG-Image.webp</image:loc>
-      <image:title>Tampa Seduh – Street Coffee Kotabunan Boltim</image:title>
-      <image:caption>Kedai Kopi No.1 di Kotabunan, Bolaang Mongondow Timur</image:caption>
+      <image:title>Tampa Seduh – Kopi Kotabunan No.1 Delivery 24 Jam Boltim</image:title>
+      <image:caption>Street Coffee No.1 di Kotabunan, Bolaang Mongondow Timur</image:caption>
+      <image:geo_location>Kotabunan, Bolaang Mongondow Timur, Sulawesi Utara, Indonesia</image:geo_location>
     </image:image>
     <image:image>
       <image:loc>https://tampaseduh.com/Hero.jpeg</image:loc>
-      <image:title>Tampa Seduh Hero – Kopi Kotabunan Delivery 24 Jam</image:title>
+      <image:title>Tampa Seduh – Kopi Delivery 24 Jam Kotabunan Boltim</image:title>
+      <image:caption>Pesan kopi online, delivery ke Kotabunan, Tutuyan, Panang, Paret</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://tampaseduh.com/Logo%20Tampa%20Seduh.png</image:loc>
+      <image:title>Logo Tampa Seduh Street Coffee Boltim</image:title>
     </image:image>
   </url>
 
-  <!-- ============================================================ -->
-  <!-- SECTION: MENU KOPI                                           -->
-  <!-- ============================================================ -->
-  <url>
-    <loc>https://tampaseduh.com/#menu-section</loc>
-    <lastmod>2026-06-23</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-
-  <!-- ============================================================ -->
-  <!-- SECTION: PAKET PROMO                                         -->
-  <!-- ============================================================ -->
-  <url>
-    <loc>https://tampaseduh.com/#packages-section</loc>
-    <lastmod>2026-06-23</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-
-  <!-- ============================================================ -->
-  <!-- SECTION: KOPI NEWS & BUDAYA                                  -->
-  <!-- Diupdate sering sesuai frekuensi artikel                     -->
-  <!-- ============================================================ -->
-  <url>
-    <loc>https://tampaseduh.com/#news-section</loc>
-    <lastmod>2026-06-23</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-  </url>
-
-  <!-- ============================================================ -->
-  <!-- SECTION: TENTANG KAMI / FOUNDERS                             -->
-  <!-- ============================================================ -->
-  <url>
-    <loc>https://tampaseduh.com/#about-section</loc>
-    <lastmod>2026-06-23</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-
-  <!-- ============================================================ -->
-  <!-- SECTION: KONTAK & LOKASI                                     -->
-  <!-- ============================================================ -->
-  <url>
-    <loc>https://tampaseduh.com/#contact-section</loc>
-    <lastmod>2026-06-23</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
-  <!-- ============================================================ -->
-  <!-- HALAMAN PUBLIK: INVOICE                                      -->
-  <!-- ============================================================ -->
+  <!-- HALAMAN PUBLIK: INVOICE -->
   <url>
     <loc>https://tampaseduh.com/invoice</loc>
     <lastmod>2026-06-23</lastmod>
     <changefreq>never</changefreq>
-    <priority>0.3</priority>
+    <priority>0.2</priority>
   </url>
 
 </urlset>
