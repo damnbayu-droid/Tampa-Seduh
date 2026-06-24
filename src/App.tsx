@@ -909,120 +909,6 @@ export default function App() {
         {/* Dark overlay with sepia coffee tint to make text highly readable */}
         <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/80 to-black/35 dark:from-zinc-950/95 dark:via-zinc-955/80 dark:to-zinc-955/45 z-0 pointer-events-none" />
 
-        {/* ═══ VINTAGE CAFÉ SIGN — absolute, kiri bawah, miring ═══ */}
-        <motion.div
-          initial={{ opacity: 0, rotate: -14, y: 30 }}
-          animate={{ opacity: 1, rotate: -8, y: 0 }}
-          transition={{ delay: 0.9, duration: 0.8, ease: "easeOut" }}
-          style={{
-            position: "absolute",
-            bottom: "clamp(48px, 10vw, 110px)",
-            left: "clamp(14px, 3.5vw, 52px)",
-            zIndex: 20,
-            transformOrigin: "top center",
-            pointerEvents: "none",
-          }}
-        >
-          {/* Rope / tali gantung */}
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: "-1px", gap: "18px" }}>
-            <div style={{ width: "2px", height: "22px", background: "repeating-linear-gradient(180deg,#7a5a0a 0px,#b8870c 3px,#7a5a0a 6px)", borderRadius: "1px", opacity: 0.85 }} />
-            <div style={{ width: "2px", height: "22px", background: "repeating-linear-gradient(180deg,#7a5a0a 0px,#b8870c 3px,#7a5a0a 6px)", borderRadius: "1px", opacity: 0.85 }} />
-          </div>
-
-          {/* Sign board */}
-          <div style={{
-            background: shopIsOpen
-              ? "linear-gradient(145deg, #2C1A06 0%, #3D2309 45%, #2A1805 100%)"
-              : "linear-gradient(145deg, #1a1108 0%, #221608 45%, #180f05 100%)",
-            border: `3px solid ${shopIsOpen ? "#9B7520" : "#4A3508"}`,
-            borderRadius: "5px",
-            padding: "14px 22px 16px",
-            minWidth: "128px",
-            boxShadow: shopIsOpen
-              ? "0 10px 36px rgba(0,0,0,0.75), 4px 6px 16px rgba(0,0,0,0.5), inset 0 1px 0 rgba(201,162,39,0.18), inset 0 -1px 0 rgba(0,0,0,0.5)"
-              : "0 8px 28px rgba(0,0,0,0.7), 3px 5px 14px rgba(0,0,0,0.45)",
-            position: "relative",
-            transition: "all 0.7s ease",
-          }}>
-            {/* Inner border frame — rope detail */}
-            <div style={{
-              position: "absolute",
-              inset: "5px",
-              border: `1px solid ${shopIsOpen ? "rgba(185,140,30,0.3)" : "rgba(100,75,20,0.12)"}`,
-              borderRadius: "2px",
-              pointerEvents: "none",
-              transition: "all 0.7s ease",
-            }} />
-            {/* Corner brass nails */}
-            {([{ top: 6, left: 6 }, { top: 6, right: 6 }, { bottom: 6, left: 6 }, { bottom: 6, right: 6 }] as React.CSSProperties[]).map((pos, i) => (
-              <div key={i} style={{
-                position: "absolute",
-                width: "5px",
-                height: "5px",
-                borderRadius: "50%",
-                background: shopIsOpen
-                  ? "radial-gradient(circle at 35% 35%, #E8C960, #9B7520)"
-                  : "radial-gradient(circle at 35% 35%, #6B5218, #3D2B0A)",
-                boxShadow: shopIsOpen ? "0 1px 2px rgba(0,0,0,0.5)" : "none",
-                transition: "all 0.7s ease",
-                ...pos,
-              }} />
-            ))}
-
-            {/* Text content */}
-            <div style={{ textAlign: "center", position: "relative", zIndex: 1 }}>
-              <div style={{
-                fontSize: "7px",
-                fontFamily: "Georgia, serif",
-                letterSpacing: "0.32em",
-                textTransform: "uppercase",
-                color: shopIsOpen ? "rgba(201,162,39,0.6)" : "rgba(110,82,18,0.4)",
-                marginBottom: "7px",
-                lineHeight: 1,
-                transition: "color 0.7s ease",
-              }}>TAMPA SEDUH</div>
-
-              {/* Gold rule */}
-              <div style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "9px", justifyContent: "center" }}>
-                <div style={{ height: "1px", width: "18px", background: shopIsOpen ? "rgba(201,162,39,0.45)" : "rgba(100,75,20,0.2)" }} />
-                <span style={{ fontSize: "8px", color: shopIsOpen ? "rgba(201,162,39,0.7)" : "rgba(100,75,20,0.25)", lineHeight: 1 }}>✦</span>
-                <div style={{ height: "1px", width: "18px", background: shopIsOpen ? "rgba(201,162,39,0.45)" : "rgba(100,75,20,0.2)" }} />
-              </div>
-
-              {/* Main word */}
-              <div style={{
-                fontSize: "28px",
-                fontFamily: "Georgia, 'Times New Roman', serif",
-                fontWeight: 900,
-                fontStyle: "italic",
-                letterSpacing: "0.06em",
-                color: shopIsOpen ? "#DDB84A" : "#5C4412",
-                lineHeight: 1,
-                textShadow: shopIsOpen ? "0 1px 0 rgba(0,0,0,0.7), 0 0 14px rgba(185,140,30,0.25)" : "none",
-                marginBottom: "9px",
-                transition: "all 0.7s ease",
-              }}>{shopIsOpen ? "BUKA" : "TUTUP"}</div>
-
-              {/* Gold rule bottom */}
-              <div style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "8px", justifyContent: "center" }}>
-                <div style={{ height: "1px", width: "18px", background: shopIsOpen ? "rgba(201,162,39,0.45)" : "rgba(100,75,20,0.2)" }} />
-                <span style={{ fontSize: "8px", color: shopIsOpen ? "rgba(201,162,39,0.7)" : "rgba(100,75,20,0.25)", lineHeight: 1 }}>✦</span>
-                <div style={{ height: "1px", width: "18px", background: shopIsOpen ? "rgba(201,162,39,0.45)" : "rgba(100,75,20,0.2)" }} />
-              </div>
-
-              <div style={{
-                fontSize: "7px",
-                fontFamily: "Georgia, serif",
-                letterSpacing: "0.18em",
-                textTransform: "uppercase",
-                color: shopIsOpen ? "rgba(201,162,39,0.5)" : "rgba(100,75,20,0.3)",
-                lineHeight: 1,
-                transition: "color 0.7s ease",
-              }}>{shopIsOpen ? "Silakan Masuk" : "Maaf Tutup"}</div>
-            </div>
-          </div>
-        </motion.div>
-
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center text-center relative z-10">
           
           {/* Hero Content — Centered */}
@@ -1039,20 +925,20 @@ export default function App() {
             
             </div>
 
-            {/* Micro-interactive quote block */}
+            {/* Micro-interactive quote block — compact on mobile */}
             <motion.div 
               whileHover={{ scale: 1.02, rotate: -2 }}
-              className="p-5 rounded-2xl border border-amber-900/30 bg-[#2A1B0E]/90 text-amber-100 transition-all duration-300 cursor-pointer shadow-md rotate-[-1deg] relative max-w-md mx-auto"
+              className="px-3 py-2.5 sm:p-5 rounded-xl sm:rounded-2xl border border-amber-900/30 bg-[#2A1B0E]/90 text-amber-100 transition-all duration-300 cursor-pointer shadow-md rotate-[-1deg] relative max-w-[260px] sm:max-w-md mx-auto"
             >
-              <span className="text-3xl font-serif text-[#8B5E3C] opacity-35 absolute -top-1 left-2">"</span>
-              <p className="font-serif font-black text-sm uppercase tracking-wide px-5 text-center italic leading-snug">
+              <span className="text-2xl sm:text-3xl font-serif text-[#8B5E3C] opacity-35 absolute -top-1 left-2">"</span>
+              <p className="font-serif font-black text-[10px] sm:text-sm uppercase tracking-wide px-3 sm:px-5 text-center italic leading-snug">
                 "Mo Pulang Mar
                 <br />
                 Mo Suka Tamba Ulang"
               </p>
-              <div className="mt-3 flex justify-between items-center text-[10px] font-bold text-stone-400 uppercase tracking-widest pl-5 pr-2">
+              <div className="mt-2 sm:mt-3 flex justify-between items-center text-[8px] sm:text-[10px] font-bold text-stone-400 uppercase tracking-widest pl-3 sm:pl-5 pr-1 sm:pr-2">
                 <span>- Quote Legendaris</span>
-                <span className="text-amber-300 bg-amber-900/40 px-2 py-0.5 rounded">Rasa Bersahaja</span>
+                <span className="text-amber-300 bg-amber-900/40 px-1.5 sm:px-2 py-0.5 rounded">Rasa Bersahaja</span>
               </div>
             </motion.div>
 
@@ -1081,7 +967,84 @@ export default function App() {
         </div>
       </section>
 
-      {/* 3. Catalog Menu Section (Presenting Foto 2 & Foto 3 Menu Boards under Hero) */}
+      {/* ══════════════════════════════════════════════════
+          VINTAGE CAFÉ SIGN — Between Hero & Menu sections
+      ══════════════════════════════════════════════════ */}
+      <div
+        className="flex justify-center"
+        style={{
+          background: "linear-gradient(to bottom, #1c1008 55%, #F9F7F2 55%)",
+          paddingTop: "20px",
+          paddingBottom: "24px",
+        }}
+      >
+        <motion.div
+          initial={{ opacity: 0, rotate: -10, y: 16 }}
+          animate={{ opacity: 1, rotate: -6, y: 0 }}
+          transition={{ delay: 0.5, duration: 0.7, ease: "easeOut" }}
+          style={{ transformOrigin: "top center", display: "inline-flex", flexDirection: "column", alignItems: "center" }}
+        >
+          {/* Tali gantung */}
+          <div style={{ display: "flex", gap: "22px", justifyContent: "center", marginBottom: "-1px" }}>
+            <div style={{ width: "2px", height: "20px", background: "repeating-linear-gradient(180deg,#7a5a0a 0px,#c09020 3px,#7a5a0a 6px)", borderRadius: "1px", opacity: 0.8 }} />
+            <div style={{ width: "2px", height: "20px", background: "repeating-linear-gradient(180deg,#7a5a0a 0px,#c09020 3px,#7a5a0a 6px)", borderRadius: "1px", opacity: 0.8 }} />
+          </div>
+
+          {/* Sign board */}
+          <div style={{
+            background: shopIsOpen
+              ? "linear-gradient(145deg, #2C1A06 0%, #3D2309 45%, #2A1805 100%)"
+              : "linear-gradient(145deg, #1a1108 0%, #221608 45%, #180f05 100%)",
+            border: `3px solid ${shopIsOpen ? "#9B7520" : "#4A3508"}`,
+            borderRadius: "5px",
+            padding: "14px 24px 16px",
+            minWidth: "130px",
+            position: "relative",
+            boxShadow: shopIsOpen
+              ? "0 8px 28px rgba(0,0,0,0.5), 3px 5px 14px rgba(0,0,0,0.35), inset 0 1px 0 rgba(201,162,39,0.15)"
+              : "0 6px 20px rgba(0,0,0,0.45), 2px 4px 10px rgba(0,0,0,0.3)",
+            transition: "all 0.7s ease",
+          }}>
+            {/* Inner frame */}
+            <div style={{
+              position: "absolute", inset: "5px",
+              border: `1px solid ${shopIsOpen ? "rgba(185,140,30,0.28)" : "rgba(100,75,20,0.10)"}`,
+              borderRadius: "2px", pointerEvents: "none", transition: "all 0.7s ease",
+            }} />
+            {/* Brass nails */}
+            {([{ top: 6, left: 6 }, { top: 6, right: 6 }, { bottom: 6, left: 6 }, { bottom: 6, right: 6 }] as React.CSSProperties[]).map((pos, i) => (
+              <div key={i} style={{
+                position: "absolute", width: "5px", height: "5px", borderRadius: "50%",
+                background: shopIsOpen ? "radial-gradient(circle at 35% 35%, #E8C960, #9B7520)" : "radial-gradient(circle at 35% 35%, #6B5218, #3D2B0A)",
+                boxShadow: shopIsOpen ? "0 1px 2px rgba(0,0,0,0.5)" : "none",
+                transition: "all 0.7s ease", ...pos,
+              }} />
+            ))}
+
+            <div style={{ textAlign: "center", position: "relative", zIndex: 1 }}>
+              <div style={{ fontSize: "7px", fontFamily: "Georgia, serif", letterSpacing: "0.32em", textTransform: "uppercase", color: shopIsOpen ? "rgba(201,162,39,0.6)" : "rgba(110,82,18,0.4)", marginBottom: "7px", lineHeight: 1, transition: "color 0.7s ease" }}>TAMPA SEDUH</div>
+              <div style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "9px", justifyContent: "center" }}>
+                <div style={{ height: "1px", width: "18px", background: shopIsOpen ? "rgba(201,162,39,0.45)" : "rgba(100,75,20,0.2)" }} />
+                <span style={{ fontSize: "8px", color: shopIsOpen ? "rgba(201,162,39,0.7)" : "rgba(100,75,20,0.25)", lineHeight: 1 }}>&#10022;</span>
+                <div style={{ height: "1px", width: "18px", background: shopIsOpen ? "rgba(201,162,39,0.45)" : "rgba(100,75,20,0.2)" }} />
+              </div>
+              <div style={{ fontSize: "28px", fontFamily: "Georgia, 'Times New Roman', serif", fontWeight: 900, fontStyle: "italic", letterSpacing: "0.06em", color: shopIsOpen ? "#DDB84A" : "#5C4412", lineHeight: 1, textShadow: shopIsOpen ? "0 1px 0 rgba(0,0,0,0.7), 0 0 12px rgba(185,140,30,0.22)" : "none", marginBottom: "9px", transition: "all 0.7s ease" }}>
+                {shopIsOpen ? "BUKA" : "TUTUP"}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "8px", justifyContent: "center" }}>
+                <div style={{ height: "1px", width: "18px", background: shopIsOpen ? "rgba(201,162,39,0.45)" : "rgba(100,75,20,0.2)" }} />
+                <span style={{ fontSize: "8px", color: shopIsOpen ? "rgba(201,162,39,0.7)" : "rgba(100,75,20,0.25)", lineHeight: 1 }}>&#10022;</span>
+                <div style={{ height: "1px", width: "18px", background: shopIsOpen ? "rgba(201,162,39,0.45)" : "rgba(100,75,20,0.2)" }} />
+              </div>
+              <div style={{ fontSize: "7px", fontFamily: "Georgia, serif", letterSpacing: "0.12em", textTransform: "uppercase", color: shopIsOpen ? "rgba(201,162,39,0.5)" : "rgba(100,75,20,0.3)", lineHeight: 1.3, textAlign: "center", transition: "color 0.7s ease" }}>
+                {shopIsOpen ? "Silakan Masuk" : "Maaf Tutup · Delivery 24/7"}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* 3. Catalog Menu Section */}
       <section id="menu-section" className="py-20 bg-[#F9F7F2] dark:bg-zinc-950 text-stone-900 dark:text-stone-100 transition-colors duration-300">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
           

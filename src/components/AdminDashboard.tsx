@@ -102,7 +102,15 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   const [shopIsOpen, setShopIsOpen] = useState<boolean>(true);
   const [shopStatusLoading, setShopStatusLoading] = useState(false);
   const [shopStatusMsg, setShopStatusMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const toggleShopStatus = async () => {
+  const [showShopConfirm, setShowShopConfirm] = useState(false);
+
+  const handleShopToggleClick = () => {
+    setShowShopConfirm(true);
+    setShopStatusMsg(null);
+  };
+
+  const confirmToggleShopStatus = async () => {
+    setShowShopConfirm(false);
     setShopStatusLoading(true);
     setShopStatusMsg(null);
     try {
@@ -116,8 +124,8 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
         setShopStatusMsg({
           type: "success",
           text: data.shopStatus.isOpen
-            ? "✅ Kedai berhasil DIBUKA — Sign hijau menyala di homepage!"
-            : "✅ Kedai berhasil DITUTUP — Sign gelap di homepage."
+            ? "✅ Kedai berhasil DIBUKA — Sign hijau menyala di homepage! Delivery tetap aktif."
+            : "✅ Kedai berhasil DITUTUP — Sign gelap di homepage. Delivery 24/7 tetap jalan."
         });
       } else {
         const errData = await res.json().catch(() => ({}));
@@ -127,8 +135,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
       setShopStatusMsg({ type: "error", text: `❌ Koneksi gagal: ${err.message || "Tidak dapat terhubung ke server"}` });
     }
     setShopStatusLoading(false);
-    // Auto-dismiss pesan setelah 4 detik
-    setTimeout(() => setShopStatusMsg(null), 4000);
+    setTimeout(() => setShopStatusMsg(null), 5000);
   };
   const [profitDashboard, setProfitDashboard] = useState<ProfitDashboard | null>(null);
   const [selectedProfitPeriod, setSelectedProfitPeriod] = useState<"today" | "last_7d" | "last_30d" | "all_time">("last_30d");
@@ -1227,37 +1234,74 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                       </div>
                     </div>
 
-                    {/* Toggle Button */}
+                    {/* Toggle Button + Konfirmasi */}
                     <div className="flex flex-col items-center gap-3 z-10">
-                      <button
-                        onClick={toggleShopStatus}
-                        disabled={shopStatusLoading}
-                        className={`flex items-center gap-3 px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-wider transition-all duration-300 cursor-pointer shadow-xl border-2 min-w-[180px] justify-center
-                          ${shopIsOpen
-                            ? 'bg-red-900/80 hover:bg-red-800 border-red-700/50 text-red-200 shadow-red-900/30'
-                            : 'bg-green-900/80 hover:bg-green-800 border-green-600/50 text-green-200 shadow-green-900/30'
-                          } ${shopStatusLoading ? 'opacity-70 cursor-not-allowed scale-95' : 'hover:scale-105'}`}
-                        id="btn-toggle-shop-status"
-                      >
-                        {shopStatusLoading ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
-                            <span>Memproses...</span>
-                          </>
-                        ) : (
-                          <>
-                            <span className="text-lg">{shopIsOpen ? '🔴' : '🟢'}</span>
-                            {shopIsOpen ? 'Tutup Kedai' : 'Buka Kedai'}
-                          </>
-                        )}
-                      </button>
+                      {/* Confirmation dialog */}
+                      {showShopConfirm ? (
+                        <div className={`rounded-2xl border-2 p-4 max-w-[280px] text-center space-y-3 shadow-2xl ${
+                          shopIsOpen
+                            ? "bg-zinc-950 border-red-700/60"
+                            : "bg-zinc-950 border-green-700/60"
+                        }`}>
+                          <div className="text-base font-black text-white">
+                            {shopIsOpen ? "🔴 Tutup Kedai?" : "🟢 Buka Kedai?"}
+                          </div>
+                          <p className="text-[10px] text-zinc-400 leading-relaxed">
+                            {shopIsOpen
+                              ? "Kedai fisik akan ditandai TUTUP di homepage.\nDelivery 24/7 tetap aktif — pelanggan masih bisa order."
+                              : "Kedai akan ditandai BUKA di homepage.\nSign hijau menyala dan pelanggan bisa datang langsung."
+                            }
+                          </p>
+                          <div className="flex gap-2 justify-center">
+                            <button
+                              onClick={() => setShowShopConfirm(false)}
+                              className="px-4 py-2 rounded-xl text-[11px] font-bold text-zinc-400 border border-zinc-700 hover:bg-zinc-800 cursor-pointer transition-all"
+                            >
+                              Batal
+                            </button>
+                            <button
+                              onClick={confirmToggleShopStatus}
+                              className={`px-5 py-2 rounded-xl text-[11px] font-black cursor-pointer transition-all border-2 ${
+                                shopIsOpen
+                                  ? "bg-red-900 hover:bg-red-800 border-red-600 text-red-100"
+                                  : "bg-green-900 hover:bg-green-800 border-green-600 text-green-100"
+                              }`}
+                            >
+                              Ya, {shopIsOpen ? "Tutup" : "Buka"} Sekarang
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={handleShopToggleClick}
+                          disabled={shopStatusLoading}
+                          className={`flex items-center gap-3 px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-wider transition-all duration-300 cursor-pointer shadow-xl border-2 min-w-[180px] justify-center
+                            ${shopIsOpen
+                              ? 'bg-red-900/80 hover:bg-red-800 border-red-700/50 text-red-200 shadow-red-900/30'
+                              : 'bg-green-900/80 hover:bg-green-800 border-green-600/50 text-green-200 shadow-green-900/30'
+                            } ${shopStatusLoading ? 'opacity-70 cursor-not-allowed scale-95' : 'hover:scale-105'}`}
+                          id="btn-toggle-shop-status"
+                        >
+                          {shopStatusLoading ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
+                              <span>Memproses...</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-lg">{shopIsOpen ? '🔴' : '🟢'}</span>
+                              {shopIsOpen ? 'Tutup Kedai' : 'Buka Kedai'}
+                            </>
+                          )}
+                        </button>
+                      )}
 
                       {/* Feedback toast */}
                       {shopStatusMsg && (
-                        <div className={`text-xs font-semibold px-4 py-2.5 rounded-xl border max-w-[260px] text-center leading-relaxed transition-all animate-in fade-in slide-in-from-bottom-2 duration-300 ${
+                        <div className={`text-xs font-semibold px-4 py-3 rounded-xl border max-w-[280px] text-center leading-relaxed ${
                           shopStatusMsg.type === "success"
-                            ? "bg-green-950/60 border-green-600/30 text-green-300"
-                            : "bg-red-950/60 border-red-600/30 text-red-300"
+                            ? "bg-green-950/70 border-green-600/40 text-green-200"
+                            : "bg-red-950/70 border-red-600/40 text-red-200"
                         }`}>
                           {shopStatusMsg.text}
                         </div>
