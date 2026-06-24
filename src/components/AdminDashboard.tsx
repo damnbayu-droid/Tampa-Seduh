@@ -1128,10 +1128,26 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                       <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-0.5">Pesanan Masuk</span>
                       <div className="mt-2 flex items-baseline gap-2">
                         <span className="text-3xl font-serif font-black text-amber-950 dark:text-amber-50">{orderList.length}</span>
-                        <span className="text-xs font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full">{orderList.filter(o => o.status === "pending").length} Pending</span>
+                        <span className="text-[10px] font-bold text-zinc-400">Total Akumulasi</span>
                       </div>
-                      <p className="text-[10px] text-zinc-450 mt-1">Total pengantaran di database</p>
+                      {/* Breakdown badge: Pending + Diproses + Selesai */}
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>
+                          {orderList.filter(o => o.status === "pending").length} Pending
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></span>
+                          {orderList.filter(o => o.status === "preparing" || o.status === "delivering").length} Proses
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                          {orderList.filter(o => o.status === "completed").length} Selesai
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-zinc-450 mt-1.5">Total akumulasi semua pesanan di database</p>
                     </div>
+
 
                     <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-sm flex flex-col justify-between">
                       <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-0.5">Total Varian Kopi</span>

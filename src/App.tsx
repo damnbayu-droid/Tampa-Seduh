@@ -26,6 +26,7 @@ const AdminDashboard = lazy(() => import("./components/AdminDashboard"));
 const CheckoutPage = lazy(() => import("./components/CheckoutPage"));
 const GlobalNotification = lazy(() => import("./components/GlobalNotification"));
 const InvoicePage = lazy(() => import("./components/InvoicePage"));
+import { PrivacyPolicyPage, TermsConditionsPage, RefundPolicyPage } from "./components/PolicyPages";
 
 export default function App() {
   // Navigation & admin panel toggles
@@ -74,6 +75,33 @@ export default function App() {
   const [isUploadingCustomerPhoto, setIsUploadingCustomerPhoto] = useState(false);
   const [customerPhotoCaption, setCustomerPhotoCaption] = useState("");
   const [customerUploadSuccess, setCustomerUploadSuccess] = useState(false);
+
+  // Lightbox states for full-screen photo popup + swipe
+  const [lightbox, setLightbox] = useState<{ type: 'pamflet' | 'gallery' | 'customer'; index: number } | null>(null);
+  const lightboxTouchStart = React.useRef<number | null>(null);
+
+  const openLightbox = (type: 'pamflet' | 'gallery' | 'customer', index: number) => setLightbox({ type, index });
+  const closeLightbox = () => setLightbox(null);
+  const lightboxNext = () => {
+    if (!lightbox) return;
+    const list = lightbox.type === 'pamflet' ? pamfletList : lightbox.type === 'gallery' ? galleryPhotos : customerPhotos;
+    setLightbox({ ...lightbox, index: (lightbox.index + 1) % list.length });
+  };
+  const lightboxPrev = () => {
+    if (!lightbox) return;
+    const list = lightbox.type === 'pamflet' ? pamfletList : lightbox.type === 'gallery' ? galleryPhotos : customerPhotos;
+    setLightbox({ ...lightbox, index: (lightbox.index - 1 + list.length) % list.length });
+  };
+  const handleLightboxTouchStart = (e: React.TouchEvent) => {
+    lightboxTouchStart.current = e.touches[0].clientX;
+  };
+  const handleLightboxTouchEnd = (e: React.TouchEvent) => {
+    if (lightboxTouchStart.current === null) return;
+    const diff = lightboxTouchStart.current - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 50) { diff > 0 ? lightboxNext() : lightboxPrev(); }
+    lightboxTouchStart.current = null;
+  };
+
   useEffect(() => {
     const handleError = (e: ErrorEvent) => setRenderError(e.message);
     window.addEventListener('error', handleError);
@@ -669,6 +697,17 @@ export default function App() {
     );
   }
 
+  // Policy Pages routes
+  if (currentPath === "/privacy-policy") {
+    return <PrivacyPolicyPage onBack={() => navigateTo("/")} />;
+  }
+  if (currentPath === "/terms-and-conditions") {
+    return <TermsConditionsPage onBack={() => navigateTo("/")} />;
+  }
+  if (currentPath === "/refund-policy") {
+    return <RefundPolicyPage onBack={() => navigateTo("/")} />;
+  }
+
   // Render Checkout Page if path matches '/checkout'
   if (currentPath === "/checkout") {
     return (
@@ -852,10 +891,10 @@ export default function App() {
         {/* Dark overlay with sepia coffee tint to make text highly readable */}
         <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/80 to-black/35 dark:from-zinc-950/95 dark:via-zinc-955/80 dark:to-zinc-955/45 z-0 pointer-events-none" />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center text-center relative z-10">
           
-          {/* Left Column (Hero Content) */}
-          <div className="lg:col-span-7 space-y-8 text-left">
+          {/* Hero Content — Centered */}
+          <div className="max-w-3xl w-full space-y-8">
             <span className="inline-block px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest leading-none bg-[#4B3621] border border-amber-900/20 text-amber-200 shadow-sm animate-pulse">
               ✨ 24/7 Delivery
             </span>
@@ -868,12 +907,12 @@ export default function App() {
             
             </div>
 
-            {/* Micro-interactive quote block replicating the card on Foto 1 */}
+            {/* Micro-interactive quote block */}
             <motion.div 
               whileHover={{ scale: 1.02, rotate: -2 }}
-              className="p-5 rounded-2xl border border-amber-900/30 bg-[#2A1B0E]/90 text-amber-100 transition-all duration-300 cursor-pointer shadow-md rotate-[-1deg] relative max-w-md"
+              className="p-5 rounded-2xl border border-amber-900/30 bg-[#2A1B0E]/90 text-amber-100 transition-all duration-300 cursor-pointer shadow-md rotate-[-1deg] relative max-w-md mx-auto"
             >
-              <span className="text-3xl font-serif text-[#8B5E3C] opacity-35 absolute -top-1 left-2">“</span>
+              <span className="text-3xl font-serif text-[#8B5E3C] opacity-35 absolute -top-1 left-2">"</span>
               <p className="font-serif font-black text-sm uppercase tracking-wide px-5 text-center italic leading-snug">
                 "Mo Pulang Mar
                 <br />
@@ -885,7 +924,7 @@ export default function App() {
               </div>
             </motion.div>
 
-            <div className="flex flex-wrap gap-4 pt-2">
+            <div className="flex flex-wrap justify-center gap-4 pt-2">
               <button
                 onClick={() => setIsOrderPopupOpen(true)}
                 className="px-8 py-4 bg-[#8B5E3C] hover:bg-[#6F4E37] text-white rounded-full font-black shadow-lg shadow-[#8B5E3C]/20 cursor-pointer transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-wider"
@@ -903,8 +942,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Right Column is empty to let the background Hero image show completely */}
-          <div className="lg:col-span-5 hidden lg:block" />
 
         </div>
       </section>
@@ -944,12 +981,12 @@ export default function App() {
                 </h3>
               </div>
               <div className="flex items-center gap-3 mt-4 sm:mt-0 bg-white/40 dark:bg-zinc-950/40 px-5 py-3 rounded-2xl border border-[#E8E2D9] dark:border-zinc-800">
-                <div className="w-10 h-10 bg-[#4B3621] text-white rounded-full flex items-center justify-center font-bold">
-                  ☕
+                <div className="w-10 h-10 bg-[#4B3621] text-white rounded-full flex items-center justify-center font-bold text-lg">
+                  🧊
                 </div>
                 <div>
                   <h4 className="font-serif font-black text-lg tracking-tight leading-none text-[#2D1B0D] dark:text-amber-50">TAMPA SEDUH.</h4>
-                  <span className="text-[8px] uppercase tracking-[0.18em] font-extrabold text-[#8B5E3C] dark:text-amber-400">STREET COFFEE EST. 2019</span>
+                  <span className="text-[8px] uppercase tracking-[0.18em] font-extrabold text-[#8B5E3C] dark:text-amber-400">STREET COFFEE SINCE. 2019</span>
                 </div>
               </div>
             </div>
@@ -1092,8 +1129,8 @@ export default function App() {
                 </h3>
               </div>
               <div className="flex items-center gap-3 mt-4 sm:mt-0 bg-white/40 dark:bg-zinc-950/40 px-5 py-3 rounded-2xl border border-[#E8E2D9] dark:border-zinc-800">
-                <div className="w-10 h-10 bg-[#8B5E3C] text-white rounded-full flex items-center justify-center font-bold">
-                  🔥
+                <div className="w-10 h-10 bg-[#8B5E3C] text-white rounded-full flex items-center justify-center font-bold text-lg">
+                  ♨️
                 </div>
                 <div>
                   <h4 className="font-serif font-black text-lg tracking-tight leading-none text-[#2D1B0D] dark:text-amber-50">TAMPA SEDUH.</h4>
@@ -1423,10 +1460,13 @@ export default function App() {
             <div className="relative overflow-hidden rounded-2xl">
               <div className="flex transition-transform duration-500 ease-in-out" style={{ transform: `translateX(-${pamfletIndex * 100}%)` }}>
                 {pamfletList.map((pam, idx) => (
-                  <div key={pam.id} className="min-w-full flex justify-center">
+                  <div key={pam.id} className="min-w-full flex justify-center cursor-pointer group relative" onClick={() => openLightbox('pamflet', idx)}>
                     <img src={pam.url} alt={pam.title || `Pamflet ${idx + 1}`}
-                      className="max-h-[70vh] w-auto object-contain rounded-2xl shadow-2xl mx-auto"
+                      className="max-h-[70vh] w-auto object-contain rounded-2xl shadow-2xl mx-auto group-hover:brightness-90 transition-all duration-200"
                       loading="lazy" />
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-[11px] font-bold text-white/70 bg-black/40 px-3 py-1 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                      🔍 Klik untuk perbesar
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1469,13 +1509,19 @@ export default function App() {
                   ? galleryPhotos.slice(0, (galleryIndex + 8) % galleryPhotos.length)
                   : []
               ).map((photo, idx) => (
-                <motion.div key={photo.id + idx}
+                <motion.div key={photo.id + '-' + idx}
                   initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: idx * 0.05 }}
-                  className={`rounded-2xl overflow-hidden bg-zinc-200 dark:bg-zinc-800 ${idx === 0 ? 'col-span-2 row-span-2 aspect-square' : 'aspect-square'}`}>
-                  <img src={photo.url} alt={photo.caption || `Foto ${idx + 1}`}
-                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300 cursor-pointer"
-                    loading="lazy" />
+                  onClick={() => openLightbox('gallery', galleryPhotos.indexOf(photo) >= 0 ? galleryPhotos.indexOf(photo) : galleryIndex + idx)}
+                  className={`rounded-2xl overflow-hidden bg-zinc-200 dark:bg-zinc-800 cursor-pointer group ${idx === 0 ? 'col-span-2 row-span-2 aspect-square' : 'aspect-square'}`}>
+                  <div className="relative w-full h-full">
+                    <img src={photo.url} alt={photo.caption || `Foto ${idx + 1}`}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      loading="lazy" />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-all duration-200">
+                      <span className="text-white text-xl opacity-0 group-hover:opacity-100 transition-opacity">🔍</span>
+                    </div>
+                  </div>
                 </motion.div>
               ))}
             </div>
@@ -1556,24 +1602,29 @@ export default function App() {
           ) : (
             <>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                {customerPhotos.slice(customerGalleryIndex, customerGalleryIndex + 8).concat(
-                  customerGalleryIndex + 8 > customerPhotos.length
-                    ? customerPhotos.slice(0, (customerGalleryIndex + 8) % customerPhotos.length)
-                    : []
-                ).map((photo, idx) => (
-                  <motion.div key={photo.id + idx}
-                    initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: idx * 0.05 }}
-                    className={`relative rounded-2xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 ${idx === 0 ? 'col-span-2 row-span-2 aspect-square' : 'aspect-square'} group`}>
-                    <img src={photo.url} alt={photo.caption || photo.user_name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      loading="lazy" />
-                    <div className="absolute bottom-0 inset-x-0 p-2 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                      <p className="text-white text-xs font-bold truncate">{photo.user_name}</p>
-                      {photo.caption && <p className="text-white/80 text-[9px] truncate italic">"{photo.caption}"</p>}
-                    </div>
-                  </motion.div>
-                ))}
+                {(() => {
+                  // De-duplicate by id, paginate cleanly without wrap-around to avoid double images
+                  const uniquePhotos = customerPhotos.filter((p, i, arr) => arr.findIndex(x => x.id === p.id) === i);
+                  const page = uniquePhotos.slice(customerGalleryIndex, customerGalleryIndex + 8);
+                  return page.map((photo, idx) => (
+                    <motion.div key={photo.id}
+                      initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: idx * 0.05 }}
+                      onClick={() => openLightbox('customer', uniquePhotos.indexOf(photo))}
+                      className={`relative rounded-2xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 cursor-pointer ${idx === 0 ? 'col-span-2 row-span-2 aspect-square' : 'aspect-square'} group`}>
+                      <img src={photo.url} alt={photo.caption || photo.user_name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy" />
+                      <div className="absolute bottom-0 inset-x-0 p-2 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                        <p className="text-white text-xs font-bold truncate">{photo.user_name}</p>
+                        {photo.caption && <p className="text-white/80 text-[9px] truncate italic">"{photo.caption}"</p>}
+                      </div>
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-all duration-200">
+                        <span className="text-white text-xl opacity-0 group-hover:opacity-100 transition-opacity">🔍</span>
+                      </div>
+                    </motion.div>
+                  ));
+                })()}
               </div>
               {customerPhotos.length > 8 && (
                 <div className="flex justify-center items-center gap-4 mt-4">
@@ -2015,7 +2066,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* Contact Details */}
+          {/* Contact Details + Alamat */}
           <div className="space-y-4">
             <h4 className="font-serif font-bold text-sm uppercase tracking-widest text-amber-400">Kontak Resmi Kami</h4>
             <ul className="space-y-3 text-xs text-amber-100/90 font-medium">
@@ -2043,45 +2094,59 @@ export default function App() {
                 </a>
               </li>
             </ul>
-          </div>
-
-          {/* Location details */}
-          <div className="space-y-4 col-span-1">
-            <h4 className="font-serif font-bold text-sm uppercase tracking-widest text-amber-400">Alamat Kedai</h4>
-            <div className="flex gap-2.5 text-xs text-amber-100/90 font-medium">
-              <MapPin className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-              <div>
-                <a href="https://maps.app.goo.gl/9MbTTfGwG43hgJ527" target="_blank" rel="noreferrer" className="block hover:opacity-80 transition-opacity">
+            {/* Alamat Kedai — di bawah kontak */}
+            <div className="pt-3 border-t border-white/5">
+              <h5 className="text-[10px] font-bold uppercase tracking-widest text-amber-500 mb-2">📍 Alamat Kedai</h5>
+              <div className="flex gap-2 text-xs text-amber-100/90 font-medium">
+                <MapPin className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                <a href="https://maps.app.goo.gl/9MbTTfGwG43hgJ527" target="_blank" rel="noreferrer" className="hover:opacity-80 transition-opacity leading-relaxed">
                   <strong className="block text-white">Jl. Tangkudeagan No. 2 Kotabunan Selatan</strong>
-                  <span>Kec. Kotabunan, Kabupaten Bolaang Mongondow Timur, Trans Sulawesi Lingkar Selatan.</span>
+                  <span>Kec. Kotabunan, Kab. BOLTIM, Prov. SULUT.</span>
                 </a>
               </div>
             </div>
           </div>
 
+          {/* Ekosistem */}
+          <div className="space-y-4">
+            <h4 className="font-serif font-bold text-sm uppercase tracking-widest text-amber-400">Ekosistem</h4>
+            <ul className="space-y-3 text-xs text-amber-100/90 font-medium">
+              <li>
+                <a href="https://indodesign.website" target="_blank" rel="noopener noreferrer" className="hover:text-amber-400 transition-colors">
+                  indodesign.website
+                </a>
+              </li>
+              <li>
+                <a href="https://bali.enterprises" target="_blank" rel="noopener noreferrer" className="hover:text-amber-400 transition-colors">
+                  bali.enterprises
+                </a>
+              </li>
+              <li>
+                <a href="https://mybisnis.app" target="_blank" rel="noopener noreferrer" className="hover:text-amber-400 transition-colors">
+                  Kotabunan Projek
+                </a>
+              </li>
+            </ul>
+          </div>
+
         </div>
 
-        {/* Brand attribution copyright */}
+        {/* Brand attribution copyright — Policy links di kanan bawah */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 flex flex-col sm:flex-row justify-between items-center text-[11px] text-amber-250/50">
           <div className="flex flex-col gap-1 text-left">
             <span>&copy; {new Date().getFullYear()} Tampa Seduh Street Coffee Boltim. All Rights Reserved.</span>
-            <span className="opacity-80">Berdikari Bersama Komunitas Petani Kopi Lokal Kotabunan Malalayang.</span>
+            <span className="opacity-80">Berdikari Bersama Komunitas Petani Kopi Lokal Kotabunan.</span>
           </div>
-          <div className="flex flex-col items-end gap-1 mt-4 sm:mt-0 font-sans">
-            <div className="flex gap-2 text-[10px] text-amber-400/80">
-              <a href="https://indodesign.website" target="_blank" rel="noopener noreferrer" className="hover:underline">indodesign.website</a>
-              <span>&bull;</span>
-              <a href="https://bali.enterprises" target="_blank" rel="noopener noreferrer" className="hover:underline">bali.enterprises</a>
-            </div>
-            <span>
-              Bagian dari{" "}
-              <a href="https://mybisnis.app" target="_blank" rel="noopener noreferrer" className="text-amber-400 font-bold hover:underline">
-                Kotabunan Projek
-              </a>
-            </span>
+          <div className="flex items-center gap-2 mt-4 sm:mt-0 text-[10px] text-amber-400/60">
+            <button onClick={() => navigateTo("/privacy-policy")} className="hover:text-amber-400 transition-colors cursor-pointer">Privacy Policy</button>
+            <span>·</span>
+            <button onClick={() => navigateTo("/terms-and-conditions")} className="hover:text-amber-400 transition-colors cursor-pointer">Terms & Conditions</button>
+            <span>·</span>
+            <button onClick={() => navigateTo("/refund-policy")} className="hover:text-amber-400 transition-colors cursor-pointer">Refund Policy</button>
           </div>
         </div>
       </footer>
+
 
       {/* Floating Coffee Cart Bubble on the left margin/bottom */}
       {cart.length > 0 && (
@@ -2696,7 +2761,112 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      {/* ═══════════════════════════════════════════════════
+          UNIVERSAL LIGHTBOX MODAL
+          - Pamflet, Gallery Street Foto, Customer Emotions
+          - Touch Swipe for Mobile, Keyboard Nav, Caption
+      ═══════════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {lightbox && (() => {
+          const list = lightbox.type === 'pamflet' ? pamfletList : lightbox.type === 'gallery' ? galleryPhotos : customerPhotos;
+          const item = list[lightbox.index];
+          if (!item) return null;
+          const imgUrl = (item as any).url;
+          const caption = (item as any).caption || (item as any).title || '';
+          const userName = (item as any).user_name || '';
+          const totalCount = list.length;
+
+          return (
+            <motion.div
+              key="lightbox-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center p-4"
+              onClick={closeLightbox}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') closeLightbox();
+                if (e.key === 'ArrowRight') lightboxNext();
+                if (e.key === 'ArrowLeft') lightboxPrev();
+              }}
+              tabIndex={0}
+              onTouchStart={handleLightboxTouchStart}
+              onTouchEnd={handleLightboxTouchEnd}
+            >
+              {/* Close button */}
+              <button
+                onClick={closeLightbox}
+                className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white cursor-pointer transition-all"
+              >
+                <X className="w-6 h-6" />
+              </button>
+
+              {/* Counter */}
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 text-white/60 text-xs font-bold bg-black/40 px-3 py-1 rounded-full">
+                {lightbox.index + 1} / {totalCount}
+              </div>
+
+              {/* Prev Button */}
+              {totalCount > 1 && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); lightboxPrev(); }}
+                  className="absolute left-2 sm:left-6 z-10 p-3 rounded-full bg-white/10 hover:bg-white/25 text-white cursor-pointer transition-all"
+                >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                </button>
+              )}
+
+              {/* Image */}
+              <motion.div
+                key={lightbox.index}
+                initial={{ opacity: 0, scale: 0.92 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.92 }}
+                transition={{ duration: 0.2 }}
+                className="flex flex-col items-center gap-4 max-w-5xl w-full"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <img
+                  src={imgUrl}
+                  alt={caption || `Foto ${lightbox.index + 1}`}
+                  className="max-h-[75vh] max-w-full w-auto object-contain rounded-2xl shadow-2xl"
+                  draggable={false}
+                />
+
+                {/* Caption / Comment below */}
+                {(caption || userName) && (
+                  <div className="text-center space-y-1 px-4">
+                    {userName && (
+                      <p className="text-amber-300 text-sm font-bold">📸 {userName}</p>
+                    )}
+                    {caption && (
+                      <p className="text-white/80 text-sm italic">"{caption}"</p>
+                    )}
+                  </div>
+                )}
+              </motion.div>
+
+              {/* Next Button */}
+              {totalCount > 1 && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); lightboxNext(); }}
+                  className="absolute right-2 sm:right-6 z-10 p-3 rounded-full bg-white/10 hover:bg-white/25 text-white cursor-pointer transition-all"
+                >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                </button>
+              )}
+
+              {/* Swipe hint on mobile */}
+              <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/30 text-[11px] sm:hidden">
+                ← Geser untuk navigasi →
+              </p>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
+
 
     </div>
   );
 }
+
