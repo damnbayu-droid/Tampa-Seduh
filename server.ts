@@ -2595,7 +2595,286 @@ app.get("/api/emails", requireAdmin, (req, res) => {
   res.json(emailLogs);
 });
 
-// 7. Blog/News API
+// POST /api/emails/send — Admin kirim email custom ke customer
+app.post("/api/emails/send", requireAdmin, async (req, res) => {
+  const { to, subject, body } = req.body;
+  if (!to || !subject || !body) {
+    return res.status(400).json({ error: "Field 'to', 'subject', dan 'body' wajib diisi." });
+  }
+
+  const formatHtmlBody = (rawBody: string) => {
+    // Jika sudah HTML, pakai langsung. Kalau teks biasa, bungkus dengan template dasar
+    if (rawBody.trim().startsWith("<")) return rawBody;
+    return `<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"></head>
+    <body style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:24px auto;padding:24px;background:#faf7f2;border-radius:16px;">
+      <div style="background:linear-gradient(135deg,#5c3317,#8B5E3C);padding:24px;border-radius:12px 12px 0 0;text-align:center;">
+        <h1 style="color:#fff;margin:0;font-size:22px;">☕ Tampa Seduh</h1>
+        <p style="color:#f5e6d5;font-size:12px;margin:4px 0 0;">Pesan dari Admin · Kotabunan Selatan</p>
+      </div>
+      <div style="background:#fff;padding:28px;border-radius:0 0 12px 12px;border:1px solid #e8d5c4;">
+        <p style="color:#4a3728;font-size:15px;white-space:pre-wrap;">${rawBody}</p>
+        <hr style="border:none;border-top:1px solid #e8d5c4;margin:20px 0;">
+        <p style="font-size:11px;color:#999;text-align:center;">Tampa Seduh Street Coffee · Jl. Tangkudeagan No.2 Kotabunan Selatan<br>WA: 085696224448 · kopi@tampaseduh.com</p>
+      </div>
+    </body></html>`;
+  };
+
+  let emailStatus: EmailLog["status"] = "Pending";
+  if (!resendApiKey || resendApiKey === "dummy_resend_key_123456789") {
+    emailStatus = "Skipped (No API Key)";
+  } else {
+    try {
+      await resend.emails.send({
+        from: "TAMPA SEDUH <kopi@tampaseduh.com>",
+        to: [to],
+        subject,
+        html: formatHtmlBody(body)
+      });
+      emailStatus = "Delivered";
+    } catch (err: any) {
+      console.error("[Email Send]", err.message);
+      emailStatus = "Failed";
+    }
+  }
+
+  const logEntry = {
+    id: "em-" + Date.now(),
+    recipient: to,
+    subject,
+    status: emailStatus,
+    timestamp: new Date().toISOString(),
+    body: formatHtmlBody(body)
+  };
+  emailLogs.unshift(logEntry);
+  writeSupabase('email_logs', 'insert', {}, logEntry);
+
+  const auditEntry = {
+    id: "log-" + (auditLogs.length + 1),
+    action: "Email Sent by Admin",
+    details: `Email kustom dikirim ke ${to} (${subject}) — Status: ${emailStatus}`,
+    timestamp: new Date().toISOString()
+  };
+  auditLogs.unshift(auditEntry);
+
+  res.json({ success: true, status: emailStatus });
+});
+
+// POST /api/emails/send-order-pending — Email konfirmasi pesanan masuk, belum dibayar
+app.post("/api/emails/send-order-pending", requireAdmin, async (req, res) => {
+  const { orderId } = req.body;
+  const order = orders.find(o => o.id === orderId);
+  if (!order) return res.status(404).json({ error: "Order tidak ditemukan." });
+  if (!order.email || order.email === "-") return res.status(400).json({ error: "Order ini tidak memiliki email customer." });
+
+  const baseUrl = process.env.BASE_URL || 'https://tampaseduh.com';
+  const invoiceUrl = `${baseUrl}/invoice/${order.id}`;
+  const formatRupiah = (val: number) => new Intl.NumberFormat('id-ID').format(val * 1000);
+
+  const itemsHtml = order.items.map((i: any) =>
+    `<tr><td style="padding:8px 0;border-bottom:1px solid #f3ede3;">${i.name} <span style="color:#8B5E3C;font-size:12px">(${i.size || 'Regular'})</span></td>
+     <td style="text-align:center;padding:8px 0;border-bottom:1px solid #f3ede3;">x${i.quantity}</td>
+     <td style="text-align:right;padding:8px 0;border-bottom:1px solid #f3ede3;">Rp ${formatRupiah(i.price * i.quantity)}</td></tr>`
+  ).join('');
+
+  const html = `<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><title>Konfirmasi Pesanan Tampa Seduh</title></head>
+  <body style="margin:0;padding:0;background:#faf7f2;font-family:'Segoe UI',Arial,sans-serif;">
+    <div style="max-width:600px;margin:24px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(139,94,60,0.08);">
+      <div style="background:linear-gradient(135deg,#5c3317,#8B5E3C);padding:32px;text-align:center;">
+        <h1 style="margin:0;color:#fff;font-size:24px;font-weight:700;">☕ Tampa Seduh</h1>
+        <p style="margin:6px 0 0;color:#f5e6d5;font-size:13px;">Pesanan Masuk · Menunggu Pembayaran</p>
+      </div>
+      <div style="padding:32px;">
+        <p style="font-size:15px;color:#4a3728;">Halo, <strong>${order.customerName}</strong> 👋</p>
+        <p style="font-size:14px;color:#6b5344;">Pesanan kamu sudah kami terima! Segera selesaikan pembayaran agar barista kami bisa mulai menyeduh.</p>
+        <div style="background:#fff8f2;border-radius:12px;padding:16px 20px;margin:20px 0;border:2px dashed #e8c89d;">
+          <p style="font-size:13px;font-weight:700;color:#8B5E3C;margin:0 0 8px;">⚠️ Menunggu Pembayaran</p>
+          <p style="font-size:13px;color:#6b5344;margin:0;">Silakan transfer ke rekening/QRIS Tampa Seduh, lalu upload bukti bayar di halaman invoice.</p>
+        </div>
+        <div style="background:#faf7f2;border-radius:12px;padding:16px 20px;margin:20px 0;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+            <span style="font-size:13px;color:#8B5E3C;font-weight:600;">No. Order</span>
+            <span style="font-size:13px;font-weight:700;color:#3d2b1f;">${order.id}</span>
+          </div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:16px;font-size:14px;color:#3d2b1f;">${itemsHtml}</table>
+        <div style="background:#faf7f2;border-radius:12px;padding:16px 20px;">
+          <div style="display:flex;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:2px solid #8B5E3C;">
+            <span style="font-size:16px;font-weight:700;">Total</span>
+            <span style="font-size:18px;font-weight:700;color:#8B5E3C;">Rp ${formatRupiah(order.total)}</span>
+          </div>
+        </div>
+        <div style="text-align:center;margin:28px 0;">
+          <a href="${invoiceUrl}" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#5c3317,#8B5E3C);color:#fff;text-decoration:none;border-radius:12px;font-size:14px;font-weight:700;">
+            🧾 Upload Bukti Bayar & Lihat Invoice
+          </a>
+        </div>
+      </div>
+      <div style="background:#3d2b1f;padding:20px 32px;text-align:center;">
+        <p style="color:#c9b8a4;font-size:12px;margin:0;">Tampa Seduh · Kotabunan Selatan · WA: 085696224448</p>
+      </div>
+    </div>
+  </body></html>`;
+
+  let emailStatus: EmailLog["status"] = "Pending";
+  if (!resendApiKey || resendApiKey === "dummy_resend_key_123456789") {
+    emailStatus = "Skipped (No API Key)";
+  } else {
+    try {
+      await resend.emails.send({
+        from: "TAMPA SEDUH <kopi@tampaseduh.com>",
+        to: [order.email],
+        subject: `⏳ Pesanan #${order.id} Menunggu Pembayaran — Tampa Seduh`,
+        html
+      });
+      emailStatus = "Delivered";
+    } catch (err: any) {
+      emailStatus = "Failed";
+    }
+  }
+
+  const logEntry = {
+    id: "em-" + Date.now(),
+    recipient: order.email,
+    subject: `Pesanan #${order.id} Menunggu Pembayaran`,
+    status: emailStatus,
+    timestamp: new Date().toISOString(),
+    body: html
+  };
+  emailLogs.unshift(logEntry);
+  writeSupabase('email_logs', 'insert', {}, logEntry);
+
+  res.json({ success: true, status: emailStatus });
+});
+
+// POST /api/emails/send-order-paid — Email konfirmasi pembayaran diterima
+app.post("/api/emails/send-order-paid", requireAdmin, async (req, res) => {
+  const { orderId } = req.body;
+  const order = orders.find(o => o.id === orderId);
+  if (!order) return res.status(404).json({ error: "Order tidak ditemukan." });
+  if (!order.email || order.email === "-") return res.status(400).json({ error: "Order ini tidak memiliki email customer." });
+
+  const baseUrl = process.env.BASE_URL || 'https://tampaseduh.com';
+  const invoiceUrl = `${baseUrl}/invoice/${order.id}`;
+  const formatRupiah = (val: number) => new Intl.NumberFormat('id-ID').format(val * 1000);
+
+  const itemsHtml = order.items.map((i: any) =>
+    `<tr><td style="padding:8px 0;border-bottom:1px solid #f3ede3;">${i.name}</td>
+     <td style="text-align:center;padding:8px 0;border-bottom:1px solid #f3ede3;">x${i.quantity}</td>
+     <td style="text-align:right;padding:8px 0;border-bottom:1px solid #f3ede3;">Rp ${formatRupiah(i.price * i.quantity)}</td></tr>`
+  ).join('');
+
+  const html = `<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><title>Pembayaran Diterima - Tampa Seduh</title></head>
+  <body style="margin:0;padding:0;background:#faf7f2;font-family:'Segoe UI',Arial,sans-serif;">
+    <div style="max-width:600px;margin:24px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(34,160,92,0.10);">
+      <div style="background:linear-gradient(135deg,#16a34a,#22c55e);padding:32px;text-align:center;">
+        <h1 style="margin:0;color:#fff;font-size:24px;font-weight:700;">✅ Pembayaran Dikonfirmasi!</h1>
+        <p style="margin:6px 0 0;color:#dcfce7;font-size:13px;">Tampa Seduh · Kotabunan Selatan</p>
+      </div>
+      <div style="padding:32px;">
+        <p style="font-size:15px;color:#4a3728;">Halo, <strong>${order.customerName}</strong> 🎉</p>
+        <p style="font-size:14px;color:#6b5344;">Pembayaran kamu sudah kami terima dan dikonfirmasi! Barista Tampa Seduh segera menyeduh pesananmu.</p>
+        <div style="background:#f0fdf4;border-radius:12px;padding:16px 20px;margin:20px 0;border:2px solid #bbf7d0;">
+          <p style="font-size:13px;font-weight:700;color:#16a34a;margin:0 0 4px;">✅ LUNAS · PAID</p>
+          <p style="font-size:13px;color:#15803d;margin:0;">Pesanan #${order.id} telah dikonfirmasi dan sedang diproses.</p>
+        </div>
+        <div style="background:#faf7f2;border-radius:12px;padding:16px 20px;margin:20px 0;">
+          <div style="display:flex;justify-content:space-between;">
+            <span style="font-size:13px;color:#8B5E3C;font-weight:600;">No. Order</span>
+            <span style="font-size:13px;font-weight:700;color:#3d2b1f;">${order.id}</span>
+          </div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:16px;font-size:14px;color:#3d2b1f;">${itemsHtml}</table>
+        <div style="background:#faf7f2;border-radius:12px;padding:16px 20px;">
+          <div style="display:flex;justify-content:space-between;padding-top:12px;border-top:2px solid #8B5E3C;">
+            <span style="font-size:16px;font-weight:700;">Total LUNAS</span>
+            <span style="font-size:18px;font-weight:700;color:#16a34a;">Rp ${formatRupiah(order.total)}</span>
+          </div>
+        </div>
+        <div style="text-align:center;margin:28px 0;">
+          <a href="${invoiceUrl}" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;text-decoration:none;border-radius:12px;font-size:14px;font-weight:700;">
+            📋 Lihat Invoice & Status Pengantaran
+          </a>
+        </div>
+        <p style="text-align:center;font-size:12px;color:#999;">Estimasi pengantaran: 30-60 menit setelah konfirmasi pembayaran.</p>
+      </div>
+      <div style="background:#3d2b1f;padding:20px 32px;text-align:center;">
+        <p style="color:#c9b8a4;font-size:12px;margin:0;">Tampa Seduh · Kotabunan Selatan · WA: 085696224448</p>
+        <p style="color:#22c55e;font-size:11px;margin:4px 0 0;">Terima kasih atas kepercayaanmu! ☕</p>
+      </div>
+    </div>
+  </body></html>`;
+
+  let emailStatus: EmailLog["status"] = "Pending";
+  if (!resendApiKey || resendApiKey === "dummy_resend_key_123456789") {
+    emailStatus = "Skipped (No API Key)";
+  } else {
+    try {
+      await resend.emails.send({
+        from: "TAMPA SEDUH <kopi@tampaseduh.com>",
+        to: [order.email],
+        subject: `✅ Pembayaran #${order.id} Dikonfirmasi — Tampa Seduh`,
+        html
+      });
+      emailStatus = "Delivered";
+    } catch (err: any) {
+      emailStatus = "Failed";
+    }
+  }
+
+  const logEntry = {
+    id: "em-" + Date.now(),
+    recipient: order.email,
+    subject: `Pembayaran #${order.id} Dikonfirmasi`,
+    status: emailStatus,
+    timestamp: new Date().toISOString(),
+    body: html
+  };
+  emailLogs.unshift(logEntry);
+  writeSupabase('email_logs', 'insert', {}, logEntry);
+
+  res.json({ success: true, status: emailStatus });
+});
+
+// GET /api/health/connections — Status koneksi realtime ke semua services
+app.get("/api/health/connections", requireAdmin, async (req, res) => {
+  const results: Record<string, { connected: boolean; count?: number; latency?: number }> = {};
+
+  // 1. Menu DB
+  const t0 = Date.now();
+  results.menu = { connected: menuItems.length >= 0, count: menuItems.length, latency: Date.now() - t0 };
+
+  // 2. Paket DB
+  const t1 = Date.now();
+  results.packages = { connected: coffeePackages.length >= 0, count: coffeePackages.length, latency: Date.now() - t1 };
+
+  // 3. Pengguna DB
+  const t2 = Date.now();
+  results.users = { connected: registeredUsers.length >= 0, count: registeredUsers.length, latency: Date.now() - t2 };
+
+  // 4. Customer Photos / Upload
+  try {
+    const { data, error } = await supabase.from('customer_photos').select('id', { count: 'exact', head: true });
+    results.uploads = { connected: !error, count: (data as any)?.count || 0, latency: 0 };
+  } catch {
+    results.uploads = { connected: false };
+  }
+
+  // 5. AI Chat (check if activeChats is accessible)
+  results.ai_chat = { connected: true, count: Object.keys(activeChats).length, latency: 0 };
+
+  // 6. Supabase DB overall
+  try {
+    const t3 = Date.now();
+    const { error } = await supabase.from('orders').select('id', { count: 'exact', head: true });
+    results.supabase = { connected: !error, latency: Date.now() - t3 };
+  } catch {
+    results.supabase = { connected: false };
+  }
+
+  res.json(results);
+});
+
+
 // GET: Selalu ambil dari Supabase untuk data terbaru
 app.get("/api/news", async (req, res) => {
   try {

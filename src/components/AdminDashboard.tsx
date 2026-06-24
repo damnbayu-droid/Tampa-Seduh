@@ -132,6 +132,14 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   const [guideModal, setGuideModal] = useState<string | null>(null); // null = tutup, string = nama panel
   const [previewEmail, setPreviewEmail] = useState<any>(null); // untuk modal preview email HTML
 
+  // Email Compose State
+  const [composeEmail, setComposeEmail] = useState({ to: "", subject: "", body: "" });
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  // Database Connection Status
+  const [dbConnections, setDbConnections] = useState<Record<string, { connected: boolean; count?: number; latency?: number }>>({});
+  const [refreshingConn, setRefreshingConn] = useState<string | null>(null);
+
   // Forms states
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [newMenu, setNewMenu] = useState<Omit<MenuItem, "id">>({
@@ -225,11 +233,109 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
     return () => clearInterval(interval);
   }, [activeTab]);
 
+  // Fetch DB connection status
+  const fetchConnections = async (specificKey?: string) => {
+    if (specificKey) setRefreshingConn(specificKey);
+    try {
+      const res = await fetchWithAuth(getApiUrl("/api/health/connections"));
+      if (res.ok) {
+        const data = await res.json();
+        if (specificKey) {
+          setDbConnections(prev => ({ ...prev, [specificKey]: data[specificKey] }));
+        } else {
+          setDbConnections(data);
+        }
+      }
+    } catch {
+      if (specificKey) setDbConnections(prev => ({ ...prev, [specificKey]: { connected: false } }));
+    } finally {
+      setRefreshingConn(null);
+    }
+  };
+
+  // Auto-fetch connections saat buka overview
+  useEffect(() => {
+    if (activeTab === "overview") {
+      fetchConnections();
+      const interval = setInterval(fetchConnections, 15000);
+      return () => clearInterval(interval);
+    }
+  }, [activeTab]);
+
+  // Handler: Kirim email kustom
+  const handleSendCustomEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!composeEmail.to || !composeEmail.subject || !composeEmail.body) return;
+    setIsSendingEmail(true);
+    showNotif("Mengirim email...", "loading");
+    try {
+      const res = await fetchWithAuth(getApiUrl("/api/emails/send"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(composeEmail)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showNotif(`✅ Email berhasil dikirim ke ${composeEmail.to} (Status: ${data.status})`, "success", 5000);
+        setComposeEmail({ to: "", subject: "", body: "" });
+        setRefreshKey(k => k + 1);
+      } else {
+        showNotif(data.error || "Gagal mengirim email", "error");
+      }
+    } catch {
+      showNotif("Gagal terhubung ke server", "error");
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
+  // Handler: Quick email — pesanan belum dibayar
+  const handleSendOrderPendingEmail = async (orderId: string) => {
+    showNotif("Mengirim email konfirmasi...", "loading");
+    try {
+      const res = await fetchWithAuth(getApiUrl("/api/emails/send-order-pending"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showNotif(`📧 Email "Belum Bayar" dikirim! Status: ${data.status}`, "success", 5000);
+        setRefreshKey(k => k + 1);
+      } else {
+        showNotif(data.error || "Gagal kirim email", "error");
+      }
+    } catch {
+      showNotif("Gagal terhubung ke server", "error");
+    }
+  };
+
+  // Handler: Quick email — pembayaran dikonfirmasi
+  const handleSendOrderPaidEmail = async (orderId: string) => {
+    showNotif("Mengirim email konfirmasi bayar...", "loading");
+    try {
+      const res = await fetchWithAuth(getApiUrl("/api/emails/send-order-paid"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showNotif(`✅ Email "Pembayaran Dikonfirmasi" dikirim! Status: ${data.status}`, "success", 5000);
+        setRefreshKey(k => k + 1);
+      } else {
+        showNotif(data.error || "Gagal kirim email", "error");
+      }
+    } catch {
+      showNotif("Gagal terhubung ke server", "error");
+    }
+  };
 
   // Actions
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [updatingUserPass, setUpdatingUserPass] = useState<User | null>(null);
   const [newUserPassword, setNewUserPassword] = useState("");
+
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: "menu" | "package") => {
     const file = e.target.files?.[0];
@@ -1107,7 +1213,96 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                     </div>
                   </div>
 
+                  {/* ══════════════════════════════════════════════════
+                      DATABASE CONNECTION STATUS PANEL (Real-time)
+                  ══════════════════════════════════════════════════ */}
+                  <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-sm">
+                    <div className="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-800 pb-4 mb-5">
+                      <div>
+                        <h3 className="font-serif font-bold text-lg text-amber-950 dark:text-amber-50">Realtime Connection Status</h3>
+                        <p className="text-[11px] text-zinc-400 mt-0.5">Status koneksi semua layanan & database — auto-refresh setiap 15 detik</p>
+                      </div>
+                      <button
+                        onClick={() => fetchConnections()}
+                        disabled={refreshingConn !== null}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl border border-zinc-200 dark:border-zinc-700 cursor-pointer transition-all disabled:opacity-50"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${refreshingConn !== null ? 'animate-spin' : ''}`} />
+                        Refresh Semua
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {[
+                        { key: "ai_chat",  label: "AI Chat (Emat)",      icon: "🤖", desc: "Percakapan AI aktif" },
+                        { key: "menu",     label: "Database Menu",        icon: "☕", desc: "Kopi & teh tersedia" },
+                        { key: "packages", label: "Database Paket",       icon: "📦", desc: "Paket kopi custom" },
+                        { key: "users",    label: "Database Pengguna",    icon: "👤", desc: "Akun customer terdaftar" },
+                        { key: "uploads",  label: "Upload Customer",      icon: "🖼", desc: "Foto dari pelanggan" },
+                        { key: "supabase", label: "Supabase Database",    icon: "🗄", desc: "Koneksi database utama" },
+                      ].map(({ key, label, icon, desc }) => {
+                        const conn = dbConnections[key];
+                        const isConnected = conn?.connected ?? null;
+                        const isRefreshing = refreshingConn === key;
+                        return (
+                          <div
+                            key={key}
+                            className={`relative flex items-center justify-between p-4 rounded-xl border transition-all ${
+                              isConnected === true
+                                ? "bg-emerald-50/60 dark:bg-emerald-950/15 border-emerald-200 dark:border-emerald-900/50"
+                                : isConnected === false
+                                ? "bg-red-50/60 dark:bg-red-950/15 border-red-200 dark:border-red-900/50"
+                                : "bg-zinc-50 dark:bg-zinc-800/40 border-zinc-200 dark:border-zinc-700/50"
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              {/* Status dot */}
+                              <div className="relative shrink-0">
+                                <span className="text-xl">{icon}</span>
+                                <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white dark:border-zinc-900 ${
+                                  isConnected === true ? "bg-emerald-500" :
+                                  isConnected === false ? "bg-red-500" :
+                                  "bg-zinc-400 animate-pulse"
+                                }`} />
+                              </div>
+                              <div>
+                                <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">{label}</p>
+                                <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-0.5">{desc}</p>
+                                {conn && (
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-wider ${
+                                      isConnected ? "text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30" : "text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-900/30"
+                                    }`}>
+                                      {isConnected ? "● Terkoneksi" : "● Disconnected"}
+                                    </span>
+                                    {conn.count !== undefined && (
+                                      <span className="text-[10px] text-zinc-400 font-mono">{conn.count} item</span>
+                                    )}
+                                    {conn.latency !== undefined && conn.latency > 0 && (
+                                      <span className="text-[10px] text-zinc-400 font-mono">{conn.latency}ms</span>
+                                    )}
+                                  </div>
+                                )}
+                                {!conn && (
+                                  <span className="text-[10px] text-zinc-400 mt-1 block">Memuat status...</span>
+                                )}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => fetchConnections(key)}
+                              disabled={isRefreshing}
+                              className="ml-2 p-1.5 rounded-lg bg-white/70 dark:bg-zinc-800 hover:bg-white dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 cursor-pointer transition-all disabled:opacity-40 shrink-0"
+                              title={`Refresh koneksi ${label}`}
+                            >
+                              <RefreshCw className={`w-3 h-3 text-zinc-500 ${isRefreshing ? 'animate-spin' : ''}`} />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   {/* Audit Logs / Informasi Lengkap */}
+
                   <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-sm space-y-4">
                     <h3 className="font-serif font-bold text-lg text-amber-950 dark:text-amber-50 border-b border-zinc-100 dark:border-zinc-800 pb-3">Informasi Lengkap (Log Sistem & Aktivitas)</h3>
                     <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
@@ -3010,6 +3205,78 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
               {/* Tab: emails */}
               {activeTab === "emails" && (
                 <div className="space-y-6">
+
+                  {/* ── COMPOSE EMAIL FORM ── */}
+                  <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-sm">
+                    <h3 className="font-serif font-bold text-lg text-amber-950 dark:text-amber-50 mb-1 border-b pb-3 border-zinc-100 dark:border-zinc-800 flex items-center gap-2">
+                      <Mail className="w-5 h-5 text-amber-700" />
+                      Kirim Email ke Customer
+                    </h3>
+                    <p className="text-xs text-zinc-400 mt-2 mb-4">Tulis email langsung dari sini. Teks biasa akan otomatis dibungkus dengan template branded Tampa Seduh. Boleh juga input HTML penuh.</p>
+                    <form onSubmit={handleSendCustomEmail} className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Kepada (To) *</label>
+                          <input
+                            type="email"
+                            required
+                            value={composeEmail.to}
+                            onChange={(e) => setComposeEmail({ ...composeEmail, to: e.target.value })}
+                            placeholder="customer@email.com"
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-amber-900/30 dark:focus:ring-amber-400/20"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Subjek (Subject) *</label>
+                          <input
+                            type="text"
+                            required
+                            value={composeEmail.subject}
+                            onChange={(e) => setComposeEmail({ ...composeEmail, subject: e.target.value })}
+                            placeholder="Informasi Pesanan Tampa Seduh"
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-amber-900/30 dark:focus:ring-amber-400/20"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1.5">
+                          Isi Pesan (Body) * — <span className="normal-case text-zinc-400 font-normal">Teks biasa atau HTML penuh</span>
+                        </label>
+                        <textarea
+                          rows={6}
+                          required
+                          value={composeEmail.body}
+                          onChange={(e) => setComposeEmail({ ...composeEmail, body: e.target.value })}
+                          placeholder={"Tulis pesan kamu di sini...\n\nContoh:\nHalo [nama customer],\n\nPesananmu sudah kami terima. Silakan selesaikan pembayaran untuk mulai diproses.\n\nSalam,\nTampa Seduh"}
+                          className="w-full px-3.5 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm font-mono text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-amber-900/30 dark:focus:ring-amber-400/20 resize-y"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between pt-1">
+                        <div className="text-[11px] text-zinc-400">
+                          ☕ Dikirim dari: <span className="font-mono">kopi@tampaseduh.com</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setComposeEmail({ to: "", subject: "", body: "" })}
+                            className="px-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 text-xs font-bold text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer transition-all"
+                          >
+                            Reset
+                          </button>
+                          <button
+                            type="submit"
+                            disabled={isSendingEmail}
+                            className="flex items-center gap-2 px-5 py-2 bg-amber-900 hover:bg-amber-800 text-amber-50 rounded-xl text-xs font-bold cursor-pointer transition-all shadow disabled:opacity-50 disabled:cursor-wait"
+                          >
+                            {isSendingEmail ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
+                            {isSendingEmail ? "Mengirim..." : "Kirim Email"}
+                          </button>
+                        </div>
+                      </div>
+                    </form>
+                  </div>
+
+                  {/* ── EMAIL LOG TABLE ── */}
                   <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-sm overflow-hidden">
                     <h3 className="font-serif font-bold text-lg text-amber-950 dark:text-amber-50 mb-3 border-b pb-3 border-zinc-100 dark:border-zinc-800">Email Master - Evaluasi Email Sistem Terkirim</h3>
                     <div className="overflow-x-auto">
@@ -3182,8 +3449,36 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                 </div>
               </div>
 
+              {/* Quick Email Buttons */}
+              {selectedInvoiceOrder.email && selectedInvoiceOrder.email !== "-" ? (
+                <div className="px-6 py-3 bg-amber-900/5 dark:bg-zinc-800/50 border-b border-amber-900/10 dark:border-zinc-700/50 print:hidden">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">📧 Kirim Email ke {selectedInvoiceOrder.email}:</span>
+                    <button
+                      onClick={() => handleSendOrderPendingEmail(selectedInvoiceOrder.id)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-900/50 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 rounded-lg text-xs font-bold cursor-pointer transition-all"
+                      title="Kirim email konfirmasi pesanan masuk, belum dibayar"
+                    >
+                      ⏳ Belum Bayar
+                    </button>
+                    <button
+                      onClick={() => handleSendOrderPaidEmail(selectedInvoiceOrder.id)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 hover:bg-emerald-200 dark:hover:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 rounded-lg text-xs font-bold cursor-pointer transition-all"
+                      title="Kirim email konfirmasi pembayaran diterima"
+                    >
+                      ✅ Sudah Bayar
+                    </button>
+                    <span className="text-[10px] text-zinc-400 italic ml-1">Klik untuk kirim email ke customer</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="px-6 py-2.5 bg-zinc-50 dark:bg-zinc-800/30 border-b border-zinc-200 dark:border-zinc-700/50 print:hidden">
+                  <span className="text-[11px] text-zinc-400 italic">⚠️ Email customer tidak tersedia — quick email tidak bisa dikirim.</span>
+                </div>
+              )}
 
               {/* Invoice Body */}
+
               <div className="p-6 overflow-y-auto flex-1 space-y-6 print:overflow-visible print:p-0">
                 {/* Brand Header (Visible in print) */}
                 <div className="hidden print:flex justify-between items-center border-b-2 border-stone-850 pb-4 mb-4">
