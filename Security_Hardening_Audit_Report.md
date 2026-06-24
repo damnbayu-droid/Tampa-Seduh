@@ -1,8 +1,8 @@
 # LAPORAN AUDIT PENGASAHAN KEAMANAN (SECURITY HARDENING AUDIT REPORT)
-## PROYEK: TAMPA SEDUH — PHASE 1 SCAN & PHASE 2B STATUS UPDATE
-*Status Proyek: Production — Live & Hardened*  
+## PROYEK: TAMPA SEDUH — PHASE 1 SCAN, PHASE 2B, & PHASE 3 UPDATE
+*Status Proyek: Production — Live, Hardened & Optimized*  
 *Tanggal Audit Awal: 22 Juni 2026*  
-*Tanggal Update: 23 Juni 2026*  
+*Tanggal Update Terakhir: 25 Juni 2026*  
 
 ---
 
@@ -278,3 +278,49 @@ Berikut adalah daftar implementasi keamanan dan fitur baru yang telah berhasil d
 *Laporan Security Hardening Phase 1 ini diajukan untuk mendapatkan persetujuan peninjauan dari Pemilik Proyek, Emat Ambarak (CEO) dan Bayu Damopolii Manoppo (Co-Founder) sebelum melangkah ke pembuatan Security Hardening Phase 3 Plan.*
 
 *Dokumen ini terakhir diperbarui: 23 Juni 2026 oleh Antigravity AI Coding Assistant.*
+
+---
+
+## SECTION 12: PHASE 3 — UPDATE 25 JUNI 2026
+
+### Ringkasan Implementasi Phase 3 (25 Juni 2026)
+
+#### ✅ Fitur Baru: Sign Buka/Tutup Kedai
+| Implementasi | Status | Detail |
+| :--- | :--- | :--- |
+| API `GET /api/shop-status` | ✅ SELESAI | Endpoint publik — siapapun dapat membaca status kedai |
+| API `PUT /api/shop-status` | ✅ SELESAI | Dilindungi `requireAdmin` middleware — hanya admin yang dapat mengubah |
+| Persistensi status di Supabase | ✅ SELESAI | Disimpan di tabel `ai_settings` (key: `shop_status`), dipulihkan saat server restart |
+| Sign Vintage di Homepage | ✅ SELESAI | Elemen visual antara Hero & Menu section — tampil untuk semua ukuran layar |
+| Konfirmasi Dialog Sebelum Toggle | ✅ SELESAI | Inline confirmation (bukan browser `confirm()`), dengan informasi konteks delivery 24/7 |
+| Feedback Toast Admin | ✅ SELESAI | Notifikasi sukses/gagal dengan auto-dismiss 5 detik |
+| Klarifikasi "Tutup Kedai" | ✅ SELESAI | Tutup = kedai fisik tutup, bukan delivery. Sign menampilkan "Maaf Tutup · Delivery 24/7" |
+
+#### ✅ Perbaikan Mobile & iOS Safari
+| Implementasi | Status | Detail |
+| :--- | :--- | :--- |
+| `overflow-x: hidden` pada `html` & `body` | ✅ SELESAI | Mencegah geser horizontal di iPhone Safari |
+| `overscroll-behavior-x: none` | ✅ SELESAI | Menahan rubber-band bounce horizontal di iOS |
+| `touch-action: pan-y` | ✅ SELESAI | Membatasi gestur sentuh ke arah vertikal saja |
+| `-webkit-tap-highlight-color: transparent` | ✅ SELESAI | Menghilangkan highlight biru saat tap di iOS |
+| `-webkit-font-smoothing: antialiased` | ✅ SELESAI | Teks lebih tajam di layar Retina iPhone |
+| `box-sizing: border-box` global | ✅ SELESAI | Mencegah elemen meluber keluar viewport |
+| Quote card kompak di mobile | ✅ SELESAI | `text-[10px]` dan `max-w-[260px]` di mobile, normal di desktop |
+
+#### ✅ Optimasi Performa (LCP)
+| Implementasi | Status | Detail |
+| :--- | :--- | :--- |
+| `<link rel="preload" as="image" href="/Hero.jpeg">` | ✅ SELESAI | Browser memuat gambar hero saat parse HTML, sebelum JS bundle diunduh |
+| `fetchpriority="high"` | ✅ SELESAI | Prioritas tinggi pada network stack browser untuk LCP image |
+
+#### 🔴 Temuan Yang Masih Open (Perlu Phase 4)
+| Temuan | Prioritas | Alasan Belum Difix |
+| :--- | :--- | :--- |
+| RLS `USING (true)` untuk write operations | MEDIUM | Memerlukan migrasi ke Service Role Key penuh di semua tabel |
+| Password plain-text user lama | MEDIUM | Lazy migration bcrypt baru aktif untuk registrasi baru |
+| Validasi password lama saat update password | LOW | Belum diimplementasikan di User Dashboard |
+| Rotasi/zoom bukti bayar di admin | LOW | Fitur kenyamanan admin belum diimplementasikan |
+
+---
+
+*Laporan ini terakhir diperbarui: 25 Juni 2026 oleh Antigravity AI Coding Assistant.*

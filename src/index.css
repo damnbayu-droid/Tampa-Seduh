@@ -48,7 +48,45 @@
   --color-stone-950: #211308;
 }
 
+/* =====================================================================
+   iOS SAFARI — LAYOUT STABILITY & SCROLL LOCK
+   Mencegah geser horizontal, rubber-band bounce, dan viewport shift
+   yang umum terjadi di iPhone Safari
+   ===================================================================== */
 
+/* Kunci overflow horizontal di level paling atas */
+html {
+  overflow-x: hidden;
+  /* Lebar maksimum tepat satu viewport — cegah 100vw berlebih */
+  max-width: 100%;
+  /* iOS Safari scrolling smooth */
+  -webkit-overflow-scrolling: touch;
+  /* Font rendering tajam di Retina */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  overflow-x: hidden;
+  max-width: 100%;
+  /* Tahan rubber-band horizontal bounce di iOS */
+  overscroll-behavior-x: none;
+  /* Pastikan posisi stacking context terkunci */
+  position: relative;
+  /* Hilangkan tap highlight biru default iOS */
+  -webkit-tap-highlight-color: transparent;
+  /* Izinkan scroll vertikal saja, blokir horizontal drag */
+  touch-action: pan-y;
+}
+
+/* Cegah elemen apapun meluber keluar viewport */
+* {
+  box-sizing: border-box;
+}
+
+/* =====================================================================
+   PRINT STYLES
+   ===================================================================== */
 @media print {
   @page {
     margin: 0;

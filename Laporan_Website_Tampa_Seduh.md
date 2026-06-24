@@ -1,6 +1,6 @@
 # LAPORAN AUDIT TEKNIS DAN BISNIS LENGKAP: WEBSITE TAMPA SEDUH
 *Tanggal Audit: 22 Juni 2026*  
-*Terakhir Diperbarui: 23 Juni 2026*  
+*Terakhir Diperbarui: 25 Juni 2026*  
 *Auditor: Antigravity AI Coding Assistant*  
 *Bahasa Dokumen: Bahasa Indonesia*  
 
@@ -79,12 +79,16 @@ Aplikasi saat ini berada pada fase **LIVE PRODUCTION**. Seluruh fitur utama e-co
 4. **Checkout Terpadu**: Pilihan pengiriman COD di area Kotabunan/Tutuyan/Panang/Paret atau ambil sendiri (*Pickup*).
 5. **Diskon Ongkir Member**: Pemotongan otomatis ongkos kirim sebesar 25% bagi pelanggan yang akun keanggotaannya disetujui admin.
 6. **User Dashboard**: Memungkinkan pelanggan mengubah profil, password, melihat histori transaksi, serta mencetak dokumen invoice.
-7. **Admin Dashboard (14 Modul Aktif)**: Termasuk pengelolaan menu, paket, visualisasi keuangan real (format Rupiah standar), CMS berita, kontrol status pengguna (block/unblock), manajemen log email, chat takeover, dan pengaturan prompt AI.
+7. **Admin Dashboard (15 Modul Aktif)**: Termasuk pengelolaan menu, paket, visualisasi keuangan real (format Rupiah standar), CMS berita, kontrol status pengguna (block/unblock), manajemen log email, chat takeover, pengaturan prompt AI, dan Sign Control (Buka/Tutup Kedai).
 8. **Modul Costing & Recipe Lab (HPP)**: Sistem pelacakan bahan baku, penghitungan HPP resep menu, HPP paket, lab analitis margin profit, dan biaya operasional overhead bulanan.
 9. **Halaman Invoice Publik (`/invoice/:orderId`)**: Pelanggan menerima link invoice via email, dapat melihat live status 4 tahap, dan download PDF.
 10. **Real Profit Engine V1**: Kalkulasi HPP & gross profit aktual otomatis saat status order berubah menjadi *Completed*, tersimpan di tabel `order_profit`.
 11. **Sistem Email Otomatis (Resend API)**: Welcome email (registrasi), invoice email (order masuk), admin notifikasi (setiap order baru).
 12. **Tiga Sifat Penyajian Menu**: Dingin ❄️, Panas ☕, dan Snack 🍪 — muncul sebagai section terpisah di storefront.
+13. **Sign Buka/Tutup Kedai**: Tanda vintage analog di homepage (antara Hero & Menu section) yang terhubung langsung ke backend. Admin mengontrol status dari Admin Panel → Overview. Tutup kedai = kedai fisik tutup, delivery 24/7 tetap aktif.
+14. **Konfirmasi Dialog Admin**: Sebelum toggle status kedai, dialog konfirmasi inline ditampilkan — mencegah perubahan tidak sengaja.
+15. **iOS Safari Layout Stability**: Horizontal scroll lock, rubber-band bounce prevention, touch-action pan-y, tap highlight removal — mencegah layout geser di iPhone.
+16. **LCP Optimasi**: `<link rel="preload" as="image" fetchpriority="high">` untuk Hero.jpeg — browser langsung memuat gambar hero saat parse HTML, sebelum JS bundle diunduh.
 
 #### Fitur yang Belum Selesai / Placeholder:
 1. **Sistem POS (Point of Sales) Cabang**: Pengoperasian kasir kas offline langsung di kedai fisik belum terintegrasi (transaksi saat ini 100% diasumsikan masuk via checkout website).
