@@ -98,24 +98,37 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   const [emailsList, setEmailsList] = useState<EmailLog[]>([]);
   const [newsList, setNewsList] = useState<BlogNews[]>([]);
   const [finances, setFinances] = useState<FinancialSummary[]>([]);
-  // ── Shop Status (Buka/Tutup Sign control) ───────────────────
+  // ── Shop Status (Buka/Tutup Sign control) ───────────────────────────────
   const [shopIsOpen, setShopIsOpen] = useState<boolean>(true);
   const [shopStatusLoading, setShopStatusLoading] = useState(false);
+  const [shopStatusMsg, setShopStatusMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const toggleShopStatus = async () => {
     setShopStatusLoading(true);
+    setShopStatusMsg(null);
     try {
-      const token = localStorage.getItem("adminToken") || "";
-      const res = await fetch("/api/shop-status", {
+      const res = await fetchWithAuth(getApiUrl("/api/shop-status"), {
         method: "PUT",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ isOpen: !shopIsOpen })
       });
       if (res.ok) {
         const data = await res.json();
         setShopIsOpen(data.shopStatus.isOpen);
+        setShopStatusMsg({
+          type: "success",
+          text: data.shopStatus.isOpen
+            ? "✅ Kedai berhasil DIBUKA — Sign hijau menyala di homepage!"
+            : "✅ Kedai berhasil DITUTUP — Sign gelap di homepage."
+        });
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        setShopStatusMsg({ type: "error", text: `❌ Gagal: ${errData.error || res.statusText || "Server error"}` });
       }
-    } catch {}
+    } catch (err: any) {
+      setShopStatusMsg({ type: "error", text: `❌ Koneksi gagal: ${err.message || "Tidak dapat terhubung ke server"}` });
+    }
     setShopStatusLoading(false);
+    // Auto-dismiss pesan setelah 4 detik
+    setTimeout(() => setShopStatusMsg(null), 4000);
   };
   const [profitDashboard, setProfitDashboard] = useState<ProfitDashboard | null>(null);
   const [selectedProfitPeriod, setSelectedProfitPeriod] = useState<"today" | "last_7d" | "last_30d" | "all_time">("last_30d");
@@ -1215,23 +1228,41 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                     </div>
 
                     {/* Toggle Button */}
-                    <button
-                      onClick={toggleShopStatus}
-                      disabled={shopStatusLoading}
-                      className={`z-10 flex items-center gap-3 px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-wider transition-all duration-300 cursor-pointer shadow-xl border-2 min-w-[180px] justify-center
-                        ${shopIsOpen
-                          ? 'bg-red-900/80 hover:bg-red-800 border-red-700/50 text-red-200 shadow-red-900/30'
-                          : 'bg-green-900/80 hover:bg-green-800 border-green-600/50 text-green-200 shadow-green-900/30'
-                        } ${shopStatusLoading ? 'opacity-60 cursor-not-allowed' : ''}`}
-                      id="btn-toggle-shop-status"
-                    >
-                      {shopStatusLoading ? (
-                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <span className="text-lg">{shopIsOpen ? '🔴' : '🟢'}</span>
+                    <div className="flex flex-col items-center gap-3 z-10">
+                      <button
+                        onClick={toggleShopStatus}
+                        disabled={shopStatusLoading}
+                        className={`flex items-center gap-3 px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-wider transition-all duration-300 cursor-pointer shadow-xl border-2 min-w-[180px] justify-center
+                          ${shopIsOpen
+                            ? 'bg-red-900/80 hover:bg-red-800 border-red-700/50 text-red-200 shadow-red-900/30'
+                            : 'bg-green-900/80 hover:bg-green-800 border-green-600/50 text-green-200 shadow-green-900/30'
+                          } ${shopStatusLoading ? 'opacity-70 cursor-not-allowed scale-95' : 'hover:scale-105'}`}
+                        id="btn-toggle-shop-status"
+                      >
+                        {shopStatusLoading ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
+                            <span>Memproses...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-lg">{shopIsOpen ? '🔴' : '🟢'}</span>
+                            {shopIsOpen ? 'Tutup Kedai' : 'Buka Kedai'}
+                          </>
+                        )}
+                      </button>
+
+                      {/* Feedback toast */}
+                      {shopStatusMsg && (
+                        <div className={`text-xs font-semibold px-4 py-2.5 rounded-xl border max-w-[260px] text-center leading-relaxed transition-all animate-in fade-in slide-in-from-bottom-2 duration-300 ${
+                          shopStatusMsg.type === "success"
+                            ? "bg-green-950/60 border-green-600/30 text-green-300"
+                            : "bg-red-950/60 border-red-600/30 text-red-300"
+                        }`}>
+                          {shopStatusMsg.text}
+                        </div>
                       )}
-                      {shopIsOpen ? 'Tutup Kedai' : 'Buka Kedai'}
-                    </button>
+                    </div>
                   </div>
 
                   {/* Cards matrix */}
