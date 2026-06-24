@@ -501,6 +501,21 @@ async function syncFromSupabase() {
       aiSettings.temperature = aiRes.data[0].temperature;
     }
 
+    // Load shop_status from ai_settings table
+    const { data: shopStatusRow } = await supabase
+      .from("ai_settings")
+      .select("*")
+      .eq("key", "shop_status")
+      .maybeSingle();
+    if (shopStatusRow?.system_prompt) {
+      try {
+        const parsed = JSON.parse(shopStatusRow.system_prompt);
+        if (typeof parsed.isOpen === "boolean") {
+          shopStatus = parsed;
+        }
+      } catch {}
+    }
+
     // Real Profit Engine V1: Crawl historical completed orders
     const { data: existingProfits, error: profitFetchErr } = await supabase
       .from("order_profit")
@@ -3263,6 +3278,45 @@ app.post("/api/ai-config", requireAdmin, (req, res) => {
   res.json({ success: true, config: aiSettings });
 });
 
+
+// ═══════════════════════════════════════════════════
+// SHOP STATUS — Buka / Tutup sign
+// ═══════════════════════════════════════════════════
+let shopStatus: { isOpen: boolean; updatedAt: string } = {
+  isOpen: true,
+  updatedAt: new Date().toISOString()
+};
+
+// GET /api/shop-status — Public (no auth required)
+app.get("/api/shop-status", (req, res) => {
+  res.json(shopStatus);
+});
+
+// PUT /api/shop-status — Admin only
+app.put("/api/shop-status", requireAdmin, (req, res) => {
+  const { isOpen } = req.body;
+  if (typeof isOpen !== "boolean") {
+    return res.status(400).json({ error: "isOpen must be boolean" });
+  }
+  shopStatus = { isOpen, updatedAt: new Date().toISOString() };
+
+  writeSupabase('ai_settings', 'upsert', {}, {
+    key: 'shop_status',
+    system_prompt: JSON.stringify(shopStatus),
+    temperature: 0
+  });
+
+  const auditEntry = {
+    id: "log-" + (auditLogs.length + 1),
+    action: `Kedai ${isOpen ? "DIBUKA" : "DITUTUP"} oleh admin`,
+    details: `Status kedai diubah ke ${isOpen ? "BUKA" : "TUTUP"} pada ${new Date().toLocaleString("id-ID", { timeZone: "Asia/Makassar" })} WITA`,
+    timestamp: new Date().toISOString()
+  };
+  auditLogs.unshift(auditEntry);
+  writeSupabase('audit_logs', 'insert', {}, auditEntry);
+
+  res.json({ success: true, shopStatus });
+});
 
 async function bootstrap() {
   // Sync dari Supabase di awal

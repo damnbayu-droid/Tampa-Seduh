@@ -102,6 +102,24 @@ export default function App() {
     lightboxTouchStart.current = null;
   };
 
+  // ── Shop Status (Buka/Tutup Sign) ──────────────────────────────
+  const [shopIsOpen, setShopIsOpen] = useState<boolean>(true);
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const res = await fetch('/api/shop-status');
+        if (res.ok) {
+          const data = await res.json();
+          setShopIsOpen(data.isOpen);
+        }
+      } catch {}
+    };
+    fetchStatus();
+    // Poll every 30s so sign stays in sync
+    const interval = setInterval(fetchStatus, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     const handleError = (e: ErrorEvent) => setRenderError(e.message);
     window.addEventListener('error', handleError);
@@ -940,6 +958,105 @@ export default function App() {
                 Lihat Menu
               </button>
             </div>
+
+            {/* ═══ CAFÉ BUKA/TUTUP SIGN ═══ */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6, duration: 0.5 }}
+              className="flex flex-col items-center gap-1 pt-2"
+            >
+              {/* Hanging chain */}
+              <div className="flex gap-3 mb-1">
+                <div className="w-0.5 h-4 bg-amber-400/40 rounded-full" />
+                <div className="w-0.5 h-4 bg-amber-400/40 rounded-full" />
+                <div className="w-0.5 h-4 bg-amber-400/40 rounded-full" />
+              </div>
+
+              {/* Sign board */}
+              <div className={`relative inline-flex flex-col items-center justify-center rounded-xl px-8 py-4 border-2 transition-all duration-700 shadow-2xl
+                ${shopIsOpen
+                  ? 'border-green-400/80 bg-gradient-to-br from-[#0a1f0a] to-[#0d2e10] shadow-green-500/30'
+                  : 'border-red-900/60 bg-gradient-to-br from-[#1a0a0a] to-[#2a0d0d] shadow-red-900/20'
+                }`}
+                style={{ minWidth: '220px' }}
+              >
+                {/* Border bulb lights — top */}
+                <div className="absolute -top-2 left-0 right-0 flex justify-around px-4">
+                  {Array.from({ length: 7 }).map((_, i) => (
+                    <div key={i} className={`w-3 h-3 rounded-full border transition-all duration-500 ${
+                      shopIsOpen
+                        ? 'bg-green-400 border-green-300 shadow-[0_0_8px_3px_rgba(74,222,128,0.8)]'
+                        : 'bg-red-900/40 border-red-900/20 shadow-none'
+                    }`}
+                    style={shopIsOpen ? { animationDelay: `${i * 0.15}s` } : {}}
+                    />
+                  ))}
+                </div>
+                {/* Border bulb lights — bottom */}
+                <div className="absolute -bottom-2 left-0 right-0 flex justify-around px-4">
+                  {Array.from({ length: 7 }).map((_, i) => (
+                    <div key={i} className={`w-3 h-3 rounded-full border transition-all duration-500 ${
+                      shopIsOpen
+                        ? 'bg-green-400 border-green-300 shadow-[0_0_8px_3px_rgba(74,222,128,0.8)]'
+                        : 'bg-red-900/40 border-red-900/20 shadow-none'
+                    }`} />
+                  ))}
+                </div>
+                {/* Border bulb lights — left */}
+                <div className="absolute -left-2 top-0 bottom-0 flex flex-col justify-around py-3">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className={`w-3 h-3 rounded-full border transition-all duration-500 ${
+                      shopIsOpen
+                        ? 'bg-green-400 border-green-300 shadow-[0_0_8px_3px_rgba(74,222,128,0.8)]'
+                        : 'bg-red-900/40 border-red-900/20 shadow-none'
+                    }`} />
+                  ))}
+                </div>
+                {/* Border bulb lights — right */}
+                <div className="absolute -right-2 top-0 bottom-0 flex flex-col justify-around py-3">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className={`w-3 h-3 rounded-full border transition-all duration-500 ${
+                      shopIsOpen
+                        ? 'bg-green-400 border-green-300 shadow-[0_0_8px_3px_rgba(74,222,128,0.8)]'
+                        : 'bg-red-900/40 border-red-900/20 shadow-none'
+                    }`} />
+                  ))}
+                </div>
+
+                {/* Sign content */}
+                <div className="text-center space-y-1 z-10">
+                  <span className={`block text-[9px] font-bold uppercase tracking-[0.35em] transition-colors duration-700 ${
+                    shopIsOpen ? 'text-green-400/70' : 'text-red-400/40'
+                  }`}>TAMPA SEDUH</span>
+
+                  <span className={`block font-serif font-black text-3xl tracking-widest leading-none transition-all duration-700 ${
+                    shopIsOpen
+                      ? 'text-green-300'
+                      : 'text-red-400/60'
+                  }`}
+                  style={shopIsOpen ? {
+                    textShadow: '0 0 10px rgba(74,222,128,0.9), 0 0 30px rgba(74,222,128,0.5), 0 0 60px rgba(74,222,128,0.2)'
+                  } : {
+                    textShadow: 'none'
+                  }}>
+                    {shopIsOpen ? 'BUKA' : 'TUTUP'}
+                  </span>
+
+                  <span className={`block text-[8px] font-bold uppercase tracking-[0.25em] transition-colors duration-700 ${
+                    shopIsOpen ? 'text-green-400/60' : 'text-red-400/30'
+                  }`}>
+                    {shopIsOpen ? '● Open Now' : '○ Closed'}
+                  </span>
+                </div>
+
+                {/* Subtle inner glow overlay */}
+                {shopIsOpen && (
+                  <div className="absolute inset-0 rounded-xl bg-green-500/5 pointer-events-none animate-pulse" />
+                )}
+              </div>
+            </motion.div>
+
           </div>
 
 

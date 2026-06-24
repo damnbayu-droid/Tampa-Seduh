@@ -98,6 +98,25 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   const [emailsList, setEmailsList] = useState<EmailLog[]>([]);
   const [newsList, setNewsList] = useState<BlogNews[]>([]);
   const [finances, setFinances] = useState<FinancialSummary[]>([]);
+  // ── Shop Status (Buka/Tutup Sign control) ───────────────────
+  const [shopIsOpen, setShopIsOpen] = useState<boolean>(true);
+  const [shopStatusLoading, setShopStatusLoading] = useState(false);
+  const toggleShopStatus = async () => {
+    setShopStatusLoading(true);
+    try {
+      const token = localStorage.getItem("adminToken") || "";
+      const res = await fetch("/api/shop-status", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ isOpen: !shopIsOpen })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setShopIsOpen(data.shopStatus.isOpen);
+      }
+    } catch {}
+    setShopStatusLoading(false);
+  };
   const [profitDashboard, setProfitDashboard] = useState<ProfitDashboard | null>(null);
   const [selectedProfitPeriod, setSelectedProfitPeriod] = useState<"today" | "last_7d" | "last_30d" | "all_time">("last_30d");
   const [chatSessions, setChatSessions] = useState<any[]>([]);
@@ -206,6 +225,12 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
       if (galRes.ok) setGalleryPhotos(await galRes.json());
       if (pamRes.ok) setPamfletList(await pamRes.json());
       if (custRes.ok) setCustomerPhotos(await custRes.json());
+
+      // Load current shop open/closed status
+      try {
+        const shopRes = await fetch(getApiUrl("/api/shop-status"));
+        if (shopRes.ok) { const s = await shopRes.json(); setShopIsOpen(s.isOpen); }
+      } catch {}
       
       const chatsRes = await fetchWithAuth(getApiUrl("/api/chat-admin/sessions"));
       if (chatsRes.ok) setChatSessions(await chatsRes.json());
@@ -1114,6 +1139,101 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
               {/* Tab: Overview */}
               {activeTab === "overview" && (
                 <div className="space-y-6">
+                  {/* ═══ SIGN CONTROL — Buka/Tutup Kedai ═══ */}
+                  <div className={`relative overflow-hidden rounded-2xl border-2 transition-all duration-500 p-6 flex flex-col sm:flex-row items-center justify-between gap-6
+                    ${shopIsOpen
+                      ? 'border-green-400/40 bg-gradient-to-br from-[#0d1f0d] to-[#0a2a12] shadow-lg shadow-green-900/20'
+                      : 'border-zinc-700/50 bg-gradient-to-br from-zinc-900 to-zinc-950 shadow-lg shadow-black/30'
+                    }`}
+                  >
+                    {/* Background glow */}
+                    {shopIsOpen && <div className="absolute inset-0 bg-green-500/5 pointer-events-none animate-pulse" />}
+
+                    {/* Mini Sign Preview */}
+                    <div className="flex items-center gap-5 z-10">
+                      {/* Mini café sign */}
+                      <div className={`relative flex flex-col items-center justify-center rounded-xl px-5 py-3 border-2 transition-all duration-500 min-w-[110px]
+                        ${shopIsOpen
+                          ? 'border-green-400/70 bg-[#0a1f0a]'
+                          : 'border-zinc-700 bg-zinc-900'
+                        }`}
+                      >
+                        {/* Mini lights — top */}
+                        <div className="absolute -top-1.5 left-0 right-0 flex justify-around px-2">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <div key={i} className={`w-2.5 h-2.5 rounded-full border transition-all duration-500 ${
+                              shopIsOpen
+                                ? 'bg-green-400 border-green-300 shadow-[0_0_6px_2px_rgba(74,222,128,0.8)]'
+                                : 'bg-zinc-700 border-zinc-600'
+                            }`} />
+                          ))}
+                        </div>
+                        {/* Mini lights — bottom */}
+                        <div className="absolute -bottom-1.5 left-0 right-0 flex justify-around px-2">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <div key={i} className={`w-2.5 h-2.5 rounded-full border transition-all duration-500 ${
+                              shopIsOpen
+                                ? 'bg-green-400 border-green-300 shadow-[0_0_6px_2px_rgba(74,222,128,0.8)]'
+                                : 'bg-zinc-700 border-zinc-600'
+                            }`} />
+                          ))}
+                        </div>
+                        <span className="text-[7px] font-bold tracking-[0.3em] text-zinc-400 uppercase">TAMPA SEDUH</span>
+                        <span className={`font-serif font-black text-xl tracking-widest leading-none mt-0.5 transition-all duration-500 ${
+                          shopIsOpen ? 'text-green-300' : 'text-zinc-500'
+                        }`}
+                        style={shopIsOpen ? { textShadow: '0 0 8px rgba(74,222,128,0.9), 0 0 20px rgba(74,222,128,0.4)' } : {}}>
+                          {shopIsOpen ? 'BUKA' : 'TUTUP'}
+                        </span>
+                        <span className={`text-[7px] font-bold tracking-wider mt-0.5 transition-colors duration-500 ${
+                          shopIsOpen ? 'text-green-400/70' : 'text-zinc-600'
+                        }`}>{shopIsOpen ? '● Open' : '○ Closed'}</span>
+                      </div>
+
+                      {/* Status text */}
+                      <div>
+                        <h3 className={`font-serif font-black text-xl transition-colors duration-500 ${
+                          shopIsOpen ? 'text-green-300' : 'text-zinc-400'
+                        }`}>
+                          {shopIsOpen ? 'Kedai Sedang Buka' : 'Kedai Sedang Tutup'}
+                        </h3>
+                        <p className="text-[11px] text-zinc-500 mt-0.5">
+                          {shopIsOpen
+                            ? 'Sign hijau menyala di Hero — pelanggan bisa memesan sekarang'
+                            : 'Sign dipadamkan di Hero — tampilkan pesan tutup ke pelanggan'
+                          }
+                        </p>
+                        <div className={`mt-2 inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full ${
+                          shopIsOpen
+                            ? 'bg-green-900/30 text-green-400 border border-green-500/20'
+                            : 'bg-zinc-800 text-zinc-500 border border-zinc-700'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${shopIsOpen ? 'bg-green-400 animate-pulse' : 'bg-zinc-600'}`} />
+                          {shopIsOpen ? 'LIVE — Tampil di Homepage' : 'OFFLINE — Sign gelap di Homepage'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Toggle Button */}
+                    <button
+                      onClick={toggleShopStatus}
+                      disabled={shopStatusLoading}
+                      className={`z-10 flex items-center gap-3 px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-wider transition-all duration-300 cursor-pointer shadow-xl border-2 min-w-[180px] justify-center
+                        ${shopIsOpen
+                          ? 'bg-red-900/80 hover:bg-red-800 border-red-700/50 text-red-200 shadow-red-900/30'
+                          : 'bg-green-900/80 hover:bg-green-800 border-green-600/50 text-green-200 shadow-green-900/30'
+                        } ${shopStatusLoading ? 'opacity-60 cursor-not-allowed' : ''}`}
+                      id="btn-toggle-shop-status"
+                    >
+                      {shopStatusLoading ? (
+                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <span className="text-lg">{shopIsOpen ? '🔴' : '🟢'}</span>
+                      )}
+                      {shopIsOpen ? 'Tutup Kedai' : 'Buka Kedai'}
+                    </button>
+                  </div>
+
                   {/* Cards matrix */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-sm flex flex-col justify-between">
