@@ -880,19 +880,12 @@ let orders: Order[] = [
 ];
 
 let auditLogs: AuditLog[] = [
-  { id: "log-1", action: "System Boot", details: "Tampa Seduh server backend launched successfully.", timestamp: "2026-06-19T08:00:00.000Z" },
-  { id: "log-2", action: "Order Placed", details: "Order ORD-9281 submitted by Andika Pratama.", timestamp: "2026-06-19T10:30:00.000Z" },
-  { id: "log-3", action: "Order Completed", details: "Order ORD-9281 marked as Completed by Admin.", timestamp: "2026-06-19T11:00:00.000Z" },
-  { id: "log-4", action: "Order Placed", details: "Order ORD-9282 submitted by Siti Rahma.", timestamp: "2026-06-19T22:15:00.000Z" },
-  { id: "log-5", action: "Order Placed", details: "Order ORD-9283 submitted by Rivaldo Pontoh.", timestamp: "2026-06-20T03:05:00.000Z" }
+  { id: "log-1", action: "System Boot", details: "Tampa Seduh server backend launched successfully.", timestamp: new Date().toISOString() }
 ];
 
+// Hanya admin default — user nyata akan dimuat dari Supabase saat server boot
 let registeredUsers: User[] = [
-  { id: "u-admin", name: "Mochammad Rifai (Owner)", email: "kopi@tampaseduh.com", role: "admin", ordersCount: 0, lastActive: "Baru saja" },
-  { id: "u-1", name: "Andika Pratama", email: "andika@gmail.com", role: "customer", ordersCount: 1, lastActive: "1 hari yang lalu" },
-  { id: "u-2", name: "Siti Rahma", email: "siti.rahma@yahoo.com", role: "customer", ordersCount: 1, lastActive: "2 jam yang lalu" },
-  { id: "u-3", name: "Rivaldo Pontoh", email: "rivaldo@outlook.co.id", role: "customer", ordersCount: 1, lastActive: "30 menit yang lalu" },
-  { id: "u-4", name: "Jane Moningka", email: "jane.m@gmail.com", role: "customer", ordersCount: 0, lastActive: "3 hari yang lalu" }
+  { id: "u-admin", name: "Mochammad Rifai (Owner)", email: "kopi@tampaseduh.com", role: "admin", ordersCount: 0, lastActive: "Baru saja", isBlocked: false }
 ];
 
 let blogNews: BlogNews[] = [
@@ -918,11 +911,9 @@ let blogNews: BlogNews[] = [
   }
 ];
 
-let emailLogs: EmailLog[] = [
-  { id: "em-1", recipient: "andika@gmail.com", subject: "Tagihan Order Tampa Seduh #ORD-9281", status: "Delivered", timestamp: "2026-06-19T10:31:00.000Z", body: "Konfirmasi invoice untuk 2x Ice Coffe TPS (L) seharga Rp 40.000." },
-  { id: "em-2", recipient: "siti.rahma@yahoo.com", subject: "Sistem Pengantaran Kurir Tampa Seduh #ORD-9282", status: "Sent", timestamp: "2026-06-19T22:16:00.000Z", body: "Kopi Anda sedang dalam perjalanan menuju Kampung Baru Indah, Kotabunan Selatan." },
-  { id: "em-3", recipient: "rivaldo@outlook.co.id", subject: "Pesanan Masuk Kedai Kopi Tampa Seduh #ORD-9283", status: "Sent", timestamp: "2026-06-20T03:06:00.000Z", body: "Pesanan Anda terdaftar di sistem kami dan sedang menunggu antrean konfirmasi baris barista." }
-];
+// Email log dimulai kosong — akan diisi dari Supabase saat boot dan aktivitas nyata
+let emailLogs: EmailLog[] = [];
+
 
 // Configuration for AI Master
 let aiSettings = {
@@ -1314,6 +1305,47 @@ app.put("/api/users/:id/approve-membership", requireAdmin, (req, res) => {
   }
 });
 
+// ===================================================================
+// DELETE /api/users/:id — Admin hapus user permanen
+// Proteksi: Admin utama tidak bisa dihapus
+// ===================================================================
+app.delete("/api/users/:id", requireAdmin, (req, res) => {
+  const { id } = req.params;
+
+  // Cegah admin menghapus akun admin utama
+  if (id === "u-admin") {
+    return res.status(403).json({ error: "Akun admin utama tidak bisa dihapus." });
+  }
+
+  const idx = registeredUsers.findIndex(u => u.id === id);
+  if (idx === -1) return res.status(404).json({ error: "User tidak ditemukan." });
+
+  const deleted = registeredUsers[idx];
+
+  // Cegah menghapus user dengan role admin
+  if (deleted.role === "admin") {
+    return res.status(403).json({ error: "Akun dengan role admin tidak bisa dihapus dari sini." });
+  }
+
+  registeredUsers.splice(idx, 1);
+
+  // Hapus dari Supabase
+  writeSupabase('users', 'delete', { id }, {});
+
+  // Audit log
+  const logEntry = {
+    id: "log-" + (auditLogs.length + 1),
+    action: "User Deleted",
+    details: `User '${deleted.name}' (${deleted.email}) dihapus permanen oleh Admin.`,
+    timestamp: new Date().toISOString()
+  };
+  auditLogs.unshift(logEntry);
+  writeSupabase('audit_logs', 'insert', {}, logEntry);
+
+  res.json({ success: true, deleted });
+});
+
+
 app.delete("/api/menu/:id", requireAdmin, (req, res) => {
   const { id } = req.params;
   const idx = menuItems.findIndex(m => m.id === id);
@@ -1343,6 +1375,7 @@ app.delete("/api/menu/:id", requireAdmin, (req, res) => {
     res.status(404).json({ error: "Menu item not found" });
   }
 });
+
 
 // 2. Packages API
 app.get("/api/packages", (req, res) => {
@@ -1827,7 +1860,38 @@ app.post("/api/orders/:id/verify-payment", requireAdmin, async (req, res) => {
   res.json(result);
 });
 
-// Endpoint untuk upload bukti bayar ke Supabase bucket "Bukti Bayar"
+// ===================================================================
+// PUT /api/orders/:id/mark-paid — Admin label order sebagai PAID/UNPAID manual
+// Verifikasi otomatis tetap jalan, ini sebagai intervensi admin
+// ===================================================================
+app.put("/api/orders/:id/mark-paid", requireAdmin, (req, res) => {
+  const { id } = req.params;
+  const { paid } = req.body;
+  const idx = orders.findIndex(o => o.id === id);
+  if (idx === -1) return res.status(404).json({ error: "Order tidak ditemukan." });
+
+  (orders[idx] as any).isPaid = !!paid;
+  (orders[idx] as any).paidAt = paid ? new Date().toISOString() : null;
+
+  // Sync ke Supabase
+  writeSupabase('orders', 'update', { id }, {
+    is_paid: !!paid,
+    paid_at: paid ? new Date().toISOString() : null
+  });
+
+  const logEntry = {
+    id: "log-" + (auditLogs.length + 1),
+    action: paid ? "Order Marked PAID" : "Order PAID Label Removed",
+    details: `Order ${id} ${paid ? "dilabeli PAID oleh Admin." : "label PAID dicabut oleh Admin."}`,
+    timestamp: new Date().toISOString()
+  };
+  auditLogs.unshift(logEntry);
+  writeSupabase('audit_logs', 'insert', {}, logEntry);
+
+  res.json({ success: true, order: orders[idx] });
+});
+
+
 app.post("/api/orders/upload-proof", async (req, res) => {
   const { base64Data, fileName, fileType } = req.body;
   if (!base64Data || !fileName || !fileType) {

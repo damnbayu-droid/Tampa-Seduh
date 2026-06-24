@@ -130,6 +130,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   const [editingPack, setEditingPack] = useState<CoffeePackage | null>(null);
   const [editingMenu, setEditingMenu] = useState<MenuItem | null>(null);
   const [guideModal, setGuideModal] = useState<string | null>(null); // null = tutup, string = nama panel
+  const [previewEmail, setPreviewEmail] = useState<any>(null); // untuk modal preview email HTML
 
   // Forms states
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -212,17 +213,18 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
     fetchAllData();
   }, [refreshKey]);
 
+  // Realtime polling untuk Chat Admin panel (tab "chat") — setiap 2 detik
   useEffect(() => {
-    if (activeTab === "aimaster") {
-      const interval = setInterval(async () => {
-        try {
-          const res = await fetchWithAuth(getApiUrl("/api/chat-admin/sessions"));
-          if (res.ok) setChatSessions(await res.json());
-        } catch {}
-      }, 3000);
-      return () => clearInterval(interval);
-    }
+    if (activeTab !== "chat" && activeTab !== "aimaster") return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetchWithAuth(getApiUrl("/api/chat-admin/sessions"));
+        if (res.ok) setChatSessions(await res.json());
+      } catch {}
+    }, 2000); // 2 detik untuk responsivitas optimal
+    return () => clearInterval(interval);
   }, [activeTab]);
+
 
   // Actions
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -481,6 +483,42 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
       }
     } catch (e) {
       alert("Gagal menyetujui member.");
+    }
+  };
+
+  // Hapus user permanen
+  const handleDeleteUser = async (user: User) => {
+    if (!confirm(`⚠️ Hapus permanen akun:\n\n"${user.name}" (${user.email})\n\nTindakan ini TIDAK BISA dibatalkan!`)) return;
+    try {
+      const res = await fetchWithAuth(getApiUrl(`/api/users/${user.id}`), { method: "DELETE" });
+      if (res.ok) {
+        showNotif(`✅ User "${user.name}" berhasil dihapus permanen`, "success");
+        setRefreshKey(k => k + 1);
+      } else {
+        const err = await res.json();
+        showNotif(err.error || "Gagal menghapus user", "error");
+      }
+    } catch {
+      showNotif("Gagal terhubung ke server", "error");
+    }
+  };
+
+  // Label order sebagai PAID / cabut PAID
+  const handleMarkPaid = async (orderId: string, paid: boolean) => {
+    try {
+      const res = await fetchWithAuth(getApiUrl(`/api/orders/${orderId}/mark-paid`), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paid })
+      });
+      if (res.ok) {
+        showNotif(paid ? `✅ Order ${orderId} dilabeli PAID` : `Order ${orderId} label PAID dicabut`, "success");
+        setRefreshKey(k => k + 1);
+      } else {
+        showNotif("Gagal menandai pembayaran", "error");
+      }
+    } catch {
+      showNotif("Gagal terhubung ke server", "error");
     }
   };
 
@@ -1152,13 +1190,26 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                                 </span>
                               </td>
                               <td className="p-4 text-center">
-                                <div className="inline-flex gap-1 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-lg">
+                                <div className="inline-flex gap-1 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-lg flex-wrap">
                                   <button
                                     onClick={() => setSelectedInvoiceOrder(order)}
                                     className="text-[10px] font-bold px-2 py-1 bg-amber-900 text-amber-50 hover:bg-amber-850 rounded cursor-pointer"
                                     title="Invoice"
                                   >
                                     Invoice
+                                  </button>
+                                  {/* Tombol PAID manual admin */}
+                                  <button
+                                    onClick={() => handleMarkPaid(order.id, !(order as any).isPaid)}
+                                    className={`text-[10px] font-bold px-2 py-1 rounded cursor-pointer flex items-center gap-0.5 transition-all ${
+                                      (order as any).isPaid
+                                        ? "bg-green-500 text-white shadow-sm"
+                                        : "bg-white dark:bg-zinc-700 border border-green-500 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20"
+                                    }`}
+                                    title={(order as any).isPaid ? "Cabut label PAID" : "Tandai sebagai PAID"}
+                                  >
+                                    <CheckCircle className="w-3 h-3" />
+                                    {(order as any).isPaid ? "PAID ✓" : "PAID?"}
                                   </button>
                                   <button
                                     onClick={() => handleUpdateOrderStatus(order.id, "preparing")}
@@ -1183,6 +1234,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                                     Selesai
                                   </button>
                                 </div>
+
                               </td>
                             </tr>
                           ))}
@@ -2646,6 +2698,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                             <th className="p-3">Role & Membership</th>
                             <th className="p-3">Histori Belanja</th>
                             <th className="p-3 text-center">Status Akses</th>
+                            <th className="p-3 text-center">Hapus</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -2720,12 +2773,33 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                                   </div>
                                 )}
                               </td>
+                              {/* Kolom Hapus Permanen */}
+                              <td className="p-4 text-center">
+                                {usr.role !== "admin" ? (
+                                  <button
+                                    onClick={() => handleDeleteUser(usr)}
+                                    className="p-2 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 cursor-pointer transition-all border border-red-200 dark:border-red-900/50"
+                                    title="Hapus user permanen"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                ) : (
+                                  <span className="text-[10px] text-zinc-400 italic">Admin</span>
+                                )}
+                              </td>
                             </tr>
                             );
                           })}
                         </tbody>
                       </table>
                     </div>
+                    {usersList.filter(u => u.role !== "admin").length === 0 && (
+                      <div className="text-center py-12 text-zinc-400">
+                        <div className="text-4xl mb-3">👤</div>
+                        <p className="font-medium text-sm">Belum ada pengguna yang mendaftar.</p>
+                        <p className="text-xs mt-1">User akan muncul di sini setelah mendaftar di website.</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -2735,8 +2809,19 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                 <div className="space-y-6">
                   <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-sm space-y-4">
                     <div className="flex justify-between items-center border-b pb-3 border-zinc-100 dark:border-zinc-800">
-                      <h3 className="font-serif font-bold text-lg text-amber-950 dark:text-amber-50">Sistem Live Chat & Handoff</h3>
-                      <span className="text-xs bg-amber-900/5 text-amber-900 dark:text-amber-300 font-bold px-2 py-0.5 rounded-full">Real-time Sabotage</span>
+                      <div>
+                        <h3 className="font-serif font-bold text-lg text-amber-950 dark:text-amber-50">Sistem Live Chat &amp; Handoff</h3>
+                        <p className="text-[11px] text-zinc-400 mt-0.5">Pantau semua obrolan real-time · Ambil alih kapan saja · Auto-refresh setiap 2 detik</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {chatSessions.length > 0 && (
+                          <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-900/50 px-2.5 py-1 rounded-full">
+                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping"></span>
+                            LIVE · {chatSessions.length} Sesi
+                          </span>
+                        )}
+                        <span className="text-xs bg-amber-900/5 text-amber-900 dark:text-amber-300 font-bold px-2 py-0.5 rounded-full">Sabotase Aktif</span>
+                      </div>
                     </div>
 
                     <div className="flex flex-col md:flex-row gap-6">
@@ -2844,7 +2929,24 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                                 placeholder={chatSessions.find(s => s.sessionId === selectedSessionId)?.isSabotaged ? "Ketik pesan sebagai Admin..." : "Ambil alih obrolan terlebih dahulu untuk mengetik."}
                                 className="flex-1 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 text-sm disabled:opacity-50"
                               />
+                              <button
+                                disabled={!chatSessions.find(s => s.sessionId === selectedSessionId)?.isSabotaged || !adminChatInput.trim()}
+                                onClick={async () => {
+                                  if (!adminChatInput.trim()) return;
+                                  await fetchWithAuth(getApiUrl("/api/chat-admin/send"), {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ sessionId: selectedSessionId, text: adminChatInput })
+                                  });
+                                  setAdminChatInput("");
+                                  setRefreshKey(k => k + 1);
+                                }}
+                                className="px-3 py-2 bg-amber-900 hover:bg-amber-800 text-amber-50 rounded-lg text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                              >
+                                Kirim
+                              </button>
                             </div>
+
                           </>
                         )}
                       </div>
@@ -2920,6 +3022,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                             <th className="p-3">Status Kirim</th>
                             <th className="p-3">Waktu Terdaftar</th>
                             <th className="p-3">Cuplikan Pesan</th>
+                            <th className="p-3 text-center">Preview</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -2936,15 +3039,78 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                                 </span>
                               </td>
                               <td className="p-3 text-xs opacity-60">{em.timestamp}</td>
-                              <td className="p-3 text-xs text-zinc-550 max-w-xs overflow-hidden text-ellipsis">{em.body}</td>
+                              <td className="p-3 text-xs text-zinc-550 max-w-xs overflow-hidden text-ellipsis">{em.body.slice(0, 60)}...</td>
+                              <td className="p-3 text-center">
+                                <button
+                                  onClick={() => setPreviewEmail(em)}
+                                  className="text-xs font-bold px-2.5 py-1 bg-amber-900/10 hover:bg-amber-900/20 text-amber-800 dark:text-amber-400 rounded-lg cursor-pointer transition-all border border-amber-900/10"
+                                >
+                                  👁 Lihat
+                                </button>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
+                    {emailsList.length === 0 && (
+                      <div className="text-center py-12 text-zinc-400">
+                        <div className="text-4xl mb-3">📭</div>
+                        <p className="font-medium text-sm">Belum ada email terkirim.</p>
+                        <p className="text-xs mt-1">Email konfirmasi order akan muncul di sini secara otomatis.</p>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Modal Preview Email HTML */}
+                  {previewEmail && (
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={() => setPreviewEmail(null)}>
+                      <div
+                        className="w-full max-w-2xl bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/50">
+                          <div>
+                            <h3 className="font-bold text-sm text-zinc-900 dark:text-zinc-100">Preview Email Terkirim</h3>
+                            <p className="text-[11px] text-zinc-500 mt-0.5 font-mono">To: {previewEmail.recipient} · {previewEmail.subject}</p>
+                            <span className={`text-[9px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full mt-1 inline-block ${
+                              previewEmail.status === "Delivered" ? "bg-green-100 text-green-800" : "bg-orange-100 text-orange-700"
+                            }`}>{previewEmail.status}</span>
+                          </div>
+                          <button
+                            onClick={() => setPreviewEmail(null)}
+                            className="p-2 rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-500 transition-colors cursor-pointer"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                        {/* Email Content */}
+                        <div className="flex-1 overflow-auto">
+                          {previewEmail.body && previewEmail.body.includes("<") ? (
+                            <iframe
+                              srcDoc={previewEmail.body}
+                              className="w-full border-0"
+                              style={{ height: "560px" }}
+                              title="Email Preview"
+                              sandbox="allow-same-origin"
+                            />
+                          ) : (
+                            <div className="p-6 text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap font-mono">
+                              {previewEmail.body}
+                            </div>
+                          )}
+                        </div>
+                        <div className="px-5 py-3 border-t border-zinc-100 dark:border-zinc-800 text-[11px] text-zinc-400 text-center">
+                          Dikirim pada: {previewEmail.timestamp ? new Date(previewEmail.timestamp).toLocaleString('id-ID') : '-'}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
+
+
 
               {/* Tab: Logs */}
               {activeTab === "logs" && (
@@ -2992,6 +3158,12 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                 <div className="flex items-center gap-2">
                   <ShoppingBag className="w-5 h-5 text-amber-300" />
                   <span className="font-serif font-bold text-base">Invoice Panel - Tampa Seduh</span>
+                  {/* Badge LUNAS jika isPaid */}
+                  {(selectedInvoiceOrder as any).isPaid && (
+                    <span className="flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-green-400/20 border border-green-400/40 text-green-300 tracking-wider uppercase">
+                      <CheckCircle className="w-3 h-3" /> LUNAS · PAID
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -3009,6 +3181,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                   </button>
                 </div>
               </div>
+
 
               {/* Invoice Body */}
               <div className="p-6 overflow-y-auto flex-1 space-y-6 print:overflow-visible print:p-0">

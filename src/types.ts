@@ -55,7 +55,10 @@ export interface Order {
   shippingDiscount?: number;
   notes?: string;
   paymentProofUrl?: string;
+  isPaid?: boolean;     // Label PAID manual oleh admin
+  paidAt?: string;      // Timestamp label PAID diberikan
 }
+
 
 export interface User {
   id: string;
