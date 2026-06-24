@@ -1,0 +1,16 @@
+{
+  // Suppress false-positive CSS linter warnings for TailwindCSS v4 at-rules
+  // @theme, @custom-variant, @utility are valid Tailwind v4 syntax
+  // but unknown to VS Code's built-in CSS language server.
+  "css.lint.unknownAtRules": "ignore",
+  "scss.lint.unknownAtRules": "ignore",
+
+  // Let Tailwind IntelliSense extension handle CSS validation
+  "editor.quickSuggestions": {
+    "strings": "on"
+  },
+
+  // TypeScript settings
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "editor.formatOnSave": false
+}
