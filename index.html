@@ -15,10 +15,22 @@
     <meta name="format-detection" content="telephone=no" />
 
     <!-- ============================================================ -->
-    <!--  FAVICON & ICONS                                             -->
+    <!--  FAVICON & ICONS — Full stack untuk maksimal compatibility    -->
+    <!--  ICO: browser default, Google crawler                        -->
+    <!--  PNG: modern browsers, Twitter, Slack, Discord previews      -->
+    <!--  Apple: iOS home screen                                      -->
+    <!--  Android: PWA & Chrome                                       -->
     <!-- ============================================================ -->
-    <link rel="icon" type="image/webp" href="/FaviconTampaSeduh.webp" />
-    <link rel="apple-touch-icon" href="/FaviconTampaSeduh.webp" />
+    <!-- 1. Default ICO — paling penting, semua browser & crawler -->
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <!-- 2. PNG variants — modern browsers -->
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png" />
+    <!-- 3. Apple Touch Icon — iOS Safari home screen -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <!-- 4. PWA manifest -->
     <link rel="manifest" href="/manifest.json" />
     <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
     <!-- Preload LCP hero image — critical for fast first paint -->
