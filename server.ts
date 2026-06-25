@@ -3287,8 +3287,27 @@ let shopStatus: { isOpen: boolean; updatedAt: string } = {
   updatedAt: new Date().toISOString()
 };
 
-// GET /api/shop-status — Public (no auth required)
-app.get("/api/shop-status", (req, res) => {
+// GET /api/shop-status — Public, reads directly from Supabase (not memory)
+// to prevent stale data on Vercel cold starts / new instances
+app.get("/api/shop-status", async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("ai_settings")
+      .select("system_prompt")
+      .eq("key", "shop_status")
+      .maybeSingle();
+
+    if (!error && data?.system_prompt) {
+      const parsed = JSON.parse(data.system_prompt);
+      if (typeof parsed.isOpen === "boolean") {
+        // Also sync in-memory so PUT endpoint stays consistent
+        shopStatus = parsed;
+        return res.json(parsed);
+      }
+    }
+  } catch {}
+
+  // Fallback to in-memory if DB read fails
   res.json(shopStatus);
 });
 
