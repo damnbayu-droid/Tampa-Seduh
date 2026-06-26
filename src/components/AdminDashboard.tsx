@@ -16,8 +16,15 @@ import AdminRecipeLab from "./AdminRecipeLab";
 // ===================================================================
 async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
+    let token = undefined;
+    if (typeof window !== "undefined") {
+      token = localStorage.getItem("admin_token") || undefined;
+    }
+
+    if (!token) {
+      const { data: { session } } = await supabase.auth.getSession();
+      token = session?.access_token;
+    }
 
     const headers: Record<string, string> = {
       ...(options.headers as Record<string, string> || {}),
@@ -36,7 +43,7 @@ async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Re
 
     return fetch(url, { ...options, headers });
   } catch (err) {
-    console.error("[fetchWithAuth] Gagal mengambil session Supabase:", err);
+    console.error("[fetchWithAuth] Gagal mengambil session:", err);
     // Fallback: kirim request tanpa token (akan ditolak oleh backend dengan 401)
     return fetch(url, options);
   }
@@ -144,7 +151,8 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   const [adminChatInput, setAdminChatInput] = useState("");
   
   // AI Master State
-  const [aiConfig, setAiConfig] = useState({ systemPrompt: "", temperature: 0.7 });
+  const [aiConfig, setAiConfig] = useState({ systemPrompt: "", temperature: 0.7, adminInstructions: [] as string[] });
+  const [newInstruction, setNewInstruction] = useState("");
   
   // Loading & Action State
   const [loading, setLoading] = useState(true);
@@ -3396,6 +3404,52 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                         <div className="flex justify-between text-[10px] text-zinc-400 mt-1">
                           <span>Kreatif Rendah (Konsisten/Pasti)</span>
                           <span>Kreatif Tinggi (Variatif/Unik)</span>
+                        </div>
+                      </div>
+
+                      <div className="border-t border-zinc-100 dark:border-zinc-800 pt-4 space-y-3">
+                        <label className="block text-xs font-bold text-zinc-450 uppercase">Daftar Instruksi / Perintah Tambahan Admin</label>
+                        <div className="space-y-2">
+                          {aiConfig.adminInstructions && aiConfig.adminInstructions.length > 0 ? (
+                            aiConfig.adminInstructions.map((inst, idx) => (
+                              <div key={idx} className="flex justify-between items-center p-3 bg-zinc-50 dark:bg-zinc-950/20 border border-zinc-200/50 dark:border-zinc-800/80 rounded-xl gap-4">
+                                <span className="text-xs text-zinc-800 dark:text-zinc-250 font-medium">{idx + 1}. {inst}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = aiConfig.adminInstructions.filter((_, i) => i !== idx);
+                                    setAiConfig({ ...aiConfig, adminInstructions: updated });
+                                  }}
+                                  className="text-red-500 hover:text-red-650 text-xs font-bold px-2 py-1 cursor-pointer transition-colors"
+                                >
+                                  Hapus
+                                </button>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-xs text-zinc-450 font-serif italic py-2">Belum ada instruksi tambahan dari admin kawan.</div>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Ketik instruksi tambahan baru di sini... (contoh: 'Jangan tawarkan Kopi Korot jika habis')"
+                            value={newInstruction}
+                            onChange={(e) => setNewInstruction(e.target.value)}
+                            className="flex-1 text-xs p-2.5 bg-zinc-50 dark:bg-zinc-950/40 border border-zinc-200/50 dark:border-zinc-800/80 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-800 text-zinc-800 dark:text-zinc-200"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!newInstruction.trim()) return;
+                              const updated = [...(aiConfig.adminInstructions || []), newInstruction.trim()];
+                              setAiConfig({ ...aiConfig, adminInstructions: updated });
+                              setNewInstruction("");
+                            }}
+                            className="bg-amber-900/10 dark:bg-amber-900/20 text-amber-900 dark:text-amber-300 hover:bg-amber-900 hover:text-white dark:hover:bg-amber-900 dark:hover:text-white font-bold px-4 py-2 rounded-xl text-xs cursor-pointer transition-all"
+                          >
+                            Tambah
+                          </button>
                         </div>
                       </div>
                     </div>

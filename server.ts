@@ -93,7 +93,18 @@ async function requireAdmin(req: Request, res: Response, next: NextFunction) {
 
     const token = authHeader.slice(7); // Hapus "Bearer "
 
-    // Verifikasi token via Supabase Auth
+    // FIX: Dukungan fallback token ADMIN_SECRET untuk login custom
+    const adminSecret = process.env.ADMIN_SECRET || "bcd98f45f7a3c92c8ba35f0924509651e72bb3413dd92c97e374fba4176c11db";
+    if (token === adminSecret) {
+      (req as any).adminUser = {
+        id: "u-admin-default",
+        email: process.env.ADMIN_EMAIL || "tampaseduh@gmail.com",
+        role: "admin"
+      };
+      return next();
+    }
+
+    // Verifikasi token via Supabase Auth (untuk admin lain / Google Login)
     const { data: { user }, error } = await supabase.auth.getUser(token);
 
     if (error || !user) {
@@ -398,21 +409,23 @@ async function syncFromSupabase() {
       supabase.from("blog_news").select("*"),
       supabase.from("email_logs").select("*"),
       supabase.from("audit_logs").select("*"),
-      supabase.from("ai_settings").select("*").eq("key", "settings")
+      supabase.from("ai_settings").select("*")
     ]);
 
     if (!menuRes.error && menuRes.data) {
       if (menuRes.data.length > 0) {
         menuItems = menuRes.data.map(m => ({
           id: m.id, name: m.name, priceReg: m.price_reg, priceLarge: m.price_large,
-          isHot: m.is_hot, isAvailable: m.is_available, image: m.image, description: m.description
+          isHot: m.is_hot, isAvailable: m.is_available, image: m.image, description: m.description,
+          menuCategory: m.menu_category
         }));
       } else {
         // Seed database
         console.log("Seeding menu_items...");
         menuItems.forEach(m => writeSupabase("menu", "insert", {}, {
           id: m.id, name: m.name, price_reg: m.priceReg, price_large: m.priceLarge,
-          is_hot: m.isHot, is_available: m.isAvailable, image: m.image, description: m.description
+          is_hot: m.isHot, is_available: m.isAvailable, image: m.image, description: m.description,
+          menu_category: (m as any).menuCategory || (m.isHot ? 'hot' : 'cold')
         }));
       }
     }
@@ -497,8 +510,19 @@ async function syncFromSupabase() {
     }
 
     if (!aiRes.error && aiRes.data && aiRes.data.length > 0) {
-      aiSettings.systemPrompt = aiRes.data[0].system_prompt;
-      aiSettings.temperature = aiRes.data[0].temperature;
+      const settingsRow = aiRes.data.find(r => r.key === 'settings');
+      if (settingsRow) {
+        aiSettings.systemPrompt = settingsRow.system_prompt;
+        aiSettings.temperature = settingsRow.temperature;
+      }
+      const instructionsRow = aiRes.data.find(r => r.key === 'admin_instructions');
+      if (instructionsRow) {
+        try {
+          aiSettings.adminInstructions = JSON.parse(instructionsRow.system_prompt || "[]");
+        } catch {
+          aiSettings.adminInstructions = [];
+        }
+      }
     }
 
     // Load shop_status from ai_settings table
@@ -615,6 +639,7 @@ let menuItems: MenuItem[] = [
     priceReg: 15,
     priceLarge: 20,
     isHot: false,
+    menuCategory: "cold",
     isAvailable: true,
     image: "/Produk/WhatsApp Image 2026-06-11 at 00.03.19.jpeg",
     description: "Susu gurih dipadu espresso blend spesial khas Tampa Seduh. Kaya rasa dan manis seimbang."
@@ -625,6 +650,7 @@ let menuItems: MenuItem[] = [
     priceReg: 18,
     priceLarge: 23,
     isHot: false,
+    menuCategory: "cold",
     isAvailable: true,
     image: "/Produk/WhatsApp Image 2026-06-11 at 00.10.08.jpeg",
     description: "Kopi susu espresso creamy dengan lelehan gula aren murni Sulawesi yang legit."
@@ -635,6 +661,7 @@ let menuItems: MenuItem[] = [
     priceReg: 18,
     priceLarge: 23,
     isHot: false,
+    menuCategory: "cold",
     isAvailable: true,
     image: "/Produk/WhatsApp Image 2026-06-11 at 00.13.26.jpeg",
     description: "Kombinasi espresso aromatik, susu dingin, dan sirup vanila lembut beraroma manis surgawi."
@@ -645,6 +672,7 @@ let menuItems: MenuItem[] = [
     priceReg: 15,
     priceLarge: 20,
     isHot: false,
+    menuCategory: "cold",
     isAvailable: true,
     image: "/Produk/WhatsApp Image 2026-06-11 at 00.18.04.jpeg",
     description: "Double shot espresso Liberica-Arabica disiram air es jernih penenang dahaga."
@@ -655,6 +683,7 @@ let menuItems: MenuItem[] = [
     priceReg: 18,
     priceLarge: 23,
     isHot: false,
+    menuCategory: "cold",
     isAvailable: true,
     image: "/Produk/WhatsApp Image 2026-06-11 at 00.20.53.jpeg",
     description: "Matcha green tea organik impor beraroma teh segar alami bersatu dengan susu creamy dingin."
@@ -665,6 +694,7 @@ let menuItems: MenuItem[] = [
     priceReg: 18,
     priceLarge: 23,
     isHot: false,
+    menuCategory: "cold",
     isAvailable: true,
     image: "/Produk/WhatsApp Image 2026-06-11 at 00.24.22.jpeg",
     description: "Cokelat hitam premium produksi lokal dengan sensasi manis-pahit cokelat asli."
@@ -675,6 +705,7 @@ let menuItems: MenuItem[] = [
     priceReg: 18,
     priceLarge: 23,
     isHot: false,
+    menuCategory: "cold",
     isAvailable: true,
     image: "/Produk/WhatsApp Image 2026-06-11 at 00.29.46.jpeg",
     description: "Seduhan teh hitam pilihan dipadu perasan jeruk lemon segar kental berlimpah es."
@@ -685,6 +716,7 @@ let menuItems: MenuItem[] = [
     priceReg: 20,
     priceLarge: 25,
     isHot: false,
+    menuCategory: "cold",
     isAvailable: true,
     image: "/Produk/WhatsApp Image 2026-06-11 at 00.35.22.jpeg",
     description: "Minuman buah stroberi murni asam manis, diramu susu murni, menyegarkan suasana siang."
@@ -696,6 +728,7 @@ let menuItems: MenuItem[] = [
     name: "Aericano Hot",
     priceReg: 10,
     isHot: true,
+    menuCategory: "hot",
     isAvailable: true,
     image: "/Produk/WhatsApp Image 2026-06-11 at 00.18.04.jpeg",
     description: "Espresso murni aromatik diseduh air panas membara, menghadirkan rasa asli biji kopi pilihan."
@@ -706,6 +739,7 @@ let menuItems: MenuItem[] = [
     priceReg: 10,
     priceLarge: 12,
     isHot: true,
+    menuCategory: "hot",
     isAvailable: true,
     image: "/Produk/WhatsApp Image 2026-06-11 at 00.37.53.jpeg",
     description: "Kopi susu tradisional disajikan panas, memadukan bubuk kopi kuat dan kental manis."
@@ -715,6 +749,7 @@ let menuItems: MenuItem[] = [
     name: "Saraba",
     priceReg: 10,
     isHot: true,
+    menuCategory: "hot",
     isAvailable: true,
     image: "/Produk/WhatsApp Image 2026-06-11 at 00.44.57.jpeg",
     description: "Minuman jahe legendaris khas Sulawesi Utara diramu dengan susu, rempah-rempah herbal, dan gula merah."
@@ -724,6 +759,7 @@ let menuItems: MenuItem[] = [
     name: "Lemon Tea Hot",
     priceReg: 13,
     isHot: true,
+    menuCategory: "hot",
     isAvailable: true,
     image: "/Produk/WhatsApp Image 2026-06-11 at 00.29.46.jpeg",
     description: "Teh hitam hangat klasik disajikan dengan perasan lemon segar untuk menghangatkan badan."
@@ -733,6 +769,7 @@ let menuItems: MenuItem[] = [
     name: "Matcha Hot",
     priceReg: 15,
     isHot: true,
+    menuCategory: "hot",
     isAvailable: true,
     image: "/Produk/WhatsApp Image 2026-06-11 at 00.20.53.jpeg",
     description: "Teh hijau matcha Jepang hangat dengan foam susu lembut yang wangi menenangkan pikiran."
@@ -742,6 +779,7 @@ let menuItems: MenuItem[] = [
     name: "Coklat Hot",
     priceReg: 15,
     isHot: true,
+    menuCategory: "hot",
     isAvailable: true,
     image: "/Produk/WhatsApp Image 2026-06-11 at 00.24.22.jpeg",
     description: "Cokelat murni hangat khas daerah tropis, bertekstur kental manis-pahit yang meluapkan relaksasi."
@@ -751,6 +789,7 @@ let menuItems: MenuItem[] = [
     name: "Roti Kampung Coklat",
     priceReg: 4,
     isHot: false,
+    menuCategory: "snack",
     isAvailable: true,
     image: "https://images.unsplash.com/photo-1607958996333-41aef7caefaa?w=500",
     description: "Roti kampung legendaris khas Kotabunan dengan isian pasta cokelat manis lumer."
@@ -760,6 +799,7 @@ let menuItems: MenuItem[] = [
     name: "Roti Kampung Balak",
     priceReg: 4,
     isHot: false,
+    menuCategory: "snack",
     isAvailable: true,
     image: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=500",
     description: "Roti kampung polos bertekstur padat lembut, sangat cocok dicelup ke kopi susu atau jahe Saraba."
@@ -769,6 +809,7 @@ let menuItems: MenuItem[] = [
     name: "Roti Kampung Moka",
     priceReg: 4,
     isHot: false,
+    menuCategory: "snack",
     isAvailable: true,
     image: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=500",
     description: "Roti kampung harum moka dengan kelembutan rasa manis beraroma kopi moka khas."
@@ -963,6 +1004,7 @@ TUGAS:
 - Rekomendasikan menu yang cocok (cuaca dingin → Saraba atau Kopi Susu Panas, dll)
 - Kalau ada keluhan, tanggapi dengan ramah dan arahkan ke WA admin`,
   temperature: 0.75,
+  adminInstructions: [] as string[]
 };
 
 // Helper: Build dynamic AI context from live DB data
@@ -1056,7 +1098,11 @@ app.post("/api/chat", async (req, res) => {
 
     // Inject real-time product data
     const dynamicCtx = await buildDynamicAiContext();
-    const fullSystemPrompt = aiSettings.systemPrompt + dynamicCtx;
+    let adminCtx = "";
+    if (aiSettings.adminInstructions && aiSettings.adminInstructions.length > 0) {
+      adminCtx = "\n\nINTRUKSI TAMBAHAN DARI ADMIN:\n" + aiSettings.adminInstructions.map((inst, i) => `${i + 1}. ${inst}`).join("\n");
+    }
+    const fullSystemPrompt = aiSettings.systemPrompt + adminCtx + dynamicCtx;
 
     const result = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -2314,7 +2360,8 @@ app.post("/api/auth/login", authLimiter, async (req, res) => {
         adminUser.role = "admin";
         adminUser.lastActive = "Baru saja";
       }
-      return res.json({ success: true, user: adminUser });
+      const adminSecret = process.env.ADMIN_SECRET || "bcd98f45f7a3c92c8ba35f0924509651e72bb3413dd92c97e374fba4176c11db";
+      return res.json({ success: true, user: adminUser, token: adminSecret });
     }
 
     // 2. Cek Customer — cari di in-memory cache dulu
@@ -3254,9 +3301,12 @@ app.get("/api/ai-config", requireAdmin, (req, res) => {
 });
 
 app.post("/api/ai-config", requireAdmin, (req, res) => {
-  const { systemPrompt, temperature } = req.body;
+  const { systemPrompt, temperature, adminInstructions } = req.body;
   if (systemPrompt) aiSettings.systemPrompt = systemPrompt;
   if (temperature !== undefined) aiSettings.temperature = parseFloat(temperature);
+  if (adminInstructions !== undefined && Array.isArray(adminInstructions)) {
+    aiSettings.adminInstructions = adminInstructions;
+  }
 
   // Log configuration edit
   const newAuditLogObj = {
@@ -3273,6 +3323,15 @@ app.post("/api/ai-config", requireAdmin, (req, res) => {
     system_prompt: aiSettings.systemPrompt,
     temperature: aiSettings.temperature
   });
+
+  if (adminInstructions !== undefined && Array.isArray(adminInstructions)) {
+    writeSupabase('ai_settings', 'upsert', {}, {
+      key: 'admin_instructions',
+      system_prompt: JSON.stringify(aiSettings.adminInstructions),
+      temperature: 0
+    });
+  }
+
   writeSupabase('audit_logs', 'insert', {}, newAuditLogObj);
 
   res.json({ success: true, config: aiSettings });

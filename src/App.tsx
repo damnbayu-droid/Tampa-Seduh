@@ -415,6 +415,9 @@ export default function App() {
       }
 
       setCurrentUser(loggedInUser);
+      if (data.token) {
+        localStorage.setItem("admin_token", data.token);
+      }
       if (loggedInUser.role === "admin" || loggedInUser.email === "tampaseduh@gmail.com") {
         setIsAdminMode(true);
         setIsUserLoginOpen(false);
@@ -645,6 +648,7 @@ export default function App() {
     setCurrentUser(null);
     setShowUserDashboard(false);
     setUserOrders([]);
+    localStorage.removeItem("admin_token");
   };
 
   const handleUpdateProfile = async (updates: Partial<User>) => {
@@ -699,6 +703,7 @@ export default function App() {
           onLogoutAdmin={() => {
             setCurrentUser(null);
             setIsAdminMode(false);
+            localStorage.removeItem("admin_token");
           }}
         />
       </Suspense>
@@ -2220,6 +2225,11 @@ export default function App() {
                 </a>
               </li>
               <li>
+                <a href="https://kotabunan.shop" target="_blank" rel="noopener noreferrer" className="hover:text-amber-400 transition-colors">
+                  kotabunan.shop
+                </a>
+              </li>
+              <li className="mt-2">
                 <a href="https://mybisnis.app" target="_blank" rel="noopener noreferrer" className="hover:text-amber-400 transition-colors">
                   Kotabunan Projek
                 </a>
