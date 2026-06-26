@@ -844,6 +844,9 @@ Berikut adalah peta jalan pengembangan lanjutan website Tampa Seduh yang disusun
 | 23 Jun 2026 | Database: 10 file SQL migration selesai diapply | ✅ |
 | 23 Jun 2026 | Security: REVOKE `check_user_columns_policy` dari anon | ✅ |
 | 23 Jun 2026 | Build TypeScript lulus tanpa error | ✅ |
+| 27 Jun 2026 | Perbaikan bug instruksi AI Master & Await Supabase writes | ✅ |
+| 27 Jun 2026 | Nonaktifkan & bersihkan dummy data order / customer | ✅ |
+| 27 Jun 2026 | Tombol Unduh PDF Keuangan, Order, dan Invoice | ✅ |
 
 ---
-*Dokumen laporan audit ini disusun secara independen berdasarkan data riil codebase Tampa Seduh per tanggal 22 Juni 2026, dan diperbarui pada 23 Juni 2026. Laporan ini siap diserahkan kepada Pemilik Proyek, Emat Ambarak (CEO) dan Bayu Damopolii Manoppo (Co-Founder).*
+*Dokumen laporan audit ini disusun secara independen berdasarkan data riil codebase Tampa Seduh per tanggal 22 Juni 2026, dan diperbarui pada 27 Juni 2026. Laporan ini siap diserahkan kepada Pemilik Proyek, Emat Ambarak (CEO) dan Bayu Damopolii Manoppo (Co-Founder).*

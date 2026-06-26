@@ -177,6 +177,14 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
   const [editingPack, setEditingPack] = useState<CoffeePackage | null>(null);
   const [editingMenu, setEditingMenu] = useState<MenuItem | null>(null);
   const [guideModal, setGuideModal] = useState<string | null>(null); // null = tutup, string = nama panel
+
+  // PDF Report Generator States
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportType, setReportType] = useState<'finance' | 'orders' | 'invoices'>('finance');
+  const [reportPeriod, setReportPeriod] = useState<'harian' | 'mingguan' | 'bulanan' | 'tahunan' | 'semua'>('bulanan');
+  const [reportMonth, setReportMonth] = useState<number>(new Date().getMonth());
+  const [reportYear, setReportYear] = useState<number>(new Date().getFullYear());
+  const [reportStatus, setReportStatus] = useState<string>('all');
   const [previewEmail, setPreviewEmail] = useState<any>(null); // untuk modal preview email HTML
 
   // Email Compose State
@@ -586,6 +594,445 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
       }
     } catch (err) {
       console.error("Gagal menghapus paket:", err);
+    }
+  };
+
+  // PDF Report Generator Helper
+  const generatePDFReport = (
+    type: 'finance' | 'orders' | 'invoices',
+    options: {
+      periodType: string;
+      month?: number;
+      year?: number;
+      statusFilter?: string;
+    }
+  ) => {
+    // 1. Gather all required data
+    let filtered = [...orderList];
+    const now = new Date();
+
+    // Filter by date
+    if (options.periodType === 'harian') {
+      const todayStr = now.toISOString().split('T')[0];
+      filtered = filtered.filter(o => o.createdAt.startsWith(todayStr));
+    } else if (options.periodType === 'mingguan') {
+      filtered = filtered.filter(o => {
+        const orderDate = new Date(o.createdAt);
+        const diffMs = now.getTime() - orderDate.getTime();
+        return (diffMs / (1000 * 60 * 60 * 24)) <= 7;
+      });
+    } else if (options.periodType === 'bulanan' && options.month !== undefined && options.year !== undefined) {
+      filtered = filtered.filter(o => {
+        const orderDate = new Date(o.createdAt);
+        return orderDate.getMonth() === options.month && orderDate.getFullYear() === options.year;
+      });
+    } else if (options.periodType === 'tahunan' && options.year !== undefined) {
+      filtered = filtered.filter(o => {
+        const orderDate = new Date(o.createdAt);
+        return orderDate.getFullYear() === options.year;
+      });
+    }
+
+    // Filter by status depending on type
+    if (type === 'finance') {
+      // Financial reports only include completed orders
+      filtered = filtered.filter(o => o.status === 'completed');
+    } else if (type === 'orders') {
+      if (options.statusFilter && options.statusFilter !== 'all') {
+        filtered = filtered.filter(o => o.status === options.statusFilter);
+      }
+    } else if (type === 'invoices') {
+      if (options.statusFilter === 'lunas') {
+        // Lunas = completed, delivering, or processing
+        filtered = filtered.filter(o => ['completed', 'delivering', 'processing'].includes(o.status));
+      } else if (options.statusFilter === 'pending') {
+        filtered = filtered.filter(o => o.status === 'pending');
+      } else if (options.statusFilter === 'canceled') {
+        filtered = filtered.filter(o => o.status === 'canceled');
+      }
+    }
+
+    // Sort: newest first
+    filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    // Formatting helpers
+    const formatIDR = (val: number) => {
+      return `Rp ${val.toLocaleString('id-ID')}`;
+    };
+
+    const formatDate = (isoString: string) => {
+      const d = new Date(isoString);
+      return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ' ' +
+             d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WITA';
+    };
+
+    const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    
+    // Period text for title
+    let periodText = '';
+    if (options.periodType === 'harian') {
+      periodText = 'Hari Ini (' + now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ')';
+    } else if (options.periodType === 'mingguan') {
+      periodText = '7 Hari Terakhir';
+    } else if (options.periodType === 'bulanan' && options.month !== undefined && options.year !== undefined) {
+      periodText = months[options.month] + ' ' + options.year;
+    } else if (options.periodType === 'tahunan' && options.year !== undefined) {
+      periodText = 'Tahun ' + options.year;
+    } else {
+      periodText = 'Semua Waktu';
+    }
+
+    const printDate = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ' ' +
+                      now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WITA';
+
+    let reportTitle = '';
+    let summaryCardsHTML = '';
+    let tableTitle = '';
+    let tableHeadersHTML = '';
+    let tableRowsHTML = '';
+
+    if (type === 'finance') {
+      reportTitle = 'Laporan Performa Keuangan & Laba Rugi';
+      
+      const totalRevenueVal = filtered.reduce((sum, o) => sum + (Number(o.total) || 0), 0) * 1000;
+      const totalHppVal = Math.round(totalRevenueVal * 0.45);
+      const netProfitVal = totalRevenueVal - totalHppVal;
+      const avgTransVal = filtered.length > 0 ? Math.round(totalRevenueVal / filtered.length) : 0;
+      
+      summaryCardsHTML = `
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div class="p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
+            <span class="text-[9px] font-bold text-emerald-800 uppercase tracking-widest block">Pendapatan Kotor (Sales)</span>
+            <h4 class="text-xl font-bold text-emerald-950 mt-1">${formatIDR(totalRevenueVal)}</h4>
+            <span class="text-[9px] text-zinc-500 mt-1 block">Dari pesanan berstatus Selesai</span>
+          </div>
+          <div class="p-4 bg-red-50 border border-red-100 rounded-xl">
+            <span class="text-[9px] font-bold text-red-800 uppercase tracking-widest block">Biaya HPP Aktual (45%)</span>
+            <h4 class="text-xl font-bold text-red-950 mt-1">${formatIDR(totalHppVal)}</h4>
+            <span class="text-[9px] text-zinc-500 mt-1 block">Estimasi modal resep/bahan baku</span>
+          </div>
+          <div class="p-4 bg-amber-50 border border-amber-100 rounded-xl">
+            <span class="text-[9px] font-bold text-amber-800 uppercase tracking-widest block">Laba Bersih (Net Profit)</span>
+            <h4 class="text-xl font-bold text-amber-950 mt-1">${formatIDR(netProfitVal)}</h4>
+            <span class="text-[9px] text-zinc-500 mt-1 block">Keuntungan bersih pemilik/kedai</span>
+          </div>
+          <div class="p-4 bg-zinc-50 border border-zinc-150 rounded-xl">
+            <span class="text-[9px] font-bold text-zinc-800 uppercase tracking-widest block">Statistik Transaksi</span>
+            <h4 class="text-xl font-bold text-zinc-950 mt-1">${filtered.length} Transaksi</h4>
+            <span class="text-[9px] text-zinc-500 mt-1 block">Rata-rata: ${formatIDR(avgTransVal)} / order</span>
+          </div>
+        </div>
+      `;
+
+      tableTitle = 'Rincian Penjualan Selesai';
+      tableHeadersHTML = `
+        <th class="py-3 px-4">Order ID</th>
+        <th class="py-3 px-4">Tanggal</th>
+        <th class="py-3 px-4">Pelanggan</th>
+        <th class="py-3 px-4">Produk Kopi / Menu</th>
+        <th class="py-3 px-4 text-right">Laba Bersih</th>
+        <th class="py-3 px-4 text-right">Total Bayar</th>
+      `;
+
+      if (filtered.length > 0) {
+        tableRowsHTML = filtered.map(o => {
+          const rowRev = (Number(o.total) || 0) * 1000;
+          const rowHpp = Math.round(rowRev * 0.45);
+          const rowNet = rowRev - rowHpp;
+          const menuString = o.items.map(it => `${it.name} (${it.quantity}x)`).join(', ');
+          return `
+            <tr class="hover:bg-zinc-50 border-b border-zinc-100">
+              <td class="py-3 px-4 font-mono font-bold text-amber-900">${o.id}</td>
+              <td class="py-3 px-4 text-zinc-500">${formatDate(o.createdAt)}</td>
+              <td class="py-3 px-4 font-semibold">${o.customerName}</td>
+              <td class="py-3 px-4 text-zinc-700 max-w-xs truncate">${menuString}</td>
+              <td class="py-3 px-4 text-right font-bold text-emerald-600">${formatIDR(rowNet)}</td>
+              <td class="py-3 px-4 text-right font-bold">${formatIDR(rowRev)}</td>
+            </tr>
+          `;
+        }).join('');
+      } else {
+        tableRowsHTML = `
+          <tr>
+            <td colspan="6" class="py-8 text-center text-zinc-400 font-medium">Tidak ada transaksi selesai pada periode ini.</td>
+          </tr>
+        `;
+      }
+    } else if (type === 'orders') {
+      const statusLabels: Record<string, string> = {
+        all: 'Semua Status',
+        pending: 'Tertunda (Pending)',
+        processing: 'Disiapkan (Processing)',
+        delivering: 'Diantar (Delivering)',
+        completed: 'Selesai (Completed)',
+        canceled: 'Dibatalkan (Canceled)'
+      };
+      
+      reportTitle = 'Laporan Transaksi Pesanan Antar (Delivery)';
+      
+      const totalVal = filtered.reduce((sum, o) => sum + (Number(o.total) || 0), 0) * 1000;
+      const completedCount = filtered.filter(o => o.status === 'completed').length;
+      const activeCount = filtered.filter(o => ['pending', 'processing', 'delivering'].includes(o.status)).length;
+      const canceledCount = filtered.filter(o => o.status === 'canceled').length;
+      
+      summaryCardsHTML = `
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div class="p-4 bg-zinc-50 border border-zinc-150 rounded-xl">
+            <span class="text-[9px] font-bold text-zinc-500 uppercase tracking-widest block">Total Pesanan</span>
+            <h4 class="text-xl font-bold text-zinc-950 mt-1">${filtered.length} Pesanan</h4>
+            <span class="text-[9px] text-zinc-400 mt-1 block">Filter: ${statusLabels[options.statusFilter || 'all']}</span>
+          </div>
+          <div class="p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
+            <span class="text-[9px] font-bold text-emerald-800 uppercase tracking-widest block">Total Nilai Order</span>
+            <h4 class="text-xl font-bold text-emerald-950 mt-1">${formatIDR(totalVal)}</h4>
+            <span class="text-[9px] text-emerald-600 mt-1 block">Rata-rata: ${formatIDR(filtered.length > 0 ? Math.round(totalVal / filtered.length) : 0)} / order</span>
+          </div>
+          <div class="p-4 bg-blue-50 border border-blue-100 rounded-xl">
+            <span class="text-[9px] font-bold text-blue-800 uppercase tracking-widest block">Pesanan Aktif / Diproses</span>
+            <h4 class="text-xl font-bold text-blue-950 mt-1">${activeCount} Pesanan</h4>
+            <span class="text-[9px] text-blue-500 mt-1 block">Selesai terkirim: ${completedCount}</span>
+          </div>
+          <div class="p-4 bg-red-50 border border-red-100 rounded-xl">
+            <span class="text-[9px] font-bold text-red-800 uppercase tracking-widest block">Pesanan Dibatalkan</span>
+            <h4 class="text-xl font-bold text-red-955 mt-1">${canceledCount} Pesanan</h4>
+            <span class="text-[9px] text-red-500 mt-1 block">Rasio cancel: ${filtered.length > 0 ? Math.round((canceledCount / filtered.length) * 100) : 0}%</span>
+          </div>
+        </div>
+      `;
+
+      tableTitle = 'Daftar Transaksi Pesanan';
+      tableHeadersHTML = `
+        <th class="py-3 px-4">Order ID</th>
+        <th class="py-3 px-4">Tanggal</th>
+        <th class="py-3 px-4">Pelanggan</th>
+        <th class="py-3 px-4">No. WhatsApp</th>
+        <th class="py-3 px-4">Alamat Pengantaran</th>
+        <th class="py-3 px-4">Pesanan Menu</th>
+        <th class="py-3 px-4 text-center">Status</th>
+        <th class="py-3 px-4 text-right">Total Bayar</th>
+      `;
+
+      const statusBadges: Record<string, string> = {
+        pending: '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200/40">Pending</span>',
+        processing: '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-200/40">Proses</span>',
+        delivering: '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/40">Diantar</span>',
+        completed: '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/40">Selesai</span>',
+        canceled: '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-red-50 text-red-700 border border-red-200/40">Batal</span>'
+      };
+
+      if (filtered.length > 0) {
+        tableRowsHTML = filtered.map(o => {
+          const menuString = o.items.map(it => `${it.name} (${it.quantity}x)`).join(', ');
+          return `
+            <tr class="hover:bg-zinc-50 border-b border-zinc-100">
+              <td class="py-3 px-4 font-mono font-bold text-amber-900">${o.id}</td>
+              <td class="py-3 px-4 text-zinc-500">${formatDate(o.createdAt)}</td>
+              <td class="py-3 px-4 font-semibold">${o.customerName}</td>
+              <td class="py-3 px-4 text-zinc-700 font-mono">${o.whatsapp || '-'}</td>
+              <td class="py-3 px-4 text-zinc-650 max-w-xs truncate">${o.address || '-'}</td>
+              <td class="py-3 px-4 text-zinc-700 max-w-xs truncate">${menuString}</td>
+              <td class="py-3 px-4 text-center">${statusBadges[o.status] || o.status}</td>
+              <td class="py-3 px-4 text-right font-bold">${formatIDR((Number(o.total) || 0) * 1000)}</td>
+            </tr>
+          `;
+        }).join('');
+      } else {
+        tableRowsHTML = `
+          <tr>
+            <td colspan="8" class="py-8 text-center text-zinc-400 font-medium">Tidak ada transaksi pesanan yang sesuai dengan filter.</td>
+          </tr>
+        `;
+      }
+    } else if (type === 'invoices') {
+      reportTitle = 'Laporan Invoice & Riwayat Pembayaran';
+      
+      const totalInvVal = filtered.reduce((sum, o) => sum + (Number(o.total) || 0), 0) * 1000;
+      const verifVal = filtered.filter(o => ['completed', 'delivering', 'processing'].includes(o.status)).reduce((sum, o) => sum + (Number(o.total) || 0), 0) * 1000;
+      const pendVal = filtered.filter(o => o.status === 'pending').reduce((sum, o) => sum + (Number(o.total) || 0), 0) * 1000;
+      const cancVal = filtered.filter(o => o.status === 'canceled').reduce((sum, o) => sum + (Number(o.total) || 0), 0) * 1000;
+
+      summaryCardsHTML = `
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div class="p-4 bg-zinc-50 border border-zinc-150 rounded-xl">
+            <span class="text-[9px] font-bold text-zinc-500 uppercase tracking-widest block">Total Tagihan (Invoice)</span>
+            <h4 class="text-xl font-bold text-zinc-955 mt-1">${formatIDR(totalInvVal)}</h4>
+            <span class="text-[9px] text-zinc-400 mt-1 block">Total invoice diterbitkan: ${filtered.length}</span>
+          </div>
+          <div class="p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
+            <span class="text-[9px] font-bold text-emerald-800 uppercase tracking-widest block">Pembayaran Terverifikasi / Lunas</span>
+            <h4 class="text-xl font-bold text-emerald-955 mt-1">${formatIDR(verifVal)}</h4>
+            <span class="text-[9px] text-emerald-600 mt-1 block">Rasio lunas: ${totalInvVal > 0 ? Math.round((verifVal / totalInvVal) * 100) : 0}%</span>
+          </div>
+          <div class="p-4 bg-amber-50 border border-amber-100 rounded-xl">
+            <span class="text-[9px] font-bold text-amber-800 uppercase tracking-widest block">Menunggu Pembayaran / Verifikasi</span>
+            <h4 class="text-xl font-bold text-amber-955 mt-1">${formatIDR(pendVal)}</h4>
+            <span class="text-[9px] text-amber-650 mt-1 block">Belum diproses barista</span>
+          </div>
+          <div class="p-4 bg-red-50 border border-red-100 rounded-xl">
+            <span class="text-[9px] font-bold text-red-800 uppercase tracking-widest block">Tagihan Kedaluwarsa / Batal</span>
+            <h4 class="text-xl font-bold text-red-955 mt-1">${formatIDR(cancVal)}</h4>
+            <span class="text-[9px] text-red-500 mt-1 block">Invoice tidak valid</span>
+          </div>
+        </div>
+      `;
+
+      tableTitle = 'Daftar Invoice & Riwayat Pembayaran';
+      tableHeadersHTML = `
+        <th class="py-3 px-4">Order ID</th>
+        <th class="py-3 px-4">Tanggal Terbit</th>
+        <th class="py-3 px-4">Pelanggan</th>
+        <th class="py-3 px-4">Biaya Kirim</th>
+        <th class="py-3 px-4">Potongan Ongkir</th>
+        <th class="py-3 px-4">Metode Kirim</th>
+        <th class="py-3 px-4 text-center">Status Pembayaran</th>
+        <th class="py-3 px-4 text-right">Nilai Tagihan</th>
+      `;
+
+      if (filtered.length > 0) {
+        tableRowsHTML = filtered.map(o => {
+          const isPaid = ['completed', 'delivering', 'processing'].includes(o.status);
+          const payStatus = isPaid 
+            ? '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/40">LUNAS</span>'
+            : o.status === 'canceled'
+              ? '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-red-50 text-red-700 border border-red-200/40">BATAL</span>'
+              : '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200/40">PENDING</span>';
+          
+          return `
+            <tr class="hover:bg-zinc-50 border-b border-zinc-100">
+              <td class="py-3 px-4 font-mono font-bold text-amber-900">${o.id}</td>
+              <td class="py-3 px-4 text-zinc-500">${formatDate(o.createdAt)}</td>
+              <td class="py-3 px-4 font-semibold">${o.customerName}</td>
+              <td class="py-3 px-4 font-mono">${formatIDR((o.shippingCost || 0) * 1000)}</td>
+              <td class="py-3 px-4 font-mono text-red-500">-${formatIDR((o.shippingDiscount || 0) * 1000)}</td>
+              <td class="py-3 px-4 uppercase font-bold text-zinc-500">${o.deliveryMethod || 'delivery'}</td>
+              <td class="py-3 px-4 text-center">${payStatus}</td>
+              <td class="py-3 px-4 text-right font-bold">${formatIDR((Number(o.total) || 0) * 1000)}</td>
+            </tr>
+          `;
+        }).join('');
+      } else {
+        tableRowsHTML = `
+          <tr>
+            <td colspan="8" class="py-8 text-center text-zinc-400 font-medium">Tidak ada register invoice yang sesuai.</td>
+          </tr>
+        `;
+      }
+    }
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html lang="id">
+        <head>
+          <meta charset="UTF-8">
+          <title>Tampa Seduh - ${reportTitle}</title>
+          <script src="https://cdn.tailwindcss.com"></script>
+          <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700&display=swap" rel="stylesheet">
+          <style>
+            @media print {
+              body {
+                background-color: white;
+                color: black;
+                padding: 0;
+              }
+              .no-print {
+                display: none;
+              }
+              @page {
+                size: A4 landscape;
+                margin: 15mm;
+              }
+              thead {
+                display: table-header-group;
+              }
+              tr {
+                page-break-inside: avoid;
+              }
+            }
+            body {
+              font-family: 'Outfit', sans-serif;
+            }
+            .serif-title {
+              font-family: 'Playfair Display', serif;
+            }
+          </style>
+        </head>
+        <body class="bg-white p-12 text-zinc-900">
+          <!-- Report Header -->
+          <div class="flex items-center justify-between border-b-2 border-amber-900/30 pb-6 mb-8">
+            <div class="flex items-center gap-3">
+              <div class="p-2.5 bg-amber-900 rounded-xl text-white">
+                <svg class="w-8 h-8 text-amber-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5zm0 0l9-5-9-5-9 5 9 5zm0 0v6m0 0l3-3m-3 3l-3-3"/></svg>
+              </div>
+              <div>
+                <h1 class="serif-title font-black text-2xl tracking-wide text-amber-950">Tampa Seduh</h1>
+                <p class="text-xs text-zinc-500 uppercase tracking-widest font-semibold">Admin Terminal & Performa Kedai</p>
+              </div>
+            </div>
+            <div class="text-right text-[10px] text-zinc-500">
+              <p class="font-bold text-zinc-800 text-xs">TAMPA SEDUH KOTABUNAN</p>
+              <p>Jl. Tangkudeagan No. 2, Kotabunan Selatan</p>
+              <p>Kabupaten Bolaang Mongondow Timur, Sulawesi Utara</p>
+              <p>WA: 085696224448 | Email: kopi@tampaseduh.com</p>
+            </div>
+          </div>
+
+          <!-- Title & Meta -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+            <div>
+              <h2 class="serif-title font-black text-2xl text-amber-950 uppercase tracking-tight">${reportTitle}</h2>
+              <p class="text-xs text-zinc-500 mt-1">Periode Laporan: <strong class="text-zinc-800">${periodText}</strong></p>
+            </div>
+            <div class="text-left sm:text-right text-xs text-zinc-500">
+              <p>Tanggal Dicetak: <strong class="text-zinc-800">${printDate}</strong></p>
+              <p>Operator: <strong class="text-zinc-800">Administrator</strong></p>
+            </div>
+          </div>
+
+          <!-- Summary Cards -->
+          ${summaryCardsHTML}
+
+          <!-- Data Section -->
+          <div class="space-y-6">
+            <h3 class="serif-title font-bold text-base text-amber-950 border-b border-zinc-200 pb-2">${tableTitle}</h3>
+            <table class="w-full text-left text-[11px] border-collapse">
+              <thead>
+                <tr class="border-b-2 border-zinc-200 text-zinc-500 font-bold uppercase">
+                  ${tableHeadersHTML}
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-zinc-100">
+                ${tableRowsHTML}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Footer / Signatures -->
+          <div class="mt-16 pt-8 border-t border-zinc-200/60 grid grid-cols-2 gap-8 text-center text-xs text-zinc-650 page-break-inside-avoid">
+            <div>
+              <p class="text-zinc-400">Dibuat Oleh,</p>
+              <div class="h-20"></div>
+              <p class="font-bold text-zinc-800">Admin Tampa Seduh</p>
+              <p class="text-[10px] text-zinc-500">Terminal Operational System</p>
+            </div>
+            <div>
+              <p class="text-zinc-400">Diperiksa & Disetujui Oleh,</p>
+              <div class="h-20"></div>
+              <p class="font-bold text-zinc-800">Mochammad Rifai</p>
+              <p class="text-[10px] text-zinc-500">Owner Tampa Seduh</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `);
+      printWindow.document.close();
+      
+      // Wait for tailwind and assets to load
+      setTimeout(() => {
+        printWindow.focus();
+        printWindow.print();
+      }, 750);
     }
   };
 
@@ -1553,6 +2000,17 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                         <button onClick={() => setGuideModal('orders')} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 border border-blue-200 dark:border-blue-800 transition-all cursor-pointer">
                           <HelpCircle className="w-3.5 h-3.5" /> Panduan
                         </button>
+                        <button 
+                          onClick={() => {
+                            setReportType('orders');
+                            setReportPeriod('semua');
+                            setReportStatus('all');
+                            setIsReportModalOpen(true);
+                          }} 
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 border border-emerald-200/30 dark:border-emerald-800 transition-all cursor-pointer"
+                        >
+                          <Download className="w-3.5 h-3.5" /> Unduh Laporan PDF
+                        </button>
                         <span className="text-xs bg-amber-900/5 dark:bg-amber-400/10 text-amber-900 dark:text-amber-300 font-bold px-3 py-1 rounded-full">
                           {orderList.length} Total Pesanan
                         </span>
@@ -1665,9 +2123,22 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                   <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-sm overflow-hidden">
                     <div className="flex justify-between items-center mb-4 pb-3 border-b border-zinc-100 dark:border-zinc-800">
                       <h3 className="font-serif font-bold text-lg text-amber-950 dark:text-amber-50">Invoice & Riwayat Pembayaran</h3>
-                      <span className="text-xs bg-amber-900/5 dark:bg-amber-400/10 text-amber-900 dark:text-amber-300 font-bold px-3 py-1 rounded-full">
-                        {orderList.length} Total Invoice
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => {
+                            setReportType('invoices');
+                            setReportPeriod('semua');
+                            setReportStatus('all');
+                            setIsReportModalOpen(true);
+                          }} 
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 border border-emerald-200/30 dark:border-emerald-800 transition-all cursor-pointer"
+                        >
+                          <Download className="w-3.5 h-3.5" /> Unduh Laporan PDF
+                        </button>
+                        <span className="text-xs bg-amber-900/5 dark:bg-amber-400/10 text-amber-900 dark:text-amber-300 font-bold px-3 py-1 rounded-full">
+                          {orderList.length} Total Invoice
+                        </span>
+                      </div>
                     </div>
 
                     <div className="overflow-x-auto">
@@ -2351,7 +2822,19 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
                 <div className="space-y-6">
                   {/* Period Filter Header */}
                   <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-sm">
-                    <span className="text-sm font-semibold text-zinc-650">Laporan Akuntansi Keuangan:</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-semibold text-zinc-650">Laporan Akuntansi Keuangan:</span>
+                      <button 
+                        onClick={() => {
+                          setReportType('finance');
+                          setReportPeriod('bulanan');
+                          setIsReportModalOpen(true);
+                        }} 
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 border border-emerald-200/30 dark:border-emerald-800 transition-all cursor-pointer"
+                      >
+                        <Download className="w-3.5 h-3.5" /> Unduh Laporan PDF
+                      </button>
+                    </div>
                     <div className="flex flex-wrap gap-1 bg-zinc-100 dark:bg-zinc-805 p-1 rounded-xl">
                       {(["Harian", "Mingguan", "Bulanan", "6 Bulan", "1 Tahun", "Semua"] as const).map((p) => (
                         <button
@@ -3946,6 +4429,153 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
           </div>
         )}
       </AnimatePresence>
+
+      {/* ===== REPORT DOWNLOAD MODAL — Unduh Laporan PDF ===== */}
+      {isReportModalOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={() => setIsReportModalOpen(false)}>
+          <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="p-5 bg-gradient-to-r from-emerald-650 to-teal-600 text-white flex items-start justify-between">
+              <div>
+                <h4 className="font-serif font-black text-lg">Unduh Laporan PDF</h4>
+                <p className="text-xs text-emerald-100 mt-0.5">
+                  Laporan {reportType === 'finance' ? 'Keuangan' : reportType === 'orders' ? 'Order' : 'Invoice'} Resmi Tampa Seduh
+                </p>
+              </div>
+              <button onClick={() => setIsReportModalOpen(false)} className="p-1.5 rounded-full hover:bg-white/20 transition cursor-pointer shrink-0">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Form Content */}
+            <div className="p-6 space-y-4">
+              {/* Period Selection */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block">Pilih Rentang Waktu</label>
+                <select 
+                  value={reportPeriod} 
+                  onChange={(e) => setReportPeriod(e.target.value as any)}
+                  className="w-full p-3 rounded-xl border border-zinc-250 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-850 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400"
+                >
+                  <option value="harian">Laporan Hari Ini (Harian)</option>
+                  <option value="mingguan">Laporan 7 Hari Terakhir (Mingguan)</option>
+                  <option value="bulanan">Laporan Bulanan (Pilih Bulan)</option>
+                  <option value="tahunan">Laporan Tahunan (Pilih Tahun)</option>
+                  <option value="semua">Semua Transaksi (Semua Waktu)</option>
+                </select>
+              </div>
+
+              {/* Conditional Month Selector */}
+              {reportPeriod === 'bulanan' && (
+                <div className="grid grid-cols-2 gap-3 animate-fade-in">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block">Bulan</label>
+                    <select 
+                      value={reportMonth} 
+                      onChange={(e) => setReportMonth(Number(e.target.value))}
+                      className="w-full p-3 rounded-xl border border-zinc-250 dark:border-zinc-850 bg-zinc-50 dark:bg-zinc-800 text-sm font-semibold focus:outline-none focus:ring-2 text-zinc-900 dark:text-zinc-100"
+                    >
+                      {["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"].map((m, idx) => (
+                        <option key={idx} value={idx}>{m}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block">Tahun</label>
+                    <select 
+                      value={reportYear} 
+                      onChange={(e) => setReportYear(Number(e.target.value))}
+                      className="w-full p-3 rounded-xl border border-zinc-250 dark:border-zinc-850 bg-zinc-50 dark:bg-zinc-800 text-sm font-semibold focus:outline-none focus:ring-2 text-zinc-900 dark:text-zinc-100"
+                    >
+                      {[2025, 2026, 2027].map((y) => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {/* Conditional Year Selector */}
+              {reportPeriod === 'tahunan' && (
+                <div className="space-y-1.5 animate-fade-in">
+                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block">Tahun</label>
+                  <select 
+                    value={reportYear} 
+                    onChange={(e) => setReportYear(Number(e.target.value))}
+                    className="w-full p-3 rounded-xl border border-zinc-250 dark:border-zinc-850 bg-zinc-50 dark:bg-zinc-800 text-sm font-semibold focus:outline-none focus:ring-2 text-zinc-900 dark:text-zinc-100"
+                  >
+                    {[2025, 2026, 2027].map((y) => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Conditional Filters (e.g. status) for Orders and Invoices */}
+              {reportType === 'orders' && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block">Filter Status Pesanan</label>
+                  <select 
+                    value={reportStatus} 
+                    onChange={(e) => setReportStatus(e.target.value)}
+                    className="w-full p-3 rounded-xl border border-zinc-250 dark:border-zinc-850 bg-zinc-50 dark:bg-zinc-800 text-sm font-semibold focus:outline-none focus:ring-2 text-zinc-900 dark:text-zinc-100"
+                  >
+                    <option value="all">Semua Status</option>
+                    <option value="pending">Tertunda (Pending)</option>
+                    <option value="processing">Disiapkan (Processing)</option>
+                    <option value="delivering">Diantar (Delivering)</option>
+                    <option value="completed">Selesai (Completed)</option>
+                    <option value="canceled">Dibatalkan (Canceled)</option>
+                  </select>
+                </div>
+              )}
+
+              {reportType === 'invoices' && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block">Filter Status Pembayaran</label>
+                  <select 
+                    value={reportStatus} 
+                    onChange={(e) => setReportStatus(e.target.value)}
+                    className="w-full p-3 rounded-xl border border-zinc-250 dark:border-zinc-850 bg-zinc-50 dark:bg-zinc-800 text-sm font-semibold focus:outline-none focus:ring-2 text-zinc-900 dark:text-zinc-100"
+                  >
+                    <option value="all">Semua Pembayaran</option>
+                    <option value="lunas">Lunas / Terverifikasi (Selesai/Diantar/Disiapkan)</option>
+                    <option value="pending">Belum Bayar / Menunggu Verifikasi (Pending)</option>
+                    <option value="canceled">Dibatalkan (Canceled)</option>
+                  </select>
+                </div>
+              )}
+
+              {/* Action buttons */}
+              <div className="flex gap-3 pt-4 border-t dark:border-zinc-800">
+                <button
+                  type="button"
+                  onClick={() => setIsReportModalOpen(false)}
+                  className="flex-1 py-3 text-sm font-bold text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl cursor-pointer transition-all"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    generatePDFReport(reportType, {
+                      periodType: reportPeriod,
+                      month: reportMonth,
+                      year: reportYear,
+                      statusFilter: reportStatus
+                    });
+                    setIsReportModalOpen(false);
+                  }}
+                  className="flex-1 py-3 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-md cursor-pointer transition-all flex items-center justify-center gap-1.5"
+                >
+                  <Download className="w-4 h-4" /> Unduh PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ===== GUIDE MODAL — Panduan per Panel ===== */}
       {guideModal && (() => {
         const GUIDES: Record<string, { icon: string; title: string; color: string; steps: { label: string; desc: string }[] }> = {
