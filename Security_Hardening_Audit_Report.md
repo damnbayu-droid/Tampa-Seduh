@@ -2,13 +2,15 @@
 ## PROYEK: TAMPA SEDUH — PHASE 1 SCAN, PHASE 2B, & PHASE 3 UPDATE
 *Status Proyek: Production — Live, Hardened & Optimized*  
 *Tanggal Audit Awal: 22 Juni 2026*  
-*Tanggal Update Terakhir: 25 Juni 2026*  
+*Tanggal Update Terakhir: 26 Juni 2026*  
 
 ---
 
 ## SECTION 1: EXECUTIVE SUMMARY
 
 Website **Tampa Seduh** saat ini beroperasi dalam status *Live Production* dengan fungsionalitas yang sangat kaya, meliputi storefront, manajemen order, asisten chatbot bertenaga AI (GPT-4o-mini & Gemini Vision), integrasi email Resend, serta modul analisa HPP & Costing yang kompleks.
+
+**UPDATE 26 Juni 2026:** Melakukan hardening keamanan dan keandalan data pada alur pemesanan (checkout flow). WhatsApp dan email kini bersifat opsional tanpa melanggar batasan integritas database. Memperbaiki logika pencocokan agar pemesan tamu dengan email default `"-"` tidak saling bertabrakan, serta menggenerasi alamat email tamu unik secara dinamis untuk mencegah error `UNIQUE constraint violation` pada tabel users Supabase.
 
 **UPDATE 23 Juni 2026:** Setelah audit Phase 1 diselesaikan, implementasi Security Hardening Phase 2A dan Phase 2B telah berhasil dilakukan. Backend Express kini menggunakan middleware `requireAdmin` untuk melindungi seluruh endpoint administratif. Seluruh tabel database telah dimigrasi dengan skema terbaru. Tabel `order_profit` untuk Real Profit Engine V1 telah aktif. Sistem email otomatis (invoice, welcome, admin notifikasi) telah berfungsi penuh via Resend API. Kolom `menu_category` berhasil ditambahkan mendukung tiga sifat penyajian: Dingin, Panas, dan Snack.
 

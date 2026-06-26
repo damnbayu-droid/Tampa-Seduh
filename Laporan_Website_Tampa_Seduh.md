@@ -1,6 +1,6 @@
 # LAPORAN AUDIT TEKNIS DAN BISNIS LENGKAP: WEBSITE TAMPA SEDUH
 *Tanggal Audit: 22 Juni 2026*  
-*Terakhir Diperbarui: 25 Juni 2026*  
+*Terakhir Diperbarui: 26 Juni 2026*  
 *Auditor: Antigravity AI Coding Assistant*  
 *Bahasa Dokumen: Bahasa Indonesia*  
 
@@ -89,6 +89,11 @@ Aplikasi saat ini berada pada fase **LIVE PRODUCTION**. Seluruh fitur utama e-co
 14. **Konfirmasi Dialog Admin**: Sebelum toggle status kedai, dialog konfirmasi inline ditampilkan — mencegah perubahan tidak sengaja.
 15. **iOS Safari Layout Stability**: Horizontal scroll lock, rubber-band bounce prevention, touch-action pan-y, tap highlight removal — mencegah layout geser di iPhone.
 16. **LCP Optimasi**: `<link rel="preload" as="image" fetchpriority="high">` untuk Hero.jpeg — browser langsung memuat gambar hero saat parse HTML, sebelum JS bundle diunduh.
+17. **Pemisahan Kategori Snack & Minuman**: Menu makanan ringan (Snack/Roti) dipisahkan sepenuhnya dari menu minuman di storefront, memberikan visualisasi menu yang terstruktur dan mempermudah pemesanan.
+18. **Kelola Instruksi Tambahan AI Master**: Fitur interaktif di panel Admin Dashboard -> AI Master untuk menambah dan menghapus instruksi/aturan tambahan secara dinamis, tersimpan di database Supabase (tabel `ai_settings` dengan `key = 'admin_instructions'`).
+19. **Metode Checkout Opsional Tanpa WhatsApp/Email**: Pelanggan dapat checkout tanpa harus mengisi nomor WhatsApp atau email. Validasi diubah agar menerima isian opsional, dan secara otomatis mengisi tanda hubung `"-"` di database agar tidak melanggar aturan integritas database.
+20. **No Skip Order pada Penolakan Bukti Pembayaran AI**: Menjamin bahwa pesanan tidak akan terhapus atau terlewat saat AI mendeteksi bukti bayar palsu. Pesanan disimpan sebagai `pending` dengan penandaan catatan, dan Admin dapat meninjau serta menghapusnya secara manual di dashboard. Banner peringatan keras juga dipasang di UI checkout.
+21. **Robustness Hardening Akun Tamu**: Sistem secara otomatis menggenerasi alamat email acak unik (`[nama]-[random]@guest.tampaseduh.com`) untuk pemesan tamu guna mencegah kegagalan constraint UNIQUE database pada Supabase jika memesan berulang kali.
 
 #### Fitur yang Belum Selesai / Placeholder:
 1. **Sistem POS (Point of Sales) Cabang**: Pengoperasian kasir kas offline langsung di kedai fisik belum terintegrasi (transaksi saat ini 100% diasumsikan masuk via checkout website).
