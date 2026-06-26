@@ -306,9 +306,14 @@ export default function CheckoutPage({
       </AnimatePresence>
 
       {/* Navbar Checkout */}
-      <nav className={`border-b sticky top-0 z-40 backdrop-blur-md transition-all ${
-        darkMode ? "bg-zinc-950/90 border-amber-900/10" : "bg-[#F9F7F2]/90 border-zinc-200"
-      }`}>
+      <nav 
+        className={`border-b sticky top-0 z-40 backdrop-blur-md transition-all ${
+          darkMode ? "bg-zinc-950/90 border-amber-900/10" : "bg-[#F9F7F2]/90 border-zinc-200"
+        }`}
+        style={{
+          paddingTop: "env(safe-area-inset-top, 0px)"
+        }}
+      >
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex justify-between items-center">
           <button
             onClick={onBack}

@@ -779,13 +779,18 @@ export default function App() {
     }`}>
       
       {/* 1. Brand Navigation Bar */}
-      <nav className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
-        isScrolled 
-          ? (darkMode 
-              ? "bg-zinc-955/90 border-amber-900/10 text-stone-100 border-b backdrop-blur-md shadow-md" 
-              : "bg-[#F9F7F2]/95 border-zinc-200 text-zinc-900 border-b backdrop-blur-md shadow-md")
-          : "bg-transparent border-transparent text-white"
-      }`}>
+      <nav 
+        className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
+          isScrolled 
+            ? (darkMode 
+                ? "bg-zinc-955/90 border-amber-900/10 text-stone-100 border-b backdrop-blur-md shadow-md" 
+                : "bg-[#F9F7F2]/95 border-zinc-200 text-zinc-900 border-b backdrop-blur-md shadow-md")
+            : "bg-transparent border-transparent text-white"
+        }`}
+        style={{
+          paddingTop: "env(safe-area-inset-top, 0px)"
+        }}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex justify-between items-center">
           
           {/* Logo Brand matching the provided design */}
@@ -906,9 +911,10 @@ export default function App() {
           {/* 2. Hero Section (Replicating Foto 1 Vibe & Structure) */}
       <section 
         id="hero-section" 
-        className="relative overflow-hidden pt-28 lg:pt-36 pb-20 lg:pb-28 border-b transition-all duration-300 bg-cover bg-center text-white"
+        className="relative overflow-hidden pb-20 lg:pb-28 border-b transition-all duration-300 bg-cover bg-center text-white"
         style={{
-          backgroundImage: "url('/Hero.jpeg')"
+          backgroundImage: "url('/Hero.jpeg')",
+          paddingTop: "calc(10rem + env(safe-area-inset-top, 0px))"
         }}
       >
         {/* Dark overlay with sepia coffee tint to make text highly readable */}
@@ -923,7 +929,7 @@ export default function App() {
                 ✨ 24/7 Delivery
               </span>
               <motion.a
-                href="https://median.co/share/eekjpey#apk"
+                href="https://drive.google.com/file/d/1ZGxxD3riSqDyZdVEZFIq2OPFyeIfMmJe/view?usp=drive_link"
                 target="_blank"
                 rel="noopener noreferrer"
                 whileHover={{ scale: 1.05, rotate: -3 }}
