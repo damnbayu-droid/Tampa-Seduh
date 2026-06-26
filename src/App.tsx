@@ -405,7 +405,9 @@ export default function App() {
         email: data.user.email,
         role: data.user.role || "customer",
         isMember: data.user.isMember || data.user.is_member || false,
-        whatsapp: data.user.whatsapp,
+        membershipStatus: data.user.membershipStatus || data.user.membership_status || "none",
+        whatsapp: data.user.whatsapp || "",
+        address: data.user.address || "",
         avatarUrl: data.user.avatarUrl || data.user.avatar_url,
         isBlocked: data.user.isBlocked || data.user.last_active === "BLOCKED"
       };
@@ -460,9 +462,11 @@ export default function App() {
         id: data.user.id,
         name: data.user.name,
         email: data.user.email,
-        whatsapp: data.user.whatsapp,
+        whatsapp: data.user.whatsapp || "",
+        address: "",
         role: data.user.role || "customer",
         isMember: false,
+        membershipStatus: "none",
         ordersCount: 0,
         lastActive: "Baru saja"
       };
@@ -554,7 +558,9 @@ export default function App() {
           email: profile.email,
           role: profile.role || "customer",
           isMember: profile.is_member,
-          whatsapp: profile.whatsapp,
+          membershipStatus: profile.membership_status || "none",
+          whatsapp: profile.whatsapp || "",
+          address: profile.address || "",
           avatarUrl: profile.avatar_url || supaUser.user_metadata?.avatar_url
         };
         

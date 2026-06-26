@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   User as UserIcon, LogOut, ArrowLeft, Coffee, Gift, 
   ShoppingBag, CheckCircle, Clock, Truck, Store, Moon, Sun, Check, HelpCircle
@@ -40,6 +40,17 @@ export default function UserDashboard({
     avatarUrl: currentUser.avatarUrl || "",
     newPassword: ""
   });
+
+  useEffect(() => {
+    setEditForm({
+      name: currentUser.name || "",
+      email: currentUser.email || "",
+      whatsapp: currentUser.whatsapp || "",
+      address: currentUser.address || "",
+      avatarUrl: currentUser.avatarUrl || "",
+      newPassword: ""
+    });
+  }, [currentUser]);
 
   const handleSaveProfile = () => {
     if (onUpdateProfile) {

@@ -465,13 +465,19 @@ async function syncFromSupabase() {
         registeredUsers = usrRes.data.map(u => ({
           id: u.id, name: u.name, email: u.email, password: u.password, role: u.role,
           isMember: u.is_member, ordersCount: u.orders_count, lastActive: u.last_active,
-          isBlocked: u.last_active === "BLOCKED"
+          isBlocked: u.last_active === "BLOCKED",
+          membershipStatus: u.membership_status || "none",
+          whatsapp: u.whatsapp || "-",
+          address: u.address || ""
         }));
       } else {
         console.log("Seeding users...");
         registeredUsers.forEach(u => writeSupabase("users", "insert", {}, {
           id: u.id, name: u.name, email: u.email, role: u.role, is_member: u.isMember,
-          orders_count: u.ordersCount, last_active: u.lastActive
+          orders_count: u.ordersCount, last_active: u.lastActive,
+          membership_status: u.membershipStatus || "none",
+          whatsapp: u.whatsapp || "-",
+          address: u.address || ""
         }));
       }
     }
@@ -1688,35 +1694,97 @@ app.put("/api/users/:id/block", requireAdmin, (req, res) => {
   }
 });
 
-app.put("/api/users/:id/approve-membership", requireAdmin, (req, res) => {
+app.put("/api/users/:id/approve-membership", requireAdmin, async (req, res) => {
   const { id } = req.params;
   const { approve } = req.body;
-  const idx = registeredUsers.findIndex(u => u.id === id);
+
+  let userObj: any = null;
+  let idx = registeredUsers.findIndex(u => u.id === id);
+
   if (idx !== -1) {
-    if (approve) {
+    userObj = registeredUsers[idx];
+  } else if (supabaseUrl && supabaseAnonKey) {
+    try {
+      const { data: dbUser } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+
+      if (dbUser) {
+        userObj = {
+          id: dbUser.id,
+          name: dbUser.name,
+          email: dbUser.email,
+          password: dbUser.password,
+          role: dbUser.role || "customer",
+          isMember: dbUser.is_member,
+          ordersCount: dbUser.orders_count || 0,
+          lastActive: dbUser.last_active,
+          isBlocked: dbUser.last_active === "BLOCKED",
+          membershipStatus: dbUser.membership_status || "none",
+          whatsapp: dbUser.whatsapp || "-",
+          address: dbUser.address || ""
+        };
+        registeredUsers.push(userObj);
+        idx = registeredUsers.length - 1;
+      }
+    } catch (err) {
+      console.warn("Gagal memulihkan pengguna pada approve membership:", err);
+    }
+  }
+
+  if (!userObj) {
+    return res.status(404).json({ error: "User tidak ditemukan" });
+  }
+
+  if (approve) {
+    userObj.membershipStatus = "approved";
+    userObj.isMember = true;
+    if (idx !== -1) {
       registeredUsers[idx].membershipStatus = "approved";
       registeredUsers[idx].isMember = true;
-      writeSupabase('users', 'update', { id }, {
-        membership_status: "approved",
-        is_member: true
-      });
-      // Audit log
-      auditLogs.unshift({
-        id: "log-" + (auditLogs.length + 1),
-        action: "Membership Approved",
-        details: `User '${registeredUsers[idx].name}' membership was approved.`,
-        timestamp: new Date().toISOString()
-      });
-    } else {
-      registeredUsers[idx].membershipStatus = "none";
-      writeSupabase('users', 'update', { id }, {
-        membership_status: "none"
-      });
     }
-    res.json({ success: true, user: registeredUsers[idx] });
+
+    if (supabaseUrl && supabaseAnonKey) {
+      try {
+        await writeSupabase('users', 'update', { id }, {
+          membership_status: "approved",
+          is_member: true
+        });
+      } catch (err: any) {
+        console.error("Gagal menyetujui membership di Supabase:", err.message);
+      }
+    }
+
+    // Audit log
+    auditLogs.unshift({
+      id: "log-" + (auditLogs.length + 1),
+      action: "Membership Approved",
+      details: `User '${userObj.name}' membership was approved.`,
+      timestamp: new Date().toISOString()
+    });
   } else {
-    res.status(404).json({ error: "User not found" });
+    userObj.membershipStatus = "none";
+    userObj.isMember = false;
+    if (idx !== -1) {
+      registeredUsers[idx].membershipStatus = "none";
+      registeredUsers[idx].isMember = false;
+    }
+
+    if (supabaseUrl && supabaseAnonKey) {
+      try {
+        await writeSupabase('users', 'update', { id }, {
+          membership_status: "none",
+          is_member: false
+        });
+      } catch (err: any) {
+        console.error("Gagal menolak membership di Supabase:", err.message);
+      }
+    }
   }
+
+  res.json({ success: true, user: userObj });
 });
 
 // ===================================================================
@@ -2615,7 +2683,35 @@ app.get("/api/logs", requireAdmin, (req, res) => {
 });
 
 // 5. Users API
-app.get("/api/users", requireAdmin, (req, res) => {
+app.get("/api/users", requireAdmin, async (req, res) => {
+  if (supabaseUrl && supabaseAnonKey) {
+    try {
+      const { data: users, error } = await supabase
+        .from("users")
+        .select("*");
+      
+      if (error) throw error;
+      
+      if (users) {
+        registeredUsers = users.map(u => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          password: u.password,
+          role: u.role || "customer",
+          isMember: u.is_member,
+          ordersCount: u.orders_count || 0,
+          lastActive: u.last_active,
+          isBlocked: u.last_active === "BLOCKED",
+          membershipStatus: u.membership_status || "none",
+          whatsapp: u.whatsapp || "-",
+          address: u.address || ""
+        }));
+      }
+    } catch (err: any) {
+      console.error("Gagal memuat pengguna dari Supabase:", err.message);
+    }
+  }
   res.json(registeredUsers);
 });
 
@@ -2886,52 +2982,140 @@ app.post("/api/auth/register", authLimiter, async (req, res) => {
 });
 
 
-app.post("/api/auth/subscribe", (req, res) => {
+app.post("/api/auth/subscribe", async (req, res) => {
   const { email } = req.body;
   if (!email) {
     return res.status(400).json({ error: "Email wajib dikirim kawan" });
   }
 
-  const idx = registeredUsers.findIndex(u => u.email === email);
-  if (idx === -1) {
+  let userObj: any = null;
+  let idx = registeredUsers.findIndex(u => u.email === email);
+
+  if (idx !== -1) {
+    userObj = registeredUsers[idx];
+  } else if (supabaseUrl && supabaseAnonKey) {
+    try {
+      const { data: dbUser } = await supabase
+        .from("users")
+        .select("*")
+        .eq("email", email)
+        .maybeSingle();
+
+      if (dbUser) {
+        userObj = {
+          id: dbUser.id,
+          name: dbUser.name,
+          email: dbUser.email,
+          password: dbUser.password,
+          role: dbUser.role || "customer",
+          isMember: dbUser.is_member,
+          ordersCount: dbUser.orders_count || 0,
+          lastActive: dbUser.last_active,
+          isBlocked: dbUser.last_active === "BLOCKED",
+          membershipStatus: dbUser.membership_status || "none",
+          whatsapp: dbUser.whatsapp || "-",
+          address: dbUser.address || ""
+        };
+        registeredUsers.push(userObj);
+        idx = registeredUsers.length - 1;
+      }
+    } catch (err) {
+      console.warn("Gagal memulihkan pengguna pada subscribe:", err);
+    }
+  }
+
+  if (!userObj) {
     return res.status(404).json({ error: "User tidak ditemukan" });
   }
 
-  registeredUsers[idx].membershipStatus = "pending";
-  // We don't set isMember = true until admin approves
-  writeSupabase("users", "update", { id: registeredUsers[idx].id }, { membership_status: "pending" });
+  userObj.membershipStatus = "pending";
+  if (idx !== -1) {
+    registeredUsers[idx].membershipStatus = "pending";
+  }
 
-  res.json({ success: true, user: registeredUsers[idx] });
+  if (supabaseUrl && supabaseAnonKey) {
+    try {
+      await writeSupabase("users", "update", { id: userObj.id }, { membership_status: "pending" });
+    } catch (err: any) {
+      console.error("Gagal memperbarui status membership di Supabase:", err.message);
+    }
+  }
+
+  res.json({ success: true, user: userObj });
 });
 
-app.post("/api/users/update", (req, res) => {
+app.post("/api/users/update", async (req, res) => {
   const { id, name, email, whatsapp, address, avatarUrl } = req.body;
   if (!id) {
     return res.status(400).json({ error: "ID User wajib dikirim kawan" });
   }
 
-  const idx = registeredUsers.findIndex(u => u.id === id);
-  if (idx === -1) {
+  let userObj: any = null;
+  let idx = registeredUsers.findIndex(u => u.id === id);
+
+  if (idx !== -1) {
+    userObj = registeredUsers[idx];
+  } else if (supabaseUrl && supabaseAnonKey) {
+    try {
+      const { data: dbUser } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+
+      if (dbUser) {
+        userObj = {
+          id: dbUser.id,
+          name: dbUser.name,
+          email: dbUser.email,
+          password: dbUser.password,
+          role: dbUser.role || "customer",
+          isMember: dbUser.is_member,
+          ordersCount: dbUser.orders_count || 0,
+          lastActive: dbUser.last_active,
+          isBlocked: dbUser.last_active === "BLOCKED",
+          membershipStatus: dbUser.membership_status || "none",
+          whatsapp: dbUser.whatsapp || "-",
+          address: dbUser.address || ""
+        };
+        registeredUsers.push(userObj);
+        idx = registeredUsers.length - 1;
+      }
+    } catch (err) {
+      console.warn("Gagal memulihkan pengguna pada update:", err);
+    }
+  }
+
+  if (!userObj) {
     return res.status(404).json({ error: "User tidak ditemukan" });
   }
 
-  // Update in memory
-  if (name) registeredUsers[idx].name = name;
-  if (email) registeredUsers[idx].email = email;
-  if (whatsapp) registeredUsers[idx].whatsapp = whatsapp;
-  if (address) registeredUsers[idx].address = address;
-  if (avatarUrl) registeredUsers[idx].avatarUrl = avatarUrl;
+  // Update fields
+  if (name) userObj.name = name;
+  if (email) userObj.email = email;
+  if (whatsapp !== undefined) userObj.whatsapp = whatsapp;
+  if (address !== undefined) userObj.address = address;
+  if (avatarUrl) userObj.avatarUrl = avatarUrl;
 
-  // Persist to Supabase
-  writeSupabase("users", "update", { id }, {
-    name,
-    email,
-    whatsapp: whatsapp || null,
-    address: address || null,
-    avatar_url: avatarUrl || null
-  });
+  if (idx !== -1) {
+    registeredUsers[idx] = userObj;
+  }
 
-  res.json({ success: true, user: registeredUsers[idx] });
+  if (supabaseUrl && supabaseAnonKey) {
+    try {
+      await writeSupabase("users", "update", { id }, {
+        name,
+        email,
+        whatsapp: whatsapp || null,
+        address: address || null,
+        avatar_url: avatarUrl || null
+      });
+    } catch (err: any) {
+      console.error("Gagal menyimpan profil pengguna ke Supabase:", err.message);
+    }
+  }
+
+  res.json({ success: true, user: userObj });
 });
 
 // Google OAuth Sync — dipanggil setelah Supabase berhasil auth via Google
