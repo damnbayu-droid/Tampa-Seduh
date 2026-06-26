@@ -587,7 +587,7 @@ export default function App() {
         if (loggedInUser.role !== "admin" && loggedInUser.email !== "tampaseduh@gmail.com") {
           loadUserOrders(loggedInUser.email);
         }
-        setOrderNotification(`Selamat datang kawan ${loggedInUser.name}! 🎉`);
+        setOrderNotification(`Dega Niondon ${loggedInUser.name}! 🎉`);
         setTimeout(() => setOrderNotification(null), 5000);
       }
     } catch (err: any) {

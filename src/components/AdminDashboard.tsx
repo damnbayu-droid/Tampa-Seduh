@@ -210,7 +210,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
 
   const [isNewsOpen, setIsNewsOpen] = useState(false);
   const [newNews, setNewNews] = useState<Omit<BlogNews, "id" | "slug" | "date">>({
-    title: "", content: "", author: "Mochammad Rifai",
+    title: "", content: "", author: "Emat Ambarak",
     coverImage: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=800",
     category: "Tips Seduh"
   });
@@ -1013,13 +1013,13 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
             <div>
               <p class="text-zinc-400">Dibuat Oleh,</p>
               <div class="h-20"></div>
-              <p class="font-bold text-zinc-800">Admin Tampa Seduh</p>
+              <p class="font-bold text-zinc-800">Bayu Damopolii Manoppo</p>
               <p class="text-[10px] text-zinc-500">Terminal Operational System</p>
             </div>
             <div>
               <p class="text-zinc-400">Diperiksa & Disetujui Oleh,</p>
               <div class="h-20"></div>
-              <p class="font-bold text-zinc-800">Mochammad Rifai</p>
+              <p class="font-bold text-zinc-800">Emat Ambarak</p>
               <p class="text-[10px] text-zinc-500">Owner Tampa Seduh</p>
             </div>
           </div>
@@ -1383,7 +1383,7 @@ export default function AdminDashboard({ onBackToStorefront, darkMode, setDarkMo
       showNotif("Berita berhasil ditambahkan!", "success");
       setIsNewsOpen(false);
       setNewNews({
-        title: "", content: "", author: "Mochammad Rifai",
+        title: "", content: "", author: "Emat Ambarak",
         coverImage: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=800",
         category: "Tips Seduh"
       });

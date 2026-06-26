@@ -933,7 +933,7 @@ let auditLogs: AuditLog[] = [
 
 // Hanya admin default — user nyata akan dimuat dari Supabase saat server boot
 let registeredUsers: User[] = [
-  { id: "u-admin", name: "Mochammad Rifai (Owner)", email: "kopi@tampaseduh.com", role: "admin", ordersCount: 0, lastActive: "Baru saja", isBlocked: false }
+  { id: "u-admin", name: "Emat Ambarak (Owner)", email: "kopi@tampaseduh.com", role: "admin", ordersCount: 0, lastActive: "Baru saja", isBlocked: false }
 ];
 
 let blogNews: BlogNews[] = [
@@ -942,7 +942,7 @@ let blogNews: BlogNews[] = [
     title: "Mengenal Liberica Kotabunan: Biji Kopi Eksotis Kebanggaan Boltim",
     slug: "mengenal-liberica-kotabunan",
     category: "Biji Kopi",
-    author: "Mochammad Rifai",
+    author: "Emat Ambarak",
     date: "2026-06-15",
     coverImage: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=800&auto=format&fit=crop&q=80",
     content: "Indonesia terkenal dengan keberagaman kopinya, salah satunya adalah varietas Liberica yang ditanam di pegunungan pesisir Kotabunan, Kabupaten Bolaang Mongondow Timur (Boltim), Sulawesi Utara. Biji kopi Liberica Kotabunan dikenal unik karena ukurannya yang besar—hampir menyamai buah nangka—serta ciri rasa istimewa. Dari tanah kaya besi vulkanis Trans Sulawesi Lingkar Selatan, kopi ini memantulkan wangi manis buah nangka (jackfruit) yang eksotis, dipadu rasa kayu hutan kayu oak yang elegan. Kandungan kafeinnya juga cenderung lebih rendah dan bersahabat di lambung dibanding Robusta."

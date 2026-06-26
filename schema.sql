@@ -140,7 +140,7 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Seed Users
 INSERT INTO users (id, name, email, password, role, is_member, orders_count, last_active) VALUES
-('u-admin-1', 'Mochammad Rifai (Owner)', 'kopi@tampaseduh.com', 'Kotabunan*98', 'admin', false, 0, 'Baru saja'),
+('u-admin-1', 'Emat Ambarak (Owner)', 'kopi@tampaseduh.com', 'Kotabunan*98', 'admin', false, 0, 'Baru saja'),
 ('u-admin-2', 'Tampa Seduh Admin', 'tampaseduh@gmail.com', 'Kotabunan*98', 'admin', false, 0, 'Baru saja'),
 ('u-1', 'Andika Pratama', 'andika@gmail.com', 'andika123', 'customer', true, 1, '1 hari yang lalu'),
 ('u-2', 'Siti Rahma', 'siti.rahma@yahoo.com', 'siti123', 'customer', false, 1, '2 jam yang lalu'),
@@ -150,7 +150,7 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Seed Berita
 INSERT INTO blog_news (id, title, slug, content, author, date, cover_image, category) VALUES
-('news-1', 'Mengenal Liberica Kotabunan: Biji Kopi Eksotis Kebanggaan Boltim', 'mengenal-liberica-kotabunan', 'Indonesia terkenal dengan keberagaman kopinya, salah satunya adalah varietas Liberica yang ditanam di pegunungan pesisir Kotabunan, Kabupaten Bolaang Mongondow Timur (Boltim), Sulawesi Utara. Biji kopi Liberica Kotabunan dikenal unik karena ukurannya yang besar—hampir menyamai buah nangka—serta ciri rasa istimewa. Dari tanah kaya besi vulkanis Trans Sulawesi Lingkar Selatan, kopi ini memantulkan wangi manis buah nangka (jackfruit) yang eksotis, dipadu rasa kayu hutan kayu oak yang elegan. Kandungan kafeinnya juga cenderung lebih rendah dan bersahabat di lambung dibanding Robusta.', 'Mochammad Rifai', '2026-06-15', 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=800&auto=format&fit=crop&q=80', 'Biji Kopi'),
+('news-1', 'Mengenal Liberica Kotabunan: Biji Kopi Eksotis Kebanggaan Boltim', 'mengenal-liberica-kotabunan', 'Indonesia terkenal dengan keberagaman kopinya, salah satunya adalah varietas Liberica yang ditanam di pegunungan pesisir Kotabunan, Kabupaten Bolaang Mongondow Timur (Boltim), Sulawesi Utara. Biji kopi Liberica Kotabunan dikenal unik karena ukurannya yang besar—hampir menyamai buah nangka—serta ciri rasa istimewa. Dari tanah kaya besi vulkanis Trans Sulawesi Lingkar Selatan, kopi ini memantulkan wangi manis buah nangka (jackfruit) yang eksotis, dipadu rasa kayu hutan kayu oak yang elegan. Kandungan kafeinnya juga cenderung lebih rendah dan bersahabat di lambung dibanding Robusta.', 'Emat Ambarak', '2026-06-15', 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=800&auto=format&fit=crop&q=80', 'Biji Kopi'),
 ('news-2', 'Saraba: Minuman Rempah Tradisional Penghangat Cuaca Pesisir', 'saraba-penghangat-cuaca-pesisir', 'Di kala angin malam bertiup kencang melintasi Jalan Trans-Sulawesi, tidak ada yang lebih nikmat selain menyeduh cangkir hangat Saraba. Minuman jahe merah kental manis rempah kaya ini selalu disajikan di Tampa Seduh menggunakan gula kelapa asli Bolaang Mongondow. Sangat berkhasiat menjaga imunitas ditiap tetesnya, dan berkhasiat memberikan ketenangan dan kebugaran tubuh secara instan.', 'Tim Tampa Seduh', '2026-06-18', 'https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=800&auto=format&fit=crop&q=80', 'Tips Seduh')
 ON CONFLICT (id) DO NOTHING;
 

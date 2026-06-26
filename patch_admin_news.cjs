@@ -14,7 +14,7 @@ const oldAddNews = `  const handleAddNews = async (e: React.FormEvent) => {
       if (res.ok) {
         setIsNewsOpen(false);
         setNewNews({
-          title: "", content: "", author: "Mochammad Rifai",
+          title: "", content: "", author: "Emat Ambarak",
           coverImage: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=800",
           category: "Tips Seduh"
         });
@@ -68,7 +68,7 @@ const newAddNews = `  const [isUploadingNewsImage, setIsUploadingNewsImage] = us
       showNotif("Berita berhasil ditambahkan!", "success");
       setIsNewsOpen(false);
       setNewNews({
-        title: "", content: "", author: "Mochammad Rifai",
+        title: "", content: "", author: "Emat Ambarak",
         coverImage: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=800",
         category: "Tips Seduh"
       });
