@@ -559,6 +559,40 @@ async function syncFromSupabase() {
       }
     }
 
+    // Load chat sessions & messages from Supabase (separate try-catch to prevent failure from breaking startup sync)
+    try {
+      const [chatSessionsRes, chatMessagesRes] = await Promise.all([
+        supabase.from("chat_sessions").select("*"),
+        supabase.from("chat_messages").select("*").order("timestamp", { ascending: true })
+      ]);
+
+      if (!chatSessionsRes.error && chatSessionsRes.data) {
+        chatSessionsRes.data.forEach((s: any) => {
+          activeChats[s.id] = {
+            sessionId: s.id,
+            userName: s.user_name,
+            isSabotaged: s.is_sabotaged,
+            lastActive: new Date(s.last_active).getTime(),
+            messages: []
+          };
+        });
+      }
+
+      if (!chatMessagesRes.error && chatMessagesRes.data) {
+        chatMessagesRes.data.forEach((m: any) => {
+          if (activeChats[m.session_id]) {
+            activeChats[m.session_id].messages.push({
+              sender: m.sender,
+              text: m.text,
+              timestamp: m.timestamp
+            });
+          }
+        });
+      }
+    } catch (chatSyncErr: any) {
+      console.warn("Gagal menyinkronkan chat dari Supabase (mungkin tabel belum dibuat):", chatSyncErr.message);
+    }
+
     console.log("Berhasil menyinkronkan seluruh data dari Supabase secara paralel.");
   } catch (err: any) {
     console.error("Gagal melakukan sinkronisasi dengan Supabase:", err.message);
@@ -1045,6 +1079,44 @@ app.post("/api/chat", async (req, res) => {
   const userName = req.body.userName || "Tamu";
   const sessionId = req.body.sessionId || "default";
 
+  // Check if session exists in memory, if not, try to load it from Supabase
+  if (!activeChats[sessionId]) {
+    try {
+      const { data: dbSess } = await supabase
+        .from("chat_sessions")
+        .select("*")
+        .eq("id", sessionId)
+        .maybeSingle();
+
+      if (dbSess) {
+        activeChats[sessionId] = {
+          sessionId,
+          userName: dbSess.user_name,
+          messages: [],
+          isSabotaged: dbSess.is_sabotaged,
+          lastActive: new Date(dbSess.last_active).getTime()
+        };
+
+        // Also fetch and load its messages
+        const { data: dbMsgs } = await supabase
+          .from("chat_messages")
+          .select("*")
+          .eq("session_id", sessionId)
+          .order("timestamp", { ascending: true });
+
+        if (dbMsgs) {
+          activeChats[sessionId].messages = dbMsgs.map((m: any) => ({
+            sender: m.sender,
+            text: m.text,
+            timestamp: m.timestamp
+          }));
+        }
+      }
+    } catch (err) {
+      console.warn("Gagal memulihkan sesi chat dari Supabase:", err);
+    }
+  }
+
   // Track chat session
   if (!activeChats[sessionId]) {
     activeChats[sessionId] = {
@@ -1054,6 +1126,15 @@ app.post("/api/chat", async (req, res) => {
       isSabotaged: false,
       lastActive: Date.now()
     };
+
+    writeSupabase('chat_sessions', 'insert', {}, {
+      id: sessionId,
+      user_name: userName,
+      is_sabotaged: false,
+      last_active: new Date().toISOString(),
+      created_at: new Date().toISOString()
+    });
+
     pushNotification({
       title: "Chat Baru",
       message: `${userName} memulai obrolan dengan AI.`,
@@ -1063,8 +1144,23 @@ app.post("/api/chat", async (req, res) => {
   }
   
   const session = activeChats[sessionId];
+  const userMsgTime = new Date().toISOString();
   session.lastActive = Date.now();
-  session.messages.push({ sender: "user", text: lastMessage, timestamp: new Date().toISOString() });
+  session.messages.push({ sender: "user", text: lastMessage, timestamp: userMsgTime });
+
+  // Save user message to database
+  writeSupabase('chat_messages', 'insert', {}, {
+    id: "msg-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+    session_id: sessionId,
+    sender: "user",
+    text: lastMessage,
+    timestamp: userMsgTime
+  });
+
+  // Update session's last active time in database
+  writeSupabase('chat_sessions', 'update', { id: sessionId }, {
+    last_active: userMsgTime
+  });
 
   // If admin has sabotaged, do not trigger AI. Tell client to wait for admin via polling
   if (session.isSabotaged) {
@@ -1082,7 +1178,21 @@ app.post("/api/chat", async (req, res) => {
       console.warn("OPENAI_API_KEY environment variable is not configured. Simulating AI response.");
 
       const textResponse = simulateTampaSeduhAI(lastMessage);
-      session.messages.push({ sender: "ai", text: textResponse, timestamp: new Date().toISOString() });
+      const simMsgTime = new Date().toISOString();
+      session.messages.push({ sender: "ai", text: textResponse, timestamp: simMsgTime });
+
+      writeSupabase('chat_messages', 'insert', {}, {
+        id: "msg-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+        session_id: sessionId,
+        sender: "ai",
+        text: textResponse,
+        timestamp: simMsgTime
+      });
+
+      writeSupabase('chat_sessions', 'update', { id: sessionId }, {
+        last_active: simMsgTime
+      });
+
       return res.json({
         text: textResponse,
         modelUsed: "Simulated Local Model (No API Key)"
@@ -1117,7 +1227,20 @@ app.post("/api/chat", async (req, res) => {
     const responseText = result.choices[0]?.message?.content;
 
     const aiResponse = responseText || "Maaf kawan, saya sedang sedikit bingung. Bisa diulang pertanyaannya?";
-    session.messages.push({ sender: "ai", text: aiResponse, timestamp: new Date().toISOString() });
+    const aiMsgTime = new Date().toISOString();
+    session.messages.push({ sender: "ai", text: aiResponse, timestamp: aiMsgTime });
+
+    writeSupabase('chat_messages', 'insert', {}, {
+      id: "msg-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+      session_id: sessionId,
+      sender: "ai",
+      text: aiResponse,
+      timestamp: aiMsgTime
+    });
+
+    writeSupabase('chat_sessions', 'update', { id: sessionId }, {
+      last_active: aiMsgTime
+    });
 
     res.json({
       text: aiResponse,
@@ -1126,8 +1249,25 @@ app.post("/api/chat", async (req, res) => {
 
   } catch (error: any) {
     console.error("Gemini API Error details:", error);
+    const errorText = "Maaf kawan, ada kesalahan koneksi dengan server AI, mar jangan khawatir! Silakan whatsapp langsung jo di 085696224448 atau coba lagi nanti.";
+    const errorTime = new Date().toISOString();
+    
+    session.messages.push({ sender: "ai", text: errorText, timestamp: errorTime });
+
+    writeSupabase('chat_messages', 'insert', {}, {
+      id: "msg-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+      session_id: sessionId,
+      sender: "ai",
+      text: errorText,
+      timestamp: errorTime
+    });
+
+    writeSupabase('chat_sessions', 'update', { id: sessionId }, {
+      last_active: errorTime
+    });
+
     res.json({
-      text: "Maaf kawan, ada kesalahan koneksi dengan server AI, mar jangan khawatir! Silakan whatsapp langsung jo di 085696224448 atau coba lagi nanti.",
+      text: errorText,
       error: error.message
     });
   }
@@ -1192,35 +1332,248 @@ app.post("/api/notifications/mark-read", (req, res) => {
 });
 
 // 0.5 Chat Admin Handoff API
-app.get("/api/chat-admin/sessions", requireAdmin, (req, res) => {
+app.get("/api/chat-admin/sessions", requireAdmin, async (req, res) => {
+  if (supabaseUrl && supabaseAnonKey) {
+    try {
+      const { data: sessions, error: sessErr } = await supabase
+        .from("chat_sessions")
+        .select("*")
+        .order("last_active", { ascending: false });
+
+      if (sessErr) throw sessErr;
+
+      if (sessions && sessions.length > 0) {
+        const sessionIds = sessions.map(s => s.id);
+        const { data: messages, error: msgErr } = await supabase
+          .from("chat_messages")
+          .select("*")
+          .in("session_id", sessionIds)
+          .order("timestamp", { ascending: true });
+
+        if (msgErr) throw msgErr;
+
+        const messagesBySession: Record<string, typeof messages> = {};
+        if (messages) {
+          messages.forEach(m => {
+            if (!messagesBySession[m.session_id]) {
+              messagesBySession[m.session_id] = [];
+            }
+            messagesBySession[m.session_id].push(m);
+          });
+        }
+
+        const dbSessions = sessions.map(s => {
+          const msgs = messagesBySession[s.id] || [];
+          return {
+            sessionId: s.id,
+            userName: s.user_name,
+            isSabotaged: s.is_sabotaged,
+            lastActive: new Date(s.last_active).getTime(),
+            messages: msgs.map(m => ({
+              sender: m.sender as "user" | "ai" | "admin",
+              text: m.text,
+              timestamp: m.timestamp
+            }))
+          };
+        });
+
+        // Sync into local cache for performance / debug purposes
+        dbSessions.forEach(ds => {
+          activeChats[ds.sessionId] = ds;
+        });
+
+        return res.json(dbSessions);
+      } else {
+        return res.json([]);
+      }
+    } catch (err: any) {
+      console.error("Gagal menjemput sesi chat dari Supabase:", err.message);
+    }
+  }
+
+  // Fallback to local memory
   res.json(Object.values(activeChats));
 });
 
-app.post("/api/chat-admin/sabotage", requireAdmin, (req, res) => {
+app.post("/api/chat-admin/sabotage", requireAdmin, async (req, res) => {
   const { sessionId, sabotage } = req.body;
+
+  // Restore session from database if missing in memory (e.g. cold start)
+  if (!activeChats[sessionId]) {
+    try {
+      const { data: dbSess } = await supabase
+        .from("chat_sessions")
+        .select("*")
+        .eq("id", sessionId)
+        .maybeSingle();
+
+      if (dbSess) {
+        activeChats[sessionId] = {
+          sessionId,
+          userName: dbSess.user_name,
+          messages: [],
+          isSabotaged: dbSess.is_sabotaged,
+          lastActive: new Date(dbSess.last_active).getTime()
+        };
+
+        const { data: dbMsgs } = await supabase
+          .from("chat_messages")
+          .select("*")
+          .eq("session_id", sessionId)
+          .order("timestamp", { ascending: true });
+
+        if (dbMsgs) {
+          activeChats[sessionId].messages = dbMsgs.map((m: any) => ({
+            sender: m.sender as "user" | "ai" | "admin",
+            text: m.text,
+            timestamp: m.timestamp
+          }));
+        }
+      }
+    } catch (err) {
+      console.warn("Gagal memulihkan sesi chat sebelum sabotase:", err);
+    }
+  }
+
   if (activeChats[sessionId]) {
     activeChats[sessionId].isSabotaged = sabotage;
-    res.json({ success: true, session: activeChats[sessionId] });
-  } else {
-    res.status(404).json({ error: "Session not found" });
-  }
-});
-
-app.post("/api/chat-admin/send", requireAdmin, (req, res) => {
-  const { sessionId, text } = req.body;
-  if (activeChats[sessionId]) {
-    activeChats[sessionId].messages.push({ sender: "admin", text, timestamp: new Date().toISOString() });
     activeChats[sessionId].lastActive = Date.now();
+  }
+
+  if (supabaseUrl && supabaseAnonKey) {
+    try {
+      await writeSupabase("chat_sessions", "update", { id: sessionId }, {
+        is_sabotaged: sabotage,
+        last_active: new Date().toISOString()
+      });
+    } catch (err: any) {
+      console.error("Gagal memperbarui status sabotase di Supabase:", err.message);
+    }
+  }
+
+  if (activeChats[sessionId]) {
     res.json({ success: true, session: activeChats[sessionId] });
   } else {
     res.status(404).json({ error: "Session not found" });
   }
 });
 
-app.get("/api/chat-admin/poll/:sessionId", (req, res) => {
-  const session = activeChats[req.params.sessionId];
+app.post("/api/chat-admin/send", requireAdmin, async (req, res) => {
+  const { sessionId, text } = req.body;
+
+  // Restore session from database if missing in memory (e.g. cold start)
+  if (!activeChats[sessionId]) {
+    try {
+      const { data: dbSess } = await supabase
+        .from("chat_sessions")
+        .select("*")
+        .eq("id", sessionId)
+        .maybeSingle();
+
+      if (dbSess) {
+        activeChats[sessionId] = {
+          sessionId,
+          userName: dbSess.user_name,
+          messages: [],
+          isSabotaged: dbSess.is_sabotaged,
+          lastActive: new Date(dbSess.last_active).getTime()
+        };
+
+        const { data: dbMsgs } = await supabase
+          .from("chat_messages")
+          .select("*")
+          .eq("session_id", sessionId)
+          .order("timestamp", { ascending: true });
+
+        if (dbMsgs) {
+          activeChats[sessionId].messages = dbMsgs.map((m: any) => ({
+            sender: m.sender as "user" | "ai" | "admin",
+            text: m.text,
+            timestamp: m.timestamp
+          }));
+        }
+      }
+    } catch (err) {
+      console.warn("Gagal memulihkan sesi chat sebelum mengirim pesan admin:", err);
+    }
+  }
+
+  if (activeChats[sessionId]) {
+    const adminMsgTime = new Date().toISOString();
+    activeChats[sessionId].messages.push({ sender: "admin", text, timestamp: adminMsgTime });
+    activeChats[sessionId].lastActive = Date.now();
+
+    writeSupabase("chat_messages", "insert", {}, {
+      id: "msg-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+      session_id: sessionId,
+      sender: "admin",
+      text,
+      timestamp: adminMsgTime
+    });
+
+    writeSupabase("chat_sessions", "update", { id: sessionId }, {
+      last_active: adminMsgTime
+    });
+
+    res.json({ success: true, session: activeChats[sessionId] });
+  } else {
+    res.status(404).json({ error: "Session not found" });
+  }
+});
+
+app.get("/api/chat-admin/poll/:sessionId", async (req, res) => {
+  const { sessionId } = req.params;
+
+  if (supabaseUrl && supabaseAnonKey) {
+    try {
+      const { data: dbSess } = await supabase
+        .from("chat_sessions")
+        .select("*")
+        .eq("id", sessionId)
+        .maybeSingle();
+
+      if (dbSess) {
+        if (!activeChats[sessionId]) {
+          activeChats[sessionId] = {
+            sessionId,
+            userName: dbSess.user_name,
+            messages: [],
+            isSabotaged: dbSess.is_sabotaged,
+            lastActive: new Date(dbSess.last_active).getTime()
+          };
+        } else {
+          activeChats[sessionId].isSabotaged = dbSess.is_sabotaged;
+          activeChats[sessionId].lastActive = new Date(dbSess.last_active).getTime();
+        }
+
+        const { data: dbMsgs } = await supabase
+          .from("chat_messages")
+          .select("*")
+          .eq("session_id", sessionId)
+          .order("timestamp", { ascending: true });
+
+        if (dbMsgs) {
+          const mappedMsgs = dbMsgs.map((m: any) => ({
+            sender: m.sender as "user" | "ai" | "admin",
+            text: m.text,
+            timestamp: m.timestamp
+          }));
+
+          activeChats[sessionId].messages = mappedMsgs;
+
+          return res.json({
+            messages: mappedMsgs,
+            isSabotaged: dbSess.is_sabotaged
+          });
+        }
+      }
+    } catch (err: any) {
+      console.error("Gagal melakukan polling dari Supabase:", err.message);
+    }
+  }
+
+  const session = activeChats[sessionId];
   if (!session) return res.json({ messages: [], isSabotaged: false });
-  // Send back only admin messages for the client to receive if they are polling
   res.json({ 
     messages: session.messages,
     isSabotaged: session.isSabotaged
