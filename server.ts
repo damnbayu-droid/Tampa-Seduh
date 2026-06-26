@@ -449,14 +449,8 @@ async function syncFromSupabase() {
           paymentProofUrl: o.payment_proof_url || ""
         }));
       } else {
-        console.log("Seeding orders...");
-        orders.forEach(o => writeSupabase("orders", "insert", {}, {
-          id: o.id, customer_name: o.customerName, whatsapp: o.whatsapp || "-", email: o.email || "-",
-          address: o.address, items: o.items, total: o.total, status: o.status,
-          created_at: o.createdAt, delivery_method: o.deliveryMethod || "delivery", subtotal: o.subtotal,
-          shipping_cost: o.shippingCost, shipping_discount: o.shippingDiscount, notes: o.notes || "",
-          payment_proof_url: o.paymentProofUrl || ""
-        }));
+        // Stop seeding dummy orders in production
+        orders = [];
       }
     }
 
@@ -931,49 +925,7 @@ let coffeePackages: CoffeePackage[] = [
   }
 ];
 
-let orders: Order[] = [
-  {
-    id: "ORD-9281",
-    customerName: "Andika Pratama",
-    whatsapp: "081234567890",
-    email: "andika@gmail.com",
-    address: "Jl. Trans Sulawesi No. 12, Kotabunan",
-    items: [
-      { menuId: "m1", name: "Ice Coffe TPS", quantity: 2, size: "L", price: 20 }
-    ],
-    total: 40,
-    status: "completed",
-    createdAt: "2026-06-19T10:30:00.000Z"
-  },
-  {
-    id: "ORD-9282",
-    customerName: "Siti Rahma",
-    whatsapp: "085299887766",
-    email: "siti.rahma@yahoo.com",
-    address: "Kampung Baru Indah, Kotabunan Selatan",
-    items: [
-      { menuId: "m2", name: "Ice Coffe Brown Sugar", quantity: 1, size: "R", price: 18 },
-      { menuId: "m11", name: "Saraba", quantity: 1, size: "Regular", price: 10 }
-    ],
-    total: 28,
-    status: "delivering",
-    createdAt: "2026-06-19T22:15:00.000Z"
-  },
-  {
-    id: "ORD-9283",
-    customerName: "Rivaldo Pontoh",
-    whatsapp: "087755443322",
-    email: "rivaldo@outlook.co.id",
-    address: "Samping Masjid Raya Al-Ikhlas Kotabunan",
-    items: [
-      { menuId: "m1", name: "Ice Coffe TPS", quantity: 1, size: "R", price: 15 },
-      { menuId: "m8", name: "Ice Strawberry", quantity: 1, size: "L", price: 25 }
-    ],
-    total: 40,
-    status: "pending",
-    createdAt: "2026-06-20T03:05:00.000Z"
-  }
-];
+let orders: Order[] = [];
 
 let auditLogs: AuditLog[] = [
   { id: "log-1", action: "System Boot", details: "Tampa Seduh server backend launched successfully.", timestamp: new Date().toISOString() }
@@ -1665,7 +1617,7 @@ app.put("/api/menu/:id", requireAdmin, (req, res) => {
   }
 });
 
-app.put("/api/users/:id/block", requireAdmin, (req, res) => {
+app.put("/api/users/:id/block", requireAdmin, async (req, res) => {
   const { id } = req.params;
   const { isBlocked } = req.body;
   const idx = registeredUsers.findIndex(u => u.id === id);
@@ -1678,8 +1630,8 @@ app.put("/api/users/:id/block", requireAdmin, (req, res) => {
       registeredUsers[idx].isBlocked = false;
     }
     
-    // Background write to Supabase
-    writeSupabase('users', 'update', { id }, {
+    // Background write to Supabase - awaited to prevent serverless freeze cut-off
+    await writeSupabase('users', 'update', { id }, {
       last_active: registeredUsers[idx].lastActive
     });
     
@@ -1786,7 +1738,7 @@ app.put("/api/users/:id/approve-membership", requireAdmin, async (req, res) => {
 // DELETE /api/users/:id — Admin hapus user permanen
 // Proteksi: Admin utama tidak bisa dihapus
 // ===================================================================
-app.delete("/api/users/:id", requireAdmin, (req, res) => {
+app.delete("/api/users/:id", requireAdmin, async (req, res) => {
   const { id } = req.params;
 
   // Cegah admin menghapus akun admin utama
@@ -1807,7 +1759,7 @@ app.delete("/api/users/:id", requireAdmin, (req, res) => {
   registeredUsers.splice(idx, 1);
 
   // Hapus dari Supabase
-  writeSupabase('users', 'delete', { id }, {});
+  await writeSupabase('users', 'delete', { id }, {});
 
   // Audit log
   const logEntry = {
@@ -1817,13 +1769,13 @@ app.delete("/api/users/:id", requireAdmin, (req, res) => {
     timestamp: new Date().toISOString()
   };
   auditLogs.unshift(logEntry);
-  writeSupabase('audit_logs', 'insert', {}, logEntry);
+  await writeSupabase('audit_logs', 'insert', {}, logEntry);
 
   res.json({ success: true, deleted });
 });
 
 
-app.delete("/api/menu/:id", requireAdmin, (req, res) => {
+app.delete("/api/menu/:id", requireAdmin, async (req, res) => {
   const { id } = req.params;
   const idx = menuItems.findIndex(m => m.id === id);
   if (idx !== -1) {
@@ -1839,8 +1791,8 @@ app.delete("/api/menu/:id", requireAdmin, (req, res) => {
     });
 
     // Background write to Supabase
-    writeSupabase('menu', 'delete', { id }, {});
-    writeSupabase('audit_logs', 'insert', {}, {
+    await writeSupabase('menu', 'delete', { id }, {});
+    await writeSupabase('audit_logs', 'insert', {}, {
       id: "log-" + auditLogs.length,
       action: "Menu Deleted",
       details: `Menu item '${deleted.name}' was deleted.`,
@@ -3832,7 +3784,7 @@ app.get("/api/ai-config", requireAdmin, (req, res) => {
   res.json(aiSettings);
 });
 
-app.post("/api/ai-config", requireAdmin, (req, res) => {
+app.post("/api/ai-config", requireAdmin, async (req, res) => {
   const { systemPrompt, temperature, adminInstructions } = req.body;
   if (systemPrompt) aiSettings.systemPrompt = systemPrompt;
   if (temperature !== undefined) aiSettings.temperature = parseFloat(temperature);
@@ -3849,22 +3801,22 @@ app.post("/api/ai-config", requireAdmin, (req, res) => {
   };
   auditLogs.unshift(newAuditLogObj);
 
-  // Background write to Supabase
-  writeSupabase('ai_settings', 'upsert', {}, {
+  // Background write to Supabase - now awaited to prevent serverless freeze
+  await writeSupabase('ai_settings', 'upsert', {}, {
     key: 'settings',
     system_prompt: aiSettings.systemPrompt,
     temperature: aiSettings.temperature
   });
 
   if (adminInstructions !== undefined && Array.isArray(adminInstructions)) {
-    writeSupabase('ai_settings', 'upsert', {}, {
+    await writeSupabase('ai_settings', 'upsert', {}, {
       key: 'admin_instructions',
       system_prompt: JSON.stringify(aiSettings.adminInstructions),
       temperature: 0
     });
   }
 
-  writeSupabase('audit_logs', 'insert', {}, newAuditLogObj);
+  await writeSupabase('audit_logs', 'insert', {}, newAuditLogObj);
 
   res.json({ success: true, config: aiSettings });
 });
