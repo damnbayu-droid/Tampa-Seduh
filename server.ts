@@ -442,20 +442,20 @@ async function syncFromSupabase() {
     if (!ordRes.error && ordRes.data) {
       if (ordRes.data.length > 0) {
         orders = ordRes.data.map(o => ({
-          id: o.id, customerName: o.customer_name, whatsapp: o.whatsapp, email: o.email,
+          id: o.id, customerName: o.customer_name, whatsapp: o.whatsapp || "-", email: o.email || "-",
           address: o.address, items: o.items, total: o.total, status: o.status,
-          createdAt: o.created_at, deliveryMethod: o.delivery_method, subtotal: o.subtotal,
-          shippingCost: o.shipping_cost, shippingDiscount: o.shipping_discount, notes: o.notes,
-          paymentProofUrl: o.payment_proof_url
+          createdAt: o.created_at, deliveryMethod: o.delivery_method || "delivery", subtotal: o.subtotal,
+          shippingCost: o.shipping_cost, shippingDiscount: o.shipping_discount, notes: o.notes || "",
+          paymentProofUrl: o.payment_proof_url || ""
         }));
       } else {
         console.log("Seeding orders...");
         orders.forEach(o => writeSupabase("orders", "insert", {}, {
-          id: o.id, customer_name: o.customerName, whatsapp: o.whatsapp, email: o.email,
+          id: o.id, customer_name: o.customerName, whatsapp: o.whatsapp || "-", email: o.email || "-",
           address: o.address, items: o.items, total: o.total, status: o.status,
-          created_at: o.createdAt, delivery_method: o.deliveryMethod, subtotal: o.subtotal,
-          shipping_cost: o.shippingCost, shipping_discount: o.shippingDiscount, notes: o.notes,
-          payment_proof_url: o.paymentProofUrl
+          created_at: o.createdAt, delivery_method: o.deliveryMethod || "delivery", subtotal: o.subtotal,
+          shipping_cost: o.shippingCost, shipping_discount: o.shippingDiscount, notes: o.notes || "",
+          payment_proof_url: o.paymentProofUrl || ""
         }));
       }
     }
@@ -1548,7 +1548,7 @@ app.post("/api/orders", async (req, res) => {
   orders.unshift(newOrder);
 
   // Update customer's order limit and logs
-  const customerIdx = registeredUsers.findIndex(u => (email && u.email === email) || u.name === customerName);
+  const customerIdx = registeredUsers.findIndex(u => (email && email !== "-" && u.email !== "-" && u.email === email) || u.name === customerName);
   if (customerIdx !== -1) {
     registeredUsers[customerIdx].ordersCount += 1;
     registeredUsers[customerIdx].lastActive = "Baru saja";
@@ -1561,7 +1561,7 @@ app.post("/api/orders", async (req, res) => {
     const newUserObj: User = {
       id: "u-" + (registeredUsers.length + 1),
       name: customerName,
-      email: email || `${customerName.toLowerCase().replace(/\s+/g, "")}@example.com`,
+      email: (email && email !== "-") ? email : `${customerName.toLowerCase().replace(/\s+/g, "")}-${Math.floor(1000 + Math.random() * 9000)}@guest.tampaseduh.com`,
       role: "customer",
       ordersCount: 1,
       lastActive: "Baru saja",
