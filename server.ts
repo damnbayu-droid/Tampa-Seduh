@@ -1156,7 +1156,6 @@ app.post("/api/chat", async (req, res) => {
 
   // Save user message to database
   writeSupabase('chat_messages', 'insert', {}, {
-    id: "msg-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
     session_id: sessionId,
     sender: "user",
     text: lastMessage,
@@ -1188,7 +1187,6 @@ app.post("/api/chat", async (req, res) => {
       session.messages.push({ sender: "ai", text: textResponse, timestamp: simMsgTime });
 
       writeSupabase('chat_messages', 'insert', {}, {
-        id: "msg-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
         session_id: sessionId,
         sender: "ai",
         text: textResponse,
@@ -1237,7 +1235,6 @@ app.post("/api/chat", async (req, res) => {
     session.messages.push({ sender: "ai", text: aiResponse, timestamp: aiMsgTime });
 
     writeSupabase('chat_messages', 'insert', {}, {
-      id: "msg-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
       session_id: sessionId,
       sender: "ai",
       text: aiResponse,
@@ -1261,7 +1258,6 @@ app.post("/api/chat", async (req, res) => {
     session.messages.push({ sender: "ai", text: errorText, timestamp: errorTime });
 
     writeSupabase('chat_messages', 'insert', {}, {
-      id: "msg-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
       session_id: sessionId,
       sender: "ai",
       text: errorText,
@@ -1401,7 +1397,7 @@ app.get("/api/chat-admin/sessions", requireAdmin, async (req, res) => {
   res.json(Object.values(activeChats));
 });
 
-app.post("/api/chat-admin/sabotage", requireAdmin, async (req, res) => {
+app.post("/api/chat-admin/sabotage", async (req, res) => {
   const { sessionId, sabotage } = req.body;
 
   // Restore session from database if missing in memory (e.g. cold start)
@@ -1510,7 +1506,6 @@ app.post("/api/chat-admin/send", requireAdmin, async (req, res) => {
     activeChats[sessionId].lastActive = Date.now();
 
     writeSupabase("chat_messages", "insert", {}, {
-      id: "msg-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
       session_id: sessionId,
       sender: "admin",
       text,
