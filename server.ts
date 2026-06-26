@@ -1497,7 +1497,7 @@ app.get("/api/orders", (req, res) => {
 
 app.post("/api/orders", async (req, res) => {
   const { customerName, whatsapp, email, address, items, subtotal, shippingCost, deliveryMethod, notes, paymentProofUrl } = req.body;
-  if (!customerName || !whatsapp || !address || !items || !items.length) {
+  if (!customerName || !address || !items || !items.length) {
     return res.status(400).json({ error: "Missing required order data" });
   }
 
@@ -1530,7 +1530,7 @@ app.post("/api/orders", async (req, res) => {
   const newOrder: Order = {
     id: "ORD-" + Math.floor(1000 + Math.random() * 9000),
     customerName,
-    whatsapp,
+    whatsapp: whatsapp || "-",
     email: email || "-",
     address,
     items,

@@ -184,7 +184,6 @@ export default function CheckoutPage({
     setErrorMessage("");
 
     if (!name.trim()) return setErrorMessage("Nama lengkap harus diisi");
-    if (!whatsapp.trim()) return setErrorMessage("Nomor Whatsapp harus diisi");
     if (deliveryMethod === "delivery" && !address.trim()) return setErrorMessage("Alamat pengantaran harus diisi");
     if (deliveryMethod === "delivery" && !selectedZone) return setErrorMessage("Pilih area pengantaran terlebih dahulu kawan");
     if (cart.length === 0) return setErrorMessage("Keranjang belanja Anda masih kosong!");
@@ -210,7 +209,7 @@ export default function CheckoutPage({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           customerName: name,
-          whatsapp,
+          whatsapp: whatsapp.trim() || "-",
           email: email || "-",
           address: deliveryMethod === "pickup" ? "Ambil di Kedai (Kotabunan)" : address,
           items: orderItems,
@@ -240,7 +239,7 @@ export default function CheckoutPage({
           const { error: sbErr } = await supabase.from("orders").insert({
             id: newOrderId,
             customer_name: name,
-            whatsapp: whatsapp,
+            whatsapp: whatsapp.trim() || "-",
             email: email || "-",
             address: deliveryMethod === "pickup" ? "Ambil di Kedai (Kotabunan)" : address,
             items: orderItems,
@@ -400,14 +399,13 @@ export default function CheckoutPage({
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[10px] font-bold text-amber-900 dark:text-amber-400 uppercase tracking-widest mb-1.5">No. Whatsapp (Aktif)</label>
+                      <label className="block text-[10px] font-bold text-amber-900 dark:text-amber-400 uppercase tracking-widest mb-1.5">No. Whatsapp (Opsional)</label>
                       <input
                         type="tel"
                         className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl sm:text-sm focus:outline-none text-zinc-900 dark:text-zinc-100 font-sans"
                         placeholder="Contoh: 085696224448"
                         value={whatsapp}
                         onChange={(e) => setWhatsapp(e.target.value)}
-                        required
                       />
                     </div>
                     <div>
@@ -598,6 +596,12 @@ export default function CheckoutPage({
                             </label>
                           </div>
                         )}
+
+                        <div className="mt-3 p-3 bg-amber-500/10 dark:bg-amber-500/5 rounded-xl border border-amber-500/20 text-left">
+                          <p className="text-[10px] sm:text-[11px] text-amber-900 dark:text-amber-300 leading-relaxed font-sans">
+                            ⚠️ <strong>Perhatian:</strong> Pesanan Hanya Akan di Proses jika sudah terbayar, tolong Upload bukti bayar yang benar. Upload bukti bayar palsu pesanan tak akan masuk ke data order.
+                          </p>
+                        </div>
                       </div>
                     </motion.div>
                   )}
