@@ -926,7 +926,7 @@ export default function App() {
                 href="https://median.co/share/eekjpey#apk"
                 target="_blank"
                 rel="noopener noreferrer"
-                whileHover={{ scale: 1.05, rotate: -2 }}
+                whileHover={{ scale: 1.05, rotate: -3 }}
                 whileTap={{ scale: 0.95 }}
                 className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest leading-none bg-gradient-to-r from-amber-500 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white shadow-md border border-amber-400/20 transition-all cursor-pointer rotate-[2.5deg]"
               >
