@@ -94,6 +94,7 @@ Aplikasi saat ini berada pada fase **LIVE PRODUCTION**. Seluruh fitur utama e-co
 19. **Metode Checkout Opsional Tanpa WhatsApp/Email**: Pelanggan dapat checkout tanpa harus mengisi nomor WhatsApp atau email. Validasi diubah agar menerima isian opsional, dan secara otomatis mengisi tanda hubung `"-"` di database agar tidak melanggar aturan integritas database.
 20. **No Skip Order pada Penolakan Bukti Pembayaran AI**: Menjamin bahwa pesanan tidak akan terhapus atau terlewat saat AI mendeteksi bukti bayar palsu. Pesanan disimpan sebagai `pending` dengan penandaan catatan, dan Admin dapat meninjau serta menghapusnya secara manual di dashboard. Banner peringatan keras juga dipasang di UI checkout.
 21. **Robustness Hardening Akun Tamu**: Sistem secara otomatis menggenerasi alamat email acak unik (`[nama]-[random]@guest.tampaseduh.com`) untuk pemesan tamu guna mencegah kegagalan constraint UNIQUE database pada Supabase jika memesan berulang kali.
+22. **Tombol Unduh Aplikasi Android (Tilted Style)**: Tombol unduh aplikasi Android ("Download App") yang estetik dan sedikit miring (+2.5 derajat) diletakkan di samping sign "24/7 Delivery" pada section Hero halaman depan, mengarah ke platform distribusi Median share link yang menyediakan QR code scanning (untuk desktop) dan download APK langsung.
 
 #### Fitur yang Belum Selesai / Placeholder:
 1. **Sistem POS (Point of Sales) Cabang**: Pengoperasian kasir kas offline langsung di kedai fisik belum terintegrasi (transaksi saat ini 100% diasumsikan masuk via checkout website).
