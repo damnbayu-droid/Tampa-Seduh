@@ -918,9 +918,21 @@ export default function App() {
           
           {/* Hero Content — Centered */}
           <div className="max-w-3xl w-full space-y-8">
-            <span className="inline-block px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest leading-none bg-[#4B3621] border border-amber-900/20 text-amber-200 shadow-sm animate-pulse">
-              ✨ 24/7 Delivery
-            </span>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <span className="inline-block px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest leading-none bg-[#4B3621] border border-amber-900/20 text-amber-200 shadow-sm animate-pulse">
+                ✨ 24/7 Delivery
+              </span>
+              <motion.a
+                href="https://median.co/share/eekjpey#apk"
+                target="_blank"
+                rel="noopener noreferrer"
+                whileHover={{ scale: 1.05, rotate: -2 }}
+                whileTap={{ scale: 0.95 }}
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest leading-none bg-gradient-to-r from-amber-500 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white shadow-md border border-amber-400/20 transition-all cursor-pointer rotate-[2.5deg]"
+              >
+                📱 Download App
+              </motion.a>
+            </div>
 
             <div className="space-y-4">
               <h1 className="text-5xl sm:text-7xl font-serif font-black leading-[1.08] tracking-tight text-white dark:text-amber-50">
