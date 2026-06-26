@@ -50,6 +50,7 @@ export default function App() {
   const [showUserDashboard, setShowUserDashboard] = useState(false);
   const [userOrders, setUserOrders] = useState<any[]>([]);
   const [isSubscribing, setIsSubscribing] = useState(false);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
 
   // Path Router State
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
@@ -579,12 +580,12 @@ export default function App() {
         }
 
         setCurrentUser(loggedInUser);
-        if (loggedInUser.role === "admin" || loggedInUser.email === "tampaseduh@gmail.com") {
-          setIsAdminMode(true);
-          setShowUserDashboard(false);
-        } else {
+        // Jangan langsung redirect ke dashboard saat reload/buka browser awal,
+        // biarkan mereka di Home Page. Mereka bisa masuk via header profile dropdown.
+        setIsAdminMode(false);
+        setShowUserDashboard(false);
+        if (loggedInUser.role !== "admin" && loggedInUser.email !== "tampaseduh@gmail.com") {
           loadUserOrders(loggedInUser.email);
-          setShowUserDashboard(true);
         }
         setOrderNotification(`Selamat datang kawan ${loggedInUser.name}! 🎉`);
         setTimeout(() => setOrderNotification(null), 5000);
@@ -650,7 +651,12 @@ export default function App() {
     }
   };
 
-  const handleUserLogout = () => {
+  const handleUserLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error("Gagal logout Supabase:", err);
+    }
     setCurrentUser(null);
     setShowUserDashboard(false);
     setUserOrders([]);
@@ -862,34 +868,95 @@ export default function App() {
             </button>
 
             {/* 3. Single Door Profile Login / Dashboard Button */}
-            <button
-              onClick={() => {
-                if (!currentUser) {
-                  setIsUserLoginOpen(true);
-                } else {
-                  if (currentUser.role === "admin") {
-                    setIsAdminMode(!isAdminMode);
-                    setShowUserDashboard(false);
+            <div className="relative">
+              <button
+                onClick={() => {
+                  if (!currentUser) {
+                    setIsUserLoginOpen(true);
                   } else {
-                    setShowUserDashboard(!showUserDashboard);
-                    setIsAdminMode(false);
+                    setIsProfileDropdownOpen(!isProfileDropdownOpen);
                   }
-                }
-              }}
-              className={`p-2.5 rounded-full transition-all duration-300 cursor-pointer flex items-center justify-center border ${
-                currentUser
-                  ? ((!isScrolled || darkMode)
-                      ? "text-amber-300 bg-white/10 border-amber-500"
-                      : "text-amber-900 bg-amber-900/10 border-amber-500")
-                  : ((!isScrolled || darkMode) 
-                      ? "text-amber-400 hover:bg-white/5 border-white/5" 
-                      : "text-amber-900 hover:bg-amber-900/10 border-amber-900/5")
-              }`}
-              title={currentUser ? (currentUser.role === "admin" ? "Dashboard Admin" : "Dashboard Member") : "Masuk / Daftar"}
-              id="single-login-profile-button"
-            >
-              <UserIcon className="w-5 h-5" />
-            </button>
+                }}
+                className={`p-2.5 rounded-full transition-all duration-300 cursor-pointer flex items-center justify-center border ${
+                  currentUser
+                    ? ((!isScrolled || darkMode)
+                        ? "text-amber-300 bg-white/10 border-amber-500"
+                        : "text-amber-900 bg-amber-900/10 border-amber-500")
+                    : ((!isScrolled || darkMode) 
+                        ? "text-amber-400 hover:bg-white/5 border-white/5" 
+                        : "text-amber-900 hover:bg-amber-900/10 border-amber-900/5")
+                }`}
+                title={currentUser ? (currentUser.role === "admin" ? "Menu Admin" : "Menu Member") : "Masuk / Daftar"}
+                id="single-login-profile-button"
+              >
+                <UserIcon className="w-5 h-5" />
+              </button>
+
+              <AnimatePresence>
+                {isProfileDropdownOpen && currentUser && (
+                  <>
+                    {/* Invisible backdrop to close the dropdown when clicking outside */}
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setIsProfileDropdownOpen(false)} 
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className={`absolute right-0 mt-2 w-48 rounded-xl shadow-lg border backdrop-blur-md z-50 overflow-hidden ${
+                        darkMode 
+                          ? "bg-zinc-900/95 border-zinc-800 text-zinc-100" 
+                          : "bg-white/95 border-zinc-200 text-zinc-800"
+                      }`}
+                    >
+                      <div className={`px-4 py-2 border-b text-xs font-semibold ${
+                        darkMode ? "border-zinc-800 text-zinc-400" : "border-zinc-100 text-zinc-500"
+                      }`}>
+                        Halo, {currentUser.name || "Kawan"}
+                      </div>
+                      <div className="py-1">
+                        <button
+                          onClick={() => {
+                            setIsProfileDropdownOpen(false);
+                            if (currentUser.role === "admin" || currentUser.email === "tampaseduh@gmail.com") {
+                              setIsAdminMode(true);
+                              setShowUserDashboard(false);
+                            } else {
+                              setShowUserDashboard(true);
+                              setIsAdminMode(false);
+                            }
+                          }}
+                          className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 cursor-pointer transition-colors ${
+                            darkMode 
+                              ? "hover:bg-zinc-800 hover:text-amber-400" 
+                              : "hover:bg-[#F9F7F2] hover:text-amber-800"
+                          }`}
+                        >
+                          <Coffee className="w-4 h-4" />
+                          Dashboard
+                        </button>
+                        <button
+                          onClick={async () => {
+                            setIsProfileDropdownOpen(false);
+                            handleUserLogout();
+                          }}
+                          className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 cursor-pointer text-red-500 transition-colors ${
+                            darkMode 
+                              ? "hover:bg-zinc-800 hover:text-red-400" 
+                              : "hover:bg-[#F9F7F2] hover:text-red-650"
+                          }`}
+                        >
+                          <LogOut className="w-4 h-4" />
+                          Log out
+                        </button>
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
       </nav>
