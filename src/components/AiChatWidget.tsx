@@ -6,6 +6,7 @@ import { getApiUrl } from "../lib/api";
 
 interface Message {
   role: "user" | "model";
+  sender?: "user" | "ai" | "admin";
   text: string;
   timestamp: Date;
 }
@@ -14,9 +15,11 @@ export default function AiChatWidget({ userName = "Tamu Rahasia" }: { userName?:
   const [isOpen, setIsOpen] = useState(false);
   const [isWidgetVisible, setIsWidgetVisible] = useState(true);
   const [sessionId] = useState(() => "chat-" + Date.now() + "-" + Math.random().toString(36).substr(2, 6));
+  const [isSabotaged, setIsSabotaged] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "model",
+      sender: "ai",
       text: "Halo kawan! Selamat datang di Tampa Seduh. Kita asisten kopi virtual di sini. Mau bertanya tentang racikan biji kopi unik 'Liberica Kotabunan', menu andalan, lokasi kedai, atau cara delivery order? Tulis jo disini kawan!",
       timestamp: new Date()
     }
@@ -46,9 +49,13 @@ export default function AiChatWidget({ userName = "Tamu Rahasia" }: { userName?:
         const res = await fetch(getApiUrl(`/api/chat-admin/poll/${sessionId}`));
         if (res.ok) {
           const data = await res.json();
+          if (typeof data.isSabotaged === "boolean") {
+            setIsSabotaged(data.isSabotaged);
+          }
           if (data.messages && data.messages.length > messages.length - 1) {
             const serverMsgs = data.messages.map((m: any) => ({
               role: m.sender === "user" ? "user" : "model",
+              sender: m.sender,
               text: m.text,
               timestamp: new Date(m.timestamp)
             }));
@@ -67,6 +74,7 @@ export default function AiChatWidget({ userName = "Tamu Rahasia" }: { userName?:
     const handleTrigger = async () => {
       setIsWidgetVisible(true);
       setIsOpen(true);
+      setIsSabotaged(true);
 
       await fetch(getApiUrl("/api/chat"), {
         method: "POST",
@@ -79,8 +87,10 @@ export default function AiChatWidget({ userName = "Tamu Rahasia" }: { userName?:
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId, sabotage: true })
       });
+
       setMessages((prev) => [...prev, {
         role: "model",
+        sender: "admin",
         text: "Memanggil Admin Tampa Seduh... Pesan Anda akan langsung dibalas oleh tim kami.",
         timestamp: new Date()
       }]);
@@ -94,6 +104,7 @@ export default function AiChatWidget({ userName = "Tamu Rahasia" }: { userName?:
 
     const userMessage: Message = {
       role: "user",
+      sender: "user",
       text: textToSend,
       timestamp: new Date()
     };
@@ -118,10 +129,12 @@ export default function AiChatWidget({ userName = "Tamu Rahasia" }: { userName?:
 
       const data = await response.json();
 
-      if (!data.sabotaged) {
+      if (data.sabotaged) {
+        setIsSabotaged(true);
+      } else {
         setMessages((prev) => [
           ...prev,
-          { role: "model", text: data.text, timestamp: new Date() }
+          { role: "model", sender: "ai", text: data.text, timestamp: new Date() }
         ]);
       }
     } catch (error) {
@@ -129,6 +142,7 @@ export default function AiChatWidget({ userName = "Tamu Rahasia" }: { userName?:
         ...prev,
         {
           role: "model",
+          sender: "ai",
           text: "Aduh kawan, jaringan server sedang sibuk menyeduh kopi. Coba ketik ulang kembali beberapa saat lagi, atau hubungi kami langsung via Whatsapp di 085696224448!",
           timestamp: new Date()
         }
@@ -168,10 +182,17 @@ export default function AiChatWidget({ userName = "Tamu Rahasia" }: { userName?:
                     </div>
                     <div>
                       <h4 className="font-serif font-bold tracking-wide">Asisten Tampa Seduh</h4>
-                      <p className="text-[10px] text-green-300 flex items-center gap-1.5 font-sans font-medium">
-                        <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-ping"></span>
-                        GPT-5.4-mini Active
-                      </p>
+                      {isSabotaged ? (
+                        <p className="text-[10px] text-red-300 flex items-center gap-1.5 font-sans font-bold">
+                          <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping"></span>
+                          Admin Mode (AI Off)
+                        </p>
+                      ) : (
+                        <p className="text-[10px] text-green-300 flex items-center gap-1.5 font-sans font-medium">
+                          <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-ping"></span>
+                          GPT-5.4-mini Active
+                        </p>
+                      )}
                     </div>
                   </div>
                   <button
@@ -191,9 +212,18 @@ export default function AiChatWidget({ userName = "Tamu Rahasia" }: { userName?:
                         className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm shadow-sm ${
                           m.role === "user"
                             ? "bg-amber-900 text-amber-50 rounded-br-none"
-                            : "bg-white dark:bg-zinc-800 border border-amber-900/5 text-zinc-800 dark:text-zinc-200 rounded-bl-none"
+                            : m.sender === "admin"
+                              ? "bg-red-50/50 dark:bg-red-950/10 border border-red-200/50 dark:border-red-900/30 text-zinc-800 dark:text-zinc-200 rounded-bl-none"
+                              : "bg-white dark:bg-zinc-800 border border-amber-900/5 text-zinc-800 dark:text-zinc-200 rounded-bl-none"
                         }`}
                       >
+                        {m.role !== "user" && (
+                          <span className={`block text-[9px] font-extrabold mb-1 uppercase tracking-wider ${
+                            m.sender === "admin" ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"
+                          }`}>
+                            {m.sender === "admin" ? "👤 Admin Tampa Seduh" : "🤖 Asisten AI"}
+                          </span>
+                        )}
                         <p className="leading-relaxed whitespace-pre-wrap">{m.text}</p>
                         <span className="block text-[9px] mt-1 text-right opacity-60 font-mono">
                           {m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
